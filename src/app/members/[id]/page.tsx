@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { getMemories } from '@/lib/mem0'
 import { RANK_CONFIG } from '@/lib/ranks'
+import type { MemberRank } from '@/lib/types'
 
 export const revalidate = 60
 
@@ -20,7 +21,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
   if (!member) notFound()
 
   const memories = await getMemories(String(member.tg_id))
-  const rank = RANK_CONFIG[member.rank]
+  const rank = RANK_CONFIG[member.rank as MemberRank]
 
   return (
     <div className="max-w-4xl">
