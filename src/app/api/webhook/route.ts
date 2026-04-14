@@ -18,6 +18,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
+// GET for quick health check
+export async function GET() {
+  return NextResponse.json({ ok: true, bot: 'AI Olymp' })
+}
+
 // ─── New member joins channel ─────────────────────────────────────────────────
 async function handleChatMember(update: TgChatMemberUpdate) {
   const { new_chat_member, chat } = update
@@ -89,6 +94,33 @@ async function handleChatMember(update: TgChatMemberUpdate) {
 async function handleMessage(message: TgMessage) {
   const user = message.from
   if (!user || user.is_bot) return
+
+  // /start command — personal DM to bot
+  if (message.text === '/start' && message.chat.id === user.id) {
+    const { data: member } = await supabaseAdmin
+      .from('members')
+      .select('rank, points, joined_at')
+      .eq('tg_id', user.id)
+      .maybeSingle()
+
+    if (member) {
+      const days = Math.floor((Date.now() - new Date(member.joined_at).getTime()) / (1000 * 60 * 60 * 24))
+      await sendMessage(
+        user.id,
+        `👋 <b>${user.first_name || 'Привет'}!</b>\n\n` +
+        `Ты в AI Olymp уже <b>${days} дней</b>\n` +
+        `Ранг: <b>${member.rank}</b> | Баллы: <b>${member.points}</b>\n\n` +
+        `Пиши в клубный чат — там вся жизнь 🔥`
+      )
+    } else {
+      await sendMessage(
+        user.id,
+        `👋 <b>Привет, ${user.first_name || 'друг'}!</b>\n\n` +
+        `Я бот AI Olymp. Вступи в канал клуба, чтобы стать участником.`
+      )
+    }
+    return
+  }
 
   const { data: member } = await supabaseAdmin
     .from('members')
