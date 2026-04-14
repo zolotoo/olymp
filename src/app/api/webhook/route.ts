@@ -77,8 +77,24 @@ async function handleChatMember(update: TgChatMemberUpdate) {
   const name = user.first_name || user.username || String(user.id)
   addMemory(String(user.id), `${name} вступил в клуб AI Olymp${user.username ? `. Username: @${user.username}` : '.'}`)
 
-  // Try sending welcome — may fail if user hasn't started the bot yet
-  await sendWelcome(user)
+  // Try DM first (works if user already started the bot)
+  const dmSent = await sendWelcome(user)
+
+  // If DM failed — greet in group chat so they see it
+  if (!dmSent) {
+    const groupId = process.env.TELEGRAM_GROUP_ID
+    if (groupId) {
+      const mention = user.username
+        ? `@${user.username}`
+        : `<a href="tg://user?id=${user.id}">${user.first_name || 'участник'}</a>`
+
+      await sendMessage(
+        groupId,
+        `👋 ${mention} — добро пожаловать в AI Olymp!\n\n` +
+        `Напиши боту /start чтобы получить личное приветствие и активировать профиль 🔥`
+      )
+    }
+  }
 }
 
 // ─── Track messages ────────────────────────────────────────────────────────────
@@ -282,27 +298,28 @@ async function handleNewGroupMembers(message: TgMessage) {
 }
 
 // ─── Welcome helper ───────────────────────────────────────────────────────────
-async function sendWelcome(user: TgUser) {
+async function sendWelcome(user: TgUser): Promise<boolean> {
   try {
     const videoNoteId = process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
     if (videoNoteId) {
       await sendVideoNote(user.id, videoNoteId)
       await delay(1500)
     }
-    await sendMessage(
+    const result = await sendMessage(
       user.id,
       `👋 <b>Привет, ${user.first_name || 'участник'}!</b>\n\n` +
       `Добро пожаловать в AI Olymp — рад видеть тебя здесь.\n\n` +
       `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
       `Пиши в чат, задавай вопросы — это самый важный шаг.`
     )
-    // Mark welcome as sent
+    if (!result?.ok) return false
     await supabaseAdmin
       .from('members')
       .update({ welcome_sent: true })
       .eq('tg_id', user.id)
+    return true
   } catch {
-    // User hasn't started the bot yet — welcome will be sent on /start
+    return false
   }
 }
 
