@@ -20,7 +20,7 @@ export async function sendVideoNote(chatId: number | string, fileId: string) {
 export async function setWebhook(url: string) {
   return call('setWebhook', {
     url,
-    allowed_updates: ['message', 'chat_member', 'message_reaction'],
+    allowed_updates: ['message', 'chat_member', 'chat_join_request', 'message_reaction'],
     drop_pending_updates: true,
   })
 }
@@ -31,4 +31,8 @@ export async function deleteWebhook() {
 
 export async function getChatMember(chatId: string | number, userId: number) {
   return call('getChatMember', { chat_id: chatId, user_id: userId })
+}
+
+export async function approveChatJoinRequest(chatId: string | number, userId: number) {
+  return call('approveChatJoinRequest', { chat_id: chatId, user_id: userId })
 }

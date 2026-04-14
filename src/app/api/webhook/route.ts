@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendMessage, sendVideoNote, getChatMember } from '@/lib/telegram'
+import { sendMessage, sendVideoNote, getChatMember, approveChatJoinRequest } from '@/lib/telegram'
 import { addMemory } from '@/lib/mem0'
 import { getRank, POINTS } from '@/lib/ranks'
 
@@ -8,10 +8,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   try {
+    if (body.chat_join_request) await handleJoinRequest(body.chat_join_request)
     if (body.chat_member) await handleChatMember(body.chat_member)
     if (body.message) await handleMessage(body.message)
     if (body.message_reaction) await handleReaction(body.message_reaction)
-    // New member joined a group/forum
     if (body.message?.new_chat_members) await handleNewGroupMembers(body.message)
   } catch (err) {
     console.error('Webhook error:', err)
@@ -23,6 +23,55 @@ export async function POST(req: NextRequest) {
 // GET for quick health check
 export async function GET() {
   return NextResponse.json({ ok: true, bot: 'AI Olymp' })
+}
+
+// ─── Join request (channel with approval mode) ────────────────────────────────
+async function handleJoinRequest(update: { chat: TgChat; from: TgUser }) {
+  const { chat, from: user } = update
+  if (user.is_bot) return
+
+  const channelId = process.env.TELEGRAM_CHANNEL_ID
+  if (channelId && String(chat.id) !== channelId) return
+
+  // Upsert member
+  const { data: existing } = await supabaseAdmin
+    .from('members')
+    .select('id, welcome_sent')
+    .eq('tg_id', user.id)
+    .maybeSingle()
+
+  if (!existing) {
+    await supabaseAdmin.from('members').insert({
+      tg_id: user.id,
+      tg_username: user.username ?? null,
+      tg_first_name: user.first_name ?? null,
+      tg_last_name: user.last_name ?? null,
+      status: 'active',
+      rank: 'newcomer',
+      points: 0,
+      welcome_sent: false,
+    })
+    addMemory(String(user.id), `${user.first_name || user.username || user.id} подал заявку в AI Olymp`)
+  }
+
+  const { data: member } = await supabaseAdmin
+    .from('members').select('id').eq('tg_id', user.id).single()
+
+  if (member) {
+    await supabaseAdmin.from('events_log').insert({
+      member_id: member.id,
+      tg_id: user.id,
+      event_type: 'join_request',
+      metadata: { chat_id: chat.id },
+    })
+  }
+
+  // Can DM immediately — user initiated contact via the request
+  await sendWelcome(user)
+
+  // Auto-approve if not using manual approval
+  // Comment this line out if you want to approve manually
+  await approveChatJoinRequest(chat.id, user.id)
 }
 
 // ─── New member joins channel ─────────────────────────────────────────────────
