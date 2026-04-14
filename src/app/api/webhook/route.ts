@@ -106,7 +106,7 @@ async function handleMessage(message: TgMessage) {
   if (message.text === '/start' && message.chat.id === user.id) {
     const { data: member } = await supabaseAdmin
       .from('members')
-      .select('rank, points, joined_at')
+      .select('rank, points, joined_at, welcome_sent')
       .eq('tg_id', user.id)
       .maybeSingle()
 
