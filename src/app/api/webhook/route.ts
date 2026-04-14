@@ -53,6 +53,7 @@ async function handleChatMember(update: TgChatMemberUpdate) {
     status: 'active',
     rank: 'newcomer',
     points: 0,
+    welcome_sent: false,
   })
 
   const { data: member } = await supabaseAdmin
@@ -74,20 +75,8 @@ async function handleChatMember(update: TgChatMemberUpdate) {
   const name = user.first_name || user.username || String(user.id)
   addMemory(String(user.id), `${name} вступил в клуб AI Olymp${user.username ? `. Username: @${user.username}` : '.'}`)
 
-  // Send welcome video note then text
-  const videoNoteId = process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
-  if (videoNoteId) {
-    await sendVideoNote(user.id, videoNoteId)
-    await delay(1500)
-  }
-
-  await sendMessage(
-    user.id,
-    `👋 <b>Привет, ${user.first_name || 'участник'}!</b>\n\n` +
-    `Добро пожаловать в AI Olymp — рад видеть тебя здесь.\n\n` +
-    `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
-    `Пиши в чат, задавай вопросы — это самый важный шаг.`
-  )
+  // Try sending welcome — may fail if user hasn't started the bot yet
+  await sendWelcome(user)
 }
 
 // ─── Track messages ────────────────────────────────────────────────────────────
@@ -104,6 +93,11 @@ async function handleMessage(message: TgMessage) {
       .maybeSingle()
 
     if (member) {
+      // Send pending welcome if not sent yet
+      if (!member.welcome_sent) {
+        await sendWelcome(user)
+        return
+      }
       const days = Math.floor((Date.now() - new Date(member.joined_at).getTime()) / (1000 * 60 * 60 * 24))
       await sendMessage(
         user.id,
@@ -237,6 +231,31 @@ async function handleReaction(reaction: TgReaction) {
     points: POINTS.REACTION_GIVEN,
     reason: 'reaction_given',
   })
+}
+
+// ─── Welcome helper ───────────────────────────────────────────────────────────
+async function sendWelcome(user: TgUser) {
+  try {
+    const videoNoteId = process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
+    if (videoNoteId) {
+      await sendVideoNote(user.id, videoNoteId)
+      await delay(1500)
+    }
+    await sendMessage(
+      user.id,
+      `👋 <b>Привет, ${user.first_name || 'участник'}!</b>\n\n` +
+      `Добро пожаловать в AI Olymp — рад видеть тебя здесь.\n\n` +
+      `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
+      `Пиши в чат, задавай вопросы — это самый важный шаг.`
+    )
+    // Mark welcome as sent
+    await supabaseAdmin
+      .from('members')
+      .update({ welcome_sent: true })
+      .eq('tg_id', user.id)
+  } catch {
+    // User hasn't started the bot yet — welcome will be sent on /start
+  }
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
