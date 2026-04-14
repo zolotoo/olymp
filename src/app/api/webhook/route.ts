@@ -11,6 +11,8 @@ export async function POST(req: NextRequest) {
     if (body.chat_member) await handleChatMember(body.chat_member)
     if (body.message) await handleMessage(body.message)
     if (body.message_reaction) await handleReaction(body.message_reaction)
+    // New member joined a group/forum
+    if (body.message?.new_chat_members) await handleNewGroupMembers(body.message)
   } catch (err) {
     console.error('Webhook error:', err)
   }
@@ -233,6 +235,52 @@ async function handleReaction(reaction: TgReaction) {
   })
 }
 
+// ─── New member joined group/forum ────────────────────────────────────────────
+async function handleNewGroupMembers(message: TgMessage) {
+  const newMembers: TgUser[] = message.new_chat_members || []
+
+  for (const user of newMembers) {
+    if (user.is_bot) continue
+
+    // Upsert member in DB
+    const { data: existing } = await supabaseAdmin
+      .from('members')
+      .select('id, welcome_sent')
+      .eq('tg_id', user.id)
+      .maybeSingle()
+
+    if (!existing) {
+      await supabaseAdmin.from('members').insert({
+        tg_id: user.id,
+        tg_username: user.username ?? null,
+        tg_first_name: user.first_name ?? null,
+        tg_last_name: user.last_name ?? null,
+        status: 'active',
+        rank: 'newcomer',
+        points: 0,
+        welcome_sent: false,
+      })
+      addMemory(String(user.id), `${user.first_name || user.username || user.id} вступил в AI Olymp`)
+    }
+
+    // Greet in the group chat
+    const mention = user.username
+      ? `@${user.username}`
+      : `<a href="tg://user?id=${user.id}">${user.first_name || 'участник'}</a>`
+
+    await sendMessage(
+      message.chat.id,
+      `👋 ${mention} — добро пожаловать в AI Olymp!\n\n` +
+      `Напиши боту /start чтобы получить приветствие и активировать свой профиль.`
+    )
+
+    // Also try DM
+    if (!existing || !existing.welcome_sent) {
+      await sendWelcome(user)
+    }
+  }
+}
+
 // ─── Welcome helper ───────────────────────────────────────────────────────────
 async function sendWelcome(user: TgUser) {
   try {
@@ -276,5 +324,5 @@ function delay(ms: number) {
 interface TgUser { id: number; is_bot?: boolean; first_name?: string; last_name?: string; username?: string }
 interface TgChat { id: number }
 interface TgChatMemberUpdate { chat: TgChat; new_chat_member: { user: TgUser; status: string } }
-interface TgMessage { from?: TgUser; chat: TgChat; text?: string }
+interface TgMessage { from?: TgUser; chat: TgChat; text?: string; new_chat_members?: TgUser[] }
 interface TgReaction { user?: TgUser }
