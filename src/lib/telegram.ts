@@ -28,3 +28,7 @@ export async function setWebhook(url: string) {
 export async function deleteWebhook() {
   return call('deleteWebhook', {})
 }
+
+export async function getChatMember(chatId: string | number, userId: number) {
+  return call('getChatMember', { chat_id: chatId, user_id: userId })
+}

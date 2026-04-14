@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendMessage, sendVideoNote } from '@/lib/telegram'
+import { sendMessage, sendVideoNote, getChatMember } from '@/lib/telegram'
 import { addMemory } from '@/lib/mem0'
 import { getRank, POINTS } from '@/lib/ranks'
 
@@ -113,11 +113,48 @@ async function handleMessage(message: TgMessage) {
         `Пиши в клубный чат — там вся жизнь 🔥`
       )
     } else {
-      await sendMessage(
-        user.id,
-        `👋 <b>Привет, ${user.first_name || 'друг'}!</b>\n\n` +
-        `Я бот AI Olymp. Вступи в канал клуба, чтобы стать участником.`
-      )
+      // Not in DB — check if they're actually in the channel
+      const channelId = process.env.TELEGRAM_CHANNEL_ID
+      if (channelId) {
+        const res = await getChatMember(channelId, user.id)
+        const status = res?.result?.status
+        const isMember = ['member', 'administrator', 'creator'].includes(status)
+
+        if (isMember) {
+          // Register them
+          await supabaseAdmin.from('members').insert({
+            tg_id: user.id,
+            tg_username: user.username ?? null,
+            tg_first_name: user.first_name ?? null,
+            tg_last_name: user.last_name ?? null,
+            status: 'active',
+            rank: 'newcomer',
+            points: 0,
+          })
+
+          addMemory(String(user.id), `${user.first_name || user.username || user.id} зарегистрирован в AI Olymp через /start`)
+
+          const videoNoteId = process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
+          if (videoNoteId) {
+            await sendVideoNote(user.id, videoNoteId)
+            await delay(1500)
+          }
+
+          await sendMessage(
+            user.id,
+            `👋 <b>Привет, ${user.first_name || 'участник'}!</b>\n\n` +
+            `Добро пожаловать в AI Olymp — рад видеть тебя здесь.\n\n` +
+            `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
+            `Пиши в чат, задавай вопросы — это самый важный шаг.`
+          )
+        } else {
+          await sendMessage(
+            user.id,
+            `👋 <b>Привет, ${user.first_name || 'друг'}!</b>\n\n` +
+            `Я бот AI Olymp. Вступи в канал клуба, чтобы стать участником.`
+          )
+        }
+      }
     }
     return
   }
