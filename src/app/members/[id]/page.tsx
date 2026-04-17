@@ -5,8 +5,15 @@ import { getMemories } from '@/lib/mem0'
 import { RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
 import ActivityChart from '@/components/ActivityChart'
+import SummaryButton from '@/components/SummaryButton'
 
 export const revalidate = 60
+
+const card = {
+  background: '#FFFFFF',
+  border: '1px solid #E5E5EA',
+  boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+}
 
 export default async function MemberPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -39,23 +46,33 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
   }, {})
 
   const reasonLabels: Record<string, string> = {
-    message: 'За сообщения',
-    reaction_given: 'За реакции',
-    reaction_received: 'Реакции на посты',
+    message: 'За сообщения (+1 🍃)',
+    reaction_given: 'За реакцию (+1 🍃)',
+    reaction_received: 'Реакции на посты (+3 🍃)',
+    poll_vote: 'За голосование (+5 🍃)',
     weekly_active_bonus: 'Бонус активности',
+    subscription_renewal: 'Продление подписки',
   }
 
   return (
     <div className="max-w-5xl">
-      <Link href="/" className="text-sm text-gray-500 hover:text-white mb-6 inline-flex items-center gap-1">
-        ← Все участники
-      </Link>
+      {/* Back + Summary */}
+      <div className="flex items-center justify-between mb-6">
+        <Link
+          href="/"
+          className="text-sm font-medium inline-flex items-center gap-1 transition-opacity hover:opacity-70"
+          style={{ color: '#0A84FF' }}
+        >
+          ← Все участники
+        </Link>
+        <SummaryButton memberId={id} />
+      </div>
 
-      {/* Header */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+      {/* Header card */}
+      <div className="rounded-2xl p-6 mb-5" style={card}>
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-2xl font-bold" style={{ color: '#1D1D1F', letterSpacing: '-0.4px' }}>
               {member.tg_first_name || member.tg_username || String(member.tg_id)}
               {member.tg_last_name && ` ${member.tg_last_name}`}
             </h1>
@@ -64,22 +81,25 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
                 href={`https://t.me/${member.tg_username}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-indigo-400 hover:text-indigo-300 transition-colors mt-0.5 inline-block"
+                className="text-sm font-medium transition-opacity hover:opacity-70 mt-0.5 inline-block"
+                style={{ color: '#0A84FF' }}
               >
                 @{member.tg_username}
               </a>
             )}
-            <div className={`mt-2 text-lg font-semibold ${rank.color}`}>
+            <div className="mt-2 text-base font-semibold" style={{ color: rank.color }}>
               {rank.emoji} {rank.label}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-4xl font-bold">{member.points.toLocaleString()}</div>
-            <div className="text-gray-500 text-sm">баллов</div>
+            <div className="text-4xl font-bold" style={{ color: '#1D1D1F', letterSpacing: '-1px' }}>
+              {member.points.toLocaleString()}
+            </div>
+            <div className="text-sm mt-0.5" style={{ color: '#6E6E73' }}>листиков 🍃</div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-800">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5" style={{ borderTop: '1px solid #F2F2F7' }}>
           <Stat label="Вступил" value={new Date(member.joined_at).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })} />
           <Stat label="Дней в клубе" value={daysSinceJoin} />
           <Stat label="Всего сообщений" value={totalMessages} />
@@ -93,22 +113,26 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
 
       {/* Activity chart */}
       {(activity || []).length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="font-semibold mb-4">Активность по неделям</h2>
+        <div className="rounded-2xl p-6 mb-5" style={card}>
+          <h2 className="font-semibold mb-4" style={{ color: '#1D1D1F' }}>Активность по неделям</h2>
           <ActivityChart data={(activity || []).slice().reverse()} />
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Mem0 memory */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 className="font-semibold mb-4">Память участника</h2>
+        <div className="rounded-2xl p-6" style={card}>
+          <h2 className="font-semibold mb-4" style={{ color: '#1D1D1F' }}>Память участника</h2>
           {!(memories?.results?.length) ? (
-            <p className="text-gray-500 text-sm">Память пока пуста — накапливается по мере активности</p>
+            <p className="text-sm" style={{ color: '#AEAEB2' }}>Память пока пуста — накапливается по мере активности</p>
           ) : (
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
               {memories.results.map((m: { id: string; memory: string; created_at?: string }) => (
-                <div key={m.id} className="text-sm text-gray-300 border-l-2 border-indigo-600 pl-3 py-0.5">
+                <div
+                  key={m.id}
+                  className="text-sm pl-3 py-0.5"
+                  style={{ color: '#1D1D1F', borderLeft: '2px solid #0A84FF' }}
+                >
                   {m.memory}
                 </div>
               ))}
@@ -117,21 +141,24 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Points breakdown */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 className="font-semibold mb-4">Откуда баллы</h2>
+        <div className="rounded-2xl p-6" style={card}>
+          <h2 className="font-semibold mb-4" style={{ color: '#1D1D1F' }}>Откуда листики 🍃</h2>
           {Object.keys(pointsByReason).length === 0 ? (
-            <p className="text-gray-500 text-sm">Нет данных</p>
+            <p className="text-sm" style={{ color: '#AEAEB2' }}>Нет данных</p>
           ) : (
             <div className="space-y-3">
               {Object.entries(pointsByReason).map(([reason, pts]) => (
                 <div key={reason} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">{reasonLabels[reason] || reason}</span>
+                  <span className="text-sm" style={{ color: '#6E6E73' }}>{reasonLabels[reason] || reason}</span>
                   <div className="flex items-center gap-2">
                     <div
-                      className="h-1.5 bg-indigo-600 rounded-full"
-                      style={{ width: `${Math.min((pts / member.points) * 120, 120)}px` }}
+                      className="h-1.5 rounded-full"
+                      style={{
+                        background: '#0A84FF',
+                        width: `${Math.min((pts / member.points) * 120, 120)}px`,
+                      }}
                     />
-                    <span className="text-sm font-mono text-white w-12 text-right">{pts}</span>
+                    <span className="text-sm font-mono w-12 text-right" style={{ color: '#1D1D1F' }}>{pts}</span>
                   </div>
                 </div>
               ))}
@@ -140,16 +167,16 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Events / triggers */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 className="font-semibold mb-4">История триггеров</h2>
+        <div className="rounded-2xl p-6" style={card}>
+          <h2 className="font-semibold mb-4" style={{ color: '#1D1D1F' }}>История триггеров</h2>
           {(events || []).length === 0 ? (
-            <p className="text-gray-500 text-sm">Нет событий</p>
+            <p className="text-sm" style={{ color: '#AEAEB2' }}>Нет событий</p>
           ) : (
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {(events || []).map((e) => (
                 <div key={e.id} className="flex items-start justify-between gap-2 text-sm">
-                  <span className="font-mono text-gray-300">{e.event_type}</span>
-                  <span className="text-gray-600 text-xs whitespace-nowrap">
+                  <span className="font-mono" style={{ color: '#1D1D1F' }}>{e.event_type}</span>
+                  <span className="text-xs whitespace-nowrap" style={{ color: '#AEAEB2' }}>
                     {new Date(e.triggered_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
                   </span>
                 </div>
@@ -159,21 +186,21 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Raw weekly table */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 className="font-semibold mb-4">Сообщения по неделям</h2>
+        <div className="rounded-2xl p-6" style={card}>
+          <h2 className="font-semibold mb-4" style={{ color: '#1D1D1F' }}>Сообщения по неделям</h2>
           {(activity || []).length === 0 ? (
-            <p className="text-gray-500 text-sm">Нет данных</p>
+            <p className="text-sm" style={{ color: '#AEAEB2' }}>Нет данных</p>
           ) : (
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {(activity || []).map((row) => (
                 <div key={row.id} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">неделя с {row.week_start}</span>
+                  <span style={{ color: '#6E6E73' }}>неделя с {row.week_start}</span>
                   <div className="flex items-center gap-2">
                     <div
-                      className="h-1.5 bg-green-600 rounded-full"
-                      style={{ width: `${Math.min(row.message_count * 3, 80)}px` }}
+                      className="h-1.5 rounded-full"
+                      style={{ background: '#30D158', width: `${Math.min(row.message_count * 3, 80)}px` }}
                     />
-                    <span className="font-mono w-8 text-right">{row.message_count}</span>
+                    <span className="font-mono w-8 text-right" style={{ color: '#1D1D1F' }}>{row.message_count}</span>
                   </div>
                 </div>
               ))}
@@ -188,8 +215,8 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
 function Stat({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) {
   return (
     <div>
-      <div className="text-gray-500 text-xs mb-0.5">{label}</div>
-      <div className={`text-sm font-medium ${highlight ? 'text-yellow-400' : 'text-white'}`}>{value}</div>
+      <div className="text-xs mb-0.5" style={{ color: '#AEAEB2' }}>{label}</div>
+      <div className="text-sm font-medium" style={{ color: highlight ? '#FF9500' : '#1D1D1F' }}>{value}</div>
     </div>
   )
 }

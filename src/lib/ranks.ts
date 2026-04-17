@@ -1,11 +1,11 @@
 import type { MemberRank } from './types'
 
 export const RANK_CONFIG: Record<MemberRank, { label: string; emoji: string; minPoints: number; color: string }> = {
-  newcomer:  { label: 'Новичок',  emoji: '🌱', minPoints: 0,    color: 'text-gray-400' },
-  member:    { label: 'Участник', emoji: '⭐', minPoints: 100,  color: 'text-blue-400' },
-  active:    { label: 'Активный', emoji: '🔥', minPoints: 500,  color: 'text-orange-400' },
-  champion:  { label: 'Чемпион',  emoji: '🏆', minPoints: 1000, color: 'text-yellow-400' },
-  legend:    { label: 'Легенда',  emoji: '👑', minPoints: 2500, color: 'text-purple-400' },
+  newcomer:  { label: 'Новичок',  emoji: '🌱', minPoints: 0,    color: '#8E8E93' },
+  member:    { label: 'Участник', emoji: '⭐', minPoints: 100,  color: '#0A84FF' },
+  active:    { label: 'Активный', emoji: '🔥', minPoints: 500,  color: '#FF9500' },
+  champion:  { label: 'Чемпион',  emoji: '🏆', minPoints: 1000, color: '#FF9F0A' },
+  legend:    { label: 'Легенда',  emoji: '👑', minPoints: 2500, color: '#BF5AF2' },
 }
 
 const THRESHOLDS: { min: number; rank: MemberRank }[] = [
@@ -21,10 +21,10 @@ export function getRank(points: number): MemberRank {
 }
 
 export const POINTS = {
-  MESSAGE: 5,
-  REACTION_GIVEN: 2,
-  REACTION_RECEIVED: 10,
-  POLL_VOTE: 3,
+  MESSAGE: 1,
+  REACTION_GIVEN: 1,
+  REACTION_RECEIVED: 3,
+  POLL_VOTE: 5,
   WEEKLY_ACTIVE_BONUS: 50,
 }
 

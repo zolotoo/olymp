@@ -20,7 +20,7 @@ export async function sendVideoNote(chatId: number | string, fileId: string) {
 export async function setWebhook(url: string) {
   return call('setWebhook', {
     url,
-    allowed_updates: ['message', 'chat_member', 'chat_join_request', 'message_reaction'],
+    allowed_updates: ['message', 'chat_member', 'chat_join_request', 'message_reaction', 'poll_answer'],
     drop_pending_updates: true,
   })
 }
@@ -35,4 +35,31 @@ export async function getChatMember(chatId: string | number, userId: number) {
 
 export async function approveChatJoinRequest(chatId: string | number, userId: number) {
   return call('approveChatJoinRequest', { chat_id: chatId, user_id: userId })
+}
+
+// Promote to admin with NO rights — only to allow setting a custom title (rank badge)
+export async function promoteChatMember(chatId: string | number, userId: number) {
+  return call('promoteChatMember', {
+    chat_id: chatId,
+    user_id: userId,
+    is_anonymous: false,
+    can_manage_chat: false,
+    can_delete_messages: false,
+    can_manage_video_chats: false,
+    can_restrict_members: false,
+    can_promote_members: false,
+    can_change_info: false,
+    can_invite_users: false,
+    can_post_messages: false,
+    can_edit_messages: false,
+    can_pin_messages: false,
+  })
+}
+
+export async function setChatAdministratorCustomTitle(chatId: string | number, userId: number, customTitle: string) {
+  return call('setChatAdministratorCustomTitle', {
+    chat_id: chatId,
+    user_id: userId,
+    custom_title: customTitle,
+  })
 }

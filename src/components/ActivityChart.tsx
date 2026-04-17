@@ -15,23 +15,29 @@ export default function ActivityChart({ data }: { data: Row[] }) {
       <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
         <XAxis
           dataKey="week_start"
-          tick={{ fontSize: 11, fill: '#6b7280' }}
+          tick={{ fontSize: 11, fill: '#AEAEB2' }}
           tickFormatter={(v: string) => v.slice(5)}
           axisLine={false}
           tickLine={false}
         />
-        <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fontSize: 11, fill: '#AEAEB2' }} axisLine={false} tickLine={false} />
         <Tooltip
-          contentStyle={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: '#9ca3af' }}
-          itemStyle={{ color: '#fff' }}
+          contentStyle={{
+            background: 'rgba(255,255,255,0.95)',
+            border: '1px solid #E5E5EA',
+            borderRadius: 12,
+            fontSize: 12,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          }}
+          labelStyle={{ color: '#6E6E73' }}
+          itemStyle={{ color: '#1D1D1F' }}
           formatter={(v: number) => [v, 'сообщений']}
         />
         <Bar dataKey="message_count" radius={[4, 4, 0, 0]}>
           {data.map((entry, i) => (
             <Cell
               key={i}
-              fill={entry.message_count === max ? '#6366f1' : '#1e293b'}
+              fill={entry.message_count === max ? '#0A84FF' : '#E5E5EA'}
             />
           ))}
         </Bar>

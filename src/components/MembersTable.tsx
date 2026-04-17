@@ -13,7 +13,7 @@ function daysSince(date: string | null): string {
 export default function MembersTable({ members }: { members: MemberWithActivity[] }) {
   if (members.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-500">
+      <div className="text-center py-16" style={{ color: '#AEAEB2' }}>
         Участники появятся здесь после вступления в канал
       </div>
     )
@@ -23,52 +23,64 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-gray-400 border-b border-gray-800">
-            <th className="pb-3 font-medium">Участник</th>
-            <th className="pb-3 font-medium">Ранг</th>
-            <th className="pb-3 font-medium text-right">Баллы</th>
-            <th className="pb-3 font-medium text-right">За неделю</th>
-            <th className="pb-3 font-medium text-right">Всего</th>
-            <th className="pb-3 font-medium text-right">Активность</th>
-            <th className="pb-3 font-medium text-right">Статус</th>
+          <tr className="text-left" style={{ borderBottom: '1px solid #E5E5EA' }}>
+            {['Участник', 'Ранг', 'Листики 🍃', 'За неделю', 'Всего', 'Активность', 'Статус'].map((h, i) => (
+              <th
+                key={h}
+                className={`pb-3 font-medium text-xs${i >= 2 ? ' text-right' : ''}`}
+                style={{ color: '#6E6E73', letterSpacing: '0.3px', textTransform: 'uppercase' }}
+              >
+                {h}
+              </th>
+            ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-800/50">
+        <tbody>
           {members.map((m) => {
             const rank = RANK_CONFIG[m.rank]
             const isAtRisk = !m.last_active ||
               Date.now() - new Date(m.last_active).getTime() > 7 * 24 * 60 * 60 * 1000
 
             return (
-              <tr key={m.id} className="hover:bg-gray-900/50 transition-colors">
+              <tr
+                key={m.id}
+                className="transition-colors"
+                style={{ borderBottom: '1px solid #F2F2F7' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(242,242,247,0.7)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
                 <td className="py-3">
-                  <Link href={`/members/${m.id}`} className="hover:text-indigo-400 transition-colors">
-                    <div className="font-medium">{m.tg_first_name || m.tg_username || String(m.tg_id)}</div>
+                  <Link href={`/members/${m.id}`} className="hover:underline transition-colors">
+                    <div className="font-medium" style={{ color: '#1D1D1F' }}>
+                      {m.tg_first_name || m.tg_username || String(m.tg_id)}
+                    </div>
                     {m.tg_username && (
-                      <div className="text-gray-500 text-xs">@{m.tg_username}</div>
+                      <div className="text-xs" style={{ color: '#0A84FF' }}>@{m.tg_username}</div>
                     )}
                   </Link>
                 </td>
                 <td className="py-3">
-                  <span className={`${rank.color} font-medium`}>
+                  <span className="text-sm font-medium" style={{ color: rank.color }}>
                     {rank.emoji} {rank.label}
                   </span>
                 </td>
-                <td className="py-3 text-right font-mono">{m.points.toLocaleString()}</td>
+                <td className="py-3 text-right font-mono font-semibold" style={{ color: '#1D1D1F' }}>
+                  {m.points.toLocaleString()}
+                </td>
                 <td className="py-3 text-right">
-                  <span className={m.messages_this_week > 0 ? 'text-green-400' : 'text-gray-600'}>
+                  <span style={{ color: m.messages_this_week > 0 ? '#30D158' : '#C7C7CC' }}>
                     {m.messages_this_week}
                   </span>
                 </td>
-                <td className="py-3 text-right text-gray-400">{m.total_messages}</td>
-                <td className="py-3 text-right text-gray-400 text-xs">{daysSince(m.last_active)}</td>
+                <td className="py-3 text-right" style={{ color: '#6E6E73' }}>{m.total_messages}</td>
+                <td className="py-3 text-right text-xs" style={{ color: '#AEAEB2' }}>{daysSince(m.last_active)}</td>
                 <td className="py-3 text-right">
                   {m.status === 'churned' ? (
-                    <span className="text-xs bg-red-900/40 text-red-400 px-2 py-0.5 rounded-full">вышел</span>
+                    <StatusChip label="вышел" bg="rgba(255,59,48,0.1)" color="#FF3B30" />
                   ) : isAtRisk ? (
-                    <span className="text-xs bg-yellow-900/40 text-yellow-400 px-2 py-0.5 rounded-full">риск</span>
+                    <StatusChip label="риск" bg="rgba(255,149,0,0.1)" color="#FF9500" />
                   ) : (
-                    <span className="text-xs bg-green-900/40 text-green-400 px-2 py-0.5 rounded-full">активен</span>
+                    <StatusChip label="активен" bg="rgba(48,209,88,0.1)" color="#30D158" />
                   )}
                 </td>
               </tr>
@@ -77,5 +89,16 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
         </tbody>
       </table>
     </div>
+  )
+}
+
+function StatusChip({ label, bg, color }: { label: string; bg: string; color: string }) {
+  return (
+    <span
+      className="text-xs px-2.5 py-1 rounded-full font-medium"
+      style={{ background: bg, color }}
+    >
+      {label}
+    </span>
   )
 }

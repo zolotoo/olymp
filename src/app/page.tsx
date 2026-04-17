@@ -43,7 +43,6 @@ export default async function DashboardPage({
     total_messages: totalMap.get(m.tg_id) || 0,
   }))
 
-  // Filter
   if (filter === 'risk') {
     enriched = enriched.filter((m) => {
       if (m.status !== 'active') return false
@@ -56,7 +55,6 @@ export default async function DashboardPage({
     enriched = enriched.filter((m) => m.status === 'churned')
   }
 
-  // Search
   if (q) {
     const query = q.toLowerCase()
     enriched = enriched.filter(
@@ -88,42 +86,47 @@ export default async function DashboardPage({
   }).length
 
   const stats = [
-    { label: 'Всего участников', value: totalCount },
-    { label: 'Активны на неделе', value: activeThisWeek, color: 'text-green-400' },
-    { label: 'Под риском (7д+)', value: atRisk, color: atRisk > 0 ? 'text-yellow-400' : 'text-white' },
-    { label: 'Новых за месяц', value: newThisMonth, color: 'text-indigo-400' },
+    { label: 'Всего участников', value: totalCount, color: '#1D1D1F' },
+    { label: 'Активны на неделе', value: activeThisWeek, color: '#30D158' },
+    { label: 'Под риском (7д+)', value: atRisk, color: atRisk > 0 ? '#FF9500' : '#1D1D1F' },
+    { label: 'Новых за месяц', value: newThisMonth, color: '#0A84FF' },
   ]
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1">Участники клуба</h1>
-        <p className="text-gray-500 text-sm">Обновляется каждую минуту</p>
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold mb-1" style={{ color: '#1D1D1F', letterSpacing: '-0.5px' }}>
+          Участники клуба
+        </h1>
+        <p className="text-sm" style={{ color: '#6E6E73' }}>Обновляется каждую минуту</p>
       </div>
 
       <StatsCards stats={stats} />
 
       {/* Filters + Search */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
           {[
             { key: undefined, label: 'Все' },
             { key: 'active', label: `Активные (${activeThisWeek})` },
             { key: 'risk', label: `Риск (${atRisk})` },
             { key: 'churned', label: 'Вышедшие' },
-          ].map(({ key, label }) => (
-            <a
-              key={label}
-              href={key ? `/?filter=${key}` : '/'}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                filter === key || (!filter && !key)
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
-            >
-              {label}
-            </a>
-          ))}
+          ].map(({ key, label }) => {
+            const isActive = filter === key || (!filter && !key)
+            return (
+              <a
+                key={label}
+                href={key ? `/?filter=${key}` : '/'}
+                className="px-3 py-1.5 rounded-xl text-sm font-medium transition-all"
+                style={{
+                  background: isActive ? '#0A84FF' : 'rgba(10, 132, 255, 0.08)',
+                  color: isActive ? '#FFFFFF' : '#0A84FF',
+                }}
+              >
+                {label}
+              </a>
+            )
+          })}
         </div>
 
         <form method="get" className="flex gap-2">
@@ -132,12 +135,20 @@ export default async function DashboardPage({
             name="q"
             defaultValue={q}
             placeholder="Поиск по имени или @username..."
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 w-64"
+            className="rounded-xl px-3 py-1.5 text-sm focus:outline-none w-64"
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #E5E5EA',
+              color: '#1D1D1F',
+            }}
           />
         </form>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div
+        className="rounded-2xl p-6"
+        style={{ background: '#FFFFFF', border: '1px solid #E5E5EA', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}
+      >
         <MembersTable members={enriched} />
       </div>
     </div>
