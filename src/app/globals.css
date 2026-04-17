@@ -38,3 +38,10 @@ body {
   border: 1px solid #E5E5EA;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
+
+.member-row {
+  transition: background 0.1s;
+}
+.member-row:hover {
+  background: rgba(242, 242, 247, 0.7);
+}

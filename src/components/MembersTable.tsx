@@ -44,10 +44,8 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
             return (
               <tr
                 key={m.id}
-                className="transition-colors"
+                className="member-row"
                 style={{ borderBottom: '1px solid #F2F2F7' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(242,242,247,0.7)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <td className="py-3">
                   <Link href={`/members/${m.id}`} className="hover:underline transition-colors">
