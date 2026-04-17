@@ -13,7 +13,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru">
       <body className={inter.className}>
-        {/* iOS-style top navigation bar */}
+        <style>{`
+          .nav-link {
+            color: #0A84FF;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: background 0.15s;
+          }
+          .nav-link:hover {
+            background: rgba(10, 132, 255, 0.08);
+          }
+        `}</style>
+
         <nav
           className="sticky top-0 z-50 px-6 py-0 border-b"
           style={{
@@ -27,15 +41,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex items-center gap-2">
               <span className="text-2xl">🏛️</span>
               <span
-                className="text-base font-semibold tracking-tight"
+                className="text-base font-semibold"
                 style={{ color: '#1D1D1F', letterSpacing: '-0.3px' }}
               >
                 AI Олимп
               </span>
             </div>
             <div className="flex items-center gap-1">
-              <NavLink href="/" label="Участники" />
-              <NavLink href="/flow" label="Сообщения" />
+              <a href="/" className="nav-link">Участники</a>
+              <a href="/flow" className="nav-link">Сообщения</a>
             </div>
           </div>
         </nav>
@@ -45,19 +59,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
       </body>
     </html>
-  )
-}
-
-function NavLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a
-      href={href}
-      className="px-3 py-1.5 rounded-xl text-sm font-medium transition-all"
-      style={{ color: '#0A84FF' }}
-      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(10, 132, 255, 0.08)')}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-    >
-      {label}
-    </a>
   )
 }
