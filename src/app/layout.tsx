@@ -29,13 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</style>
 
         <nav
-          className="sticky top-0 z-50 px-6 py-0 border-b"
-          style={{
-            background: 'rgba(242, 242, 247, 0.82)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            borderColor: 'rgba(198, 198, 200, 0.5)',
-          }}
+          className="glass-nav sticky top-0 z-50 px-6 py-0"
         >
           <div className="max-w-7xl mx-auto flex items-center justify-between h-14">
             <div className="flex items-center gap-2">
@@ -49,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div className="flex items-center gap-1">
               <a href="/" className="nav-link">Участники</a>
-              <a href="/flow" className="nav-link">Сообщения</a>
+              <a href="/flow" className="nav-link">Дерево сообщений</a>
             </div>
           </div>
         </nav>

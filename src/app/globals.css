@@ -5,7 +5,7 @@
 :root {
   --ios-bg: #F2F2F7;
   --ios-card: #FFFFFF;
-  --ios-separator: #C6C6C8;
+  --ios-separator: #E5E5EA;
   --ios-text-primary: #1D1D1F;
   --ios-text-secondary: #6E6E73;
   --ios-text-tertiary: #AEAEB2;
@@ -13,32 +13,64 @@
   --ios-green: #30D158;
   --ios-orange: #FF9500;
   --ios-purple: #BF5AF2;
-  --ios-red: #FF3B30;
 }
 
 body {
-  background-color: var(--ios-bg);
+  background: linear-gradient(180deg,
+    #c8d9ee 0px,
+    #d8e6f3 40px,
+    #e8eff8 100px,
+    #eff4f9 180px,
+    #F2F2F7 320px,
+    #F2F2F7 100%
+  );
+  background-attachment: fixed;
   color: var(--ios-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Glass card utility */
-.glass-card {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
-}
-
-/* Soft card */
 .ios-card {
   background: #FFFFFF;
   border: 1px solid #E5E5EA;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.04);
 }
 
+.glass-nav {
+  background: rgba(235, 243, 252, 0.82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(198, 210, 226, 0.5);
+}
+
+/* ── Tree styles ─────────────────────────────── */
+.tree-children {
+  position: relative;
+  margin-left: 14px;
+  padding-left: 22px;
+  border-left: 1.5px solid #D1D1D6;
+}
+
+.tree-child {
+  position: relative;
+  padding-top: 8px;
+}
+
+.tree-child::before {
+  content: '';
+  position: absolute;
+  left: -22px;
+  top: 24px;
+  width: 22px;
+  height: 1.5px;
+  background: #D1D1D6;
+}
+
+.tree-child:last-child > .tree-children {
+  border-left-color: transparent;
+}
+
+/* ── Table row hover ─────────────────────────── */
 .member-row {
   transition: background 0.1s;
 }
