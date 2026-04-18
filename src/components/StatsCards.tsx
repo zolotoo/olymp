@@ -23,7 +23,7 @@ export default function StatsCards({ stats }: { stats: StatCard[] }) {
           </div>
           <div
             className="text-3xl font-bold"
-            style={{ color: s.color ?? '#1C1C1E', letterSpacing: '-1px', lineHeight: 1 }}
+            style={{ color: '#1C1C1E', letterSpacing: '-1px', lineHeight: 1 }}
           >
             {s.value}
           </div>

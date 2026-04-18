@@ -94,10 +94,10 @@ export default async function DashboardPage({
   }).length
 
   const stats = [
-    { label: 'Всего участников', value: totalCount,    color: '#1C1C1E' },
-    { label: 'Активны на неделе', value: activeThisWeek, color: '#30D158' },
-    { label: 'Под риском (7д+)', value: atRisk,         color: atRisk > 0 ? '#FF9500' : '#1C1C1E' },
-    { label: 'Новых за месяц',   value: newThisMonth,   color: '#0A84FF' },
+    { label: 'Всего участников',  value: totalCount },
+    { label: 'Активны на неделе', value: activeThisWeek },
+    { label: 'Под риском (7д+)',  value: atRisk },
+    { label: 'Новых за месяц',    value: newThisMonth },
   ]
 
   return (

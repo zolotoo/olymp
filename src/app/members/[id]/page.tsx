@@ -10,9 +10,11 @@ import SummaryButton from '@/components/SummaryButton'
 export const revalidate = 60
 
 const card = {
-  background: '#FFFFFF',
-  border: '1px solid #E5E5EA',
-  boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+  background: 'rgba(255,255,255,0.70)',
+  backdropFilter: 'blur(28px) saturate(160%)',
+  WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+  border: '1px solid rgba(255,255,255,0.55)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)',
 }
 
 export default async function MemberPage({ params }: { params: Promise<{ id: string }> }) {
@@ -99,7 +101,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5" style={{ borderTop: '1px solid #F2F2F7' }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5" style={{ borderTop: '1px solid rgba(28,28,30,0.08)' }}>
           <Stat label="Вступил" value={new Date(member.joined_at).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })} />
           <Stat label="Дней в клубе" value={daysSinceJoin} />
           <Stat label="Всего сообщений" value={totalMessages} />
@@ -131,7 +133,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
                 <div
                   key={m.id}
                   className="text-sm pl-3 py-0.5"
-                  style={{ color: '#1D1D1F', borderLeft: '2px solid #0A84FF' }}
+                  style={{ color: '#1C1C1E', borderLeft: '2px solid rgba(10,132,255,0.5)', paddingLeft: 10 }}
                 >
                   {m.memory}
                 </div>

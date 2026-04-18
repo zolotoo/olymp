@@ -17,20 +17,17 @@
 html, body { min-height: 100vh; }
 
 body {
-  background:
-    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(255,255,255,0.22) 0%, transparent 60%),
-    linear-gradient(
-      180deg,
-      #6BA8D0 0%,
-      #89BED8 9%,
-      #A5CBD8 17%,
-      #B4D0C2 26%,
-      #A4C49A 37%,
-      #86B07A 50%,
-      #72A068 64%,
-      #649260 80%,
-      #5C8658 100%
-    );
+  background: linear-gradient(
+    180deg,
+    #8FC5E4 0%,
+    #A8D0EA 12%,
+    #C0DDF1 24%,
+    #D6EAF7 38%,
+    #E6F1FA 54%,
+    #EFF5F9 68%,
+    #F3F5F8 82%,
+    #F2F2F7 100%
+  );
   background-attachment: fixed;
   color: var(--text-1);
   -webkit-font-smoothing: antialiased;

@@ -143,7 +143,7 @@ const glass = {
 
 export default function RanksPage() {
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-5xl mx-auto">
       {/* Header */}
       <div className="rounded-2xl px-6 py-5 mb-8" style={glass}>
         <div className="text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.8px' }}>
