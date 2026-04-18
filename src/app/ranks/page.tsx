@@ -1,3 +1,5 @@
+import RanksWeeklyEditor from '@/components/RanksWeeklyEditor'
+
 export const metadata = { title: 'Ранги — AI Олимп' }
 
 const RANKS = [
@@ -98,40 +100,6 @@ const RANKS = [
     ],
   },
 ]
-
-const SEGMENTS = [
-  { key: 'dead',   label: 'Мертвяки',  desc: 'Ни одного сообщения за неделю' },
-  { key: 'silent', label: 'Молчуны',   desc: 'Менее 3 сообщений за неделю' },
-  { key: 'medium', label: 'Середняки', desc: '3–9 сообщений за неделю' },
-  { key: 'active', label: 'Активные',  desc: '10+ сообщений за неделю' },
-]
-
-const WEEKLY: Record<1|2|3|4, Record<string, string>> = {
-  1: {
-    dead:   'Ни одного сообщения — всё ок? Дарим бонус',
-    silent: 'Вот как получить первые листики',
-    medium: 'До следующего ранга осталось X листиков',
-    active: 'Ты в топе — вот твой бейдж',
-  },
-  2: {
-    dead:   'Вопрос про ожидания + дайджест',
-    silent: 'Напоминание про листики + дайджест',
-    medium: 'Тизер следующей недели + дайджест',
-    active: 'Закрытый контент / ранний доступ',
-  },
-  3: {
-    dead:   'Ещё не поздно — двойные листики прямо сейчас',
-    silent: 'Напоминание о колесе месяца',
-    medium: 'Итоги листиков за 3 недели',
-    active: 'Топ таблицы лидеров + поздравление',
-  },
-  4: {
-    dead:   'Подписка через 7 дней. Отписка = блок на 6 месяцев',
-    silent: 'Предупреждение о продлении + расписание следующего месяца',
-    medium: 'Итоги месяца + ранг + что ждёт дальше',
-    active: 'Личная благодарность + анонс следующего месяца',
-  },
-}
 
 const glass = {
   background: 'rgba(255,255,255,0.66)',
@@ -242,49 +210,8 @@ export default function RanksPage() {
         ))}
       </div>
 
-      {/* Weekly by segment */}
-      <div className="rounded-2xl p-6" style={glass}>
-        <h2 className="text-base font-bold mb-2" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
-          Еженедельные касания по сегментам
-        </h2>
-        <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.2px' }}>
-          Каждую неделю каждый участник получает 3 сообщения: кружок + дайджест + персональное по сегменту
-        </p>
-
-        {/* Segments legend */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          {SEGMENTS.map(s => (
-            <div key={s.key} className="rounded-xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.48)' }}>
-              <div className="text-xs font-semibold" style={{ color: '#1C1C1E', letterSpacing: '-0.2px' }}>{s.label}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'rgba(28,28,30,0.50)' }}>{s.desc}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-3">
-          {([1, 2, 3, 4] as const).map(week => (
-            <div key={week} className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.45)' }}>
-              <div className="px-4 py-2.5" style={{ background: 'rgba(28,28,30,0.06)' }}>
-                <span className="text-xs font-semibold uppercase" style={{ color: 'rgba(28,28,30,0.50)', letterSpacing: '0.5px' }}>
-                  Неделя {week}{week === 4 ? ' — перед продлением' : ''}
-                </span>
-              </div>
-              <div className="divide-y" style={{ borderColor: 'rgba(28,28,30,0.06)' }}>
-                {SEGMENTS.map(s => (
-                  <div key={s.key} className="px-4 py-2.5 flex gap-4">
-                    <span className="text-xs font-medium w-20 shrink-0 mt-0.5" style={{ color: 'rgba(28,28,30,0.45)' }}>
-                      {s.label}
-                    </span>
-                    <span className="text-sm" style={{ color: '#1C1C1E', letterSpacing: '-0.15px', lineHeight: 1.4 }}>
-                      {WEEKLY[week][s.key]}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Weekly by segment — editable */}
+      <RanksWeeklyEditor />
     </div>
   )
 }
