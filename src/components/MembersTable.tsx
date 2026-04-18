@@ -13,7 +13,7 @@ function daysSince(date: string | null): string {
 export default function MembersTable({ members }: { members: MemberWithActivity[] }) {
   if (members.length === 0) {
     return (
-      <div className="text-center py-16" style={{ color: '#AEAEB2' }}>
+      <div className="text-center py-16" style={{ color: 'rgba(28,28,30,0.38)' }}>
         Участники появятся здесь после вступления в канал
       </div>
     )
@@ -23,12 +23,12 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left" style={{ borderBottom: '1px solid #E5E5EA' }}>
-            {['Участник', 'Ранг', 'Листики 🍃', 'За неделю', 'Всего', 'Активность', 'Статус'].map((h, i) => (
+          <tr style={{ borderBottom: '1px solid rgba(28,28,30,0.08)' }}>
+            {['Участник', 'Ранг', 'Листики', 'За неделю', 'Всего', 'Активность', 'Статус'].map((h, i) => (
               <th
                 key={h}
-                className={`pb-3 font-medium text-xs${i >= 2 ? ' text-right' : ''}`}
-                style={{ color: '#6E6E73', letterSpacing: '0.3px', textTransform: 'uppercase' }}
+                className={`pb-3 font-semibold text-xs${i >= 2 ? ' text-right' : ''}`}
+                style={{ color: 'rgba(28,28,30,0.40)', letterSpacing: '0.3px', textTransform: 'uppercase' }}
               >
                 {h}
               </th>
@@ -45,40 +45,42 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
               <tr
                 key={m.id}
                 className="member-row"
-                style={{ borderBottom: '1px solid #F2F2F7' }}
+                style={{ borderBottom: '1px solid rgba(28,28,30,0.05)' }}
               >
                 <td className="py-3">
-                  <Link href={`/members/${m.id}`} className="hover:underline transition-colors">
-                    <div className="font-medium" style={{ color: '#1D1D1F' }}>
+                  <Link href={`/members/${m.id}`} className="hover:opacity-70 transition-opacity">
+                    <div className="font-semibold" style={{ color: '#1C1C1E', letterSpacing: '-0.3px' }}>
                       {m.tg_first_name || m.tg_username || String(m.tg_id)}
                     </div>
                     {m.tg_username && (
-                      <div className="text-xs" style={{ color: '#0A84FF' }}>@{m.tg_username}</div>
+                      <div className="text-xs mt-0.5" style={{ color: '#0A84FF', letterSpacing: '-0.1px' }}>
+                        @{m.tg_username}
+                      </div>
                     )}
                   </Link>
                 </td>
                 <td className="py-3">
-                  <span className="text-sm font-medium" style={{ color: rank.color }}>
+                  <span className="text-sm font-medium" style={{ color: rank.color, letterSpacing: '-0.2px' }}>
                     {rank.emoji} {rank.label}
                   </span>
                 </td>
-                <td className="py-3 text-right font-mono font-semibold" style={{ color: '#1D1D1F' }}>
+                <td className="py-3 text-right font-mono font-bold" style={{ color: '#1C1C1E', letterSpacing: '-0.5px' }}>
                   {m.points.toLocaleString()}
                 </td>
                 <td className="py-3 text-right">
-                  <span style={{ color: m.messages_this_week > 0 ? '#30D158' : '#C7C7CC' }}>
+                  <span style={{ color: m.messages_this_week > 0 ? '#30D158' : 'rgba(28,28,30,0.28)' }}>
                     {m.messages_this_week}
                   </span>
                 </td>
-                <td className="py-3 text-right" style={{ color: '#6E6E73' }}>{m.total_messages}</td>
-                <td className="py-3 text-right text-xs" style={{ color: '#AEAEB2' }}>{daysSince(m.last_active)}</td>
+                <td className="py-3 text-right" style={{ color: 'rgba(28,28,30,0.50)' }}>{m.total_messages}</td>
+                <td className="py-3 text-right text-xs" style={{ color: 'rgba(28,28,30,0.40)' }}>{daysSince(m.last_active)}</td>
                 <td className="py-3 text-right">
                   {m.status === 'churned' ? (
-                    <StatusChip label="вышел" bg="rgba(255,59,48,0.1)" color="#FF3B30" />
+                    <StatusChip label="вышел" bg="rgba(255,59,48,0.10)" color="#FF3B30" />
                   ) : isAtRisk ? (
-                    <StatusChip label="риск" bg="rgba(255,149,0,0.1)" color="#FF9500" />
+                    <StatusChip label="риск" bg="rgba(255,149,0,0.10)" color="#FF9500" />
                   ) : (
-                    <StatusChip label="активен" bg="rgba(48,209,88,0.1)" color="#30D158" />
+                    <StatusChip label="активен" bg="rgba(48,209,88,0.10)" color="#30D158" />
                   )}
                 </td>
               </tr>
@@ -92,10 +94,7 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
 
 function StatusChip({ label, bg, color }: { label: string; bg: string; color: string }) {
   return (
-    <span
-      className="text-xs px-2.5 py-1 rounded-full font-medium"
-      style={{ background: bg, color }}
-    >
+    <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: bg, color }}>
       {label}
     </span>
   )

@@ -14,6 +14,14 @@ function getWeekStart(): string {
 
 export const revalidate = 60
 
+const glass = {
+  background: 'rgba(255,255,255,0.66)',
+  backdropFilter: 'blur(28px) saturate(160%)',
+  WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+  border: '1px solid rgba(255,255,255,0.52)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07)',
+} as const
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -86,19 +94,22 @@ export default async function DashboardPage({
   }).length
 
   const stats = [
-    { label: 'Всего участников', value: totalCount, color: '#1D1D1F' },
+    { label: 'Всего участников', value: totalCount,    color: '#1C1C1E' },
     { label: 'Активны на неделе', value: activeThisWeek, color: '#30D158' },
-    { label: 'Под риском (7д+)', value: atRisk, color: atRisk > 0 ? '#FF9500' : '#1D1D1F' },
-    { label: 'Новых за месяц', value: newThisMonth, color: '#0A84FF' },
+    { label: 'Под риском (7д+)', value: atRisk,         color: atRisk > 0 ? '#FF9500' : '#1C1C1E' },
+    { label: 'Новых за месяц',   value: newThisMonth,   color: '#0A84FF' },
   ]
 
   return (
     <div>
-      <div className="mb-7">
-        <h1 className="text-2xl font-bold mb-1" style={{ color: '#1D1D1F', letterSpacing: '-0.5px' }}>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-1px', lineHeight: 1.1 }}>
           Участники клуба
         </h1>
-        <p className="text-sm" style={{ color: '#6E6E73' }}>Обновляется каждую минуту</p>
+        <p className="text-sm" style={{ color: 'rgba(28,28,30,0.50)', letterSpacing: '-0.2px' }}>
+          Обновляется каждую минуту
+        </p>
       </div>
 
       <StatsCards stats={stats} />
@@ -108,8 +119,8 @@ export default async function DashboardPage({
         <div className="flex gap-1.5 flex-wrap">
           {[
             { key: undefined, label: 'Все' },
-            { key: 'active', label: `Активные (${activeThisWeek})` },
-            { key: 'risk', label: `Риск (${atRisk})` },
+            { key: 'active',  label: `Активные (${activeThisWeek})` },
+            { key: 'risk',    label: `Риск (${atRisk})` },
             { key: 'churned', label: 'Вышедшие' },
           ].map(({ key, label }) => {
             const isActive = filter === key || (!filter && !key)
@@ -117,10 +128,17 @@ export default async function DashboardPage({
               <a
                 key={label}
                 href={key ? `/?filter=${key}` : '/'}
-                className="px-3 py-1.5 rounded-xl text-sm font-medium transition-all"
+                className="px-3.5 py-1.5 rounded-full text-sm font-medium transition-all"
                 style={{
-                  background: isActive ? '#0A84FF' : 'rgba(10, 132, 255, 0.08)',
-                  color: isActive ? '#FFFFFF' : '#0A84FF',
+                  background: isActive
+                    ? 'rgba(255,255,255,0.85)'
+                    : 'rgba(255,255,255,0.50)',
+                  color: isActive ? '#1C1C1E' : 'rgba(28,28,30,0.60)',
+                  border: '1px solid rgba(255,255,255,0.55)',
+                  boxShadow: isActive ? '0 2px 10px rgba(0,0,0,0.10)' : 'none',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  letterSpacing: '-0.2px',
                 }}
               >
                 {label}
@@ -135,20 +153,21 @@ export default async function DashboardPage({
             name="q"
             defaultValue={q}
             placeholder="Поиск по имени или @username..."
-            className="rounded-xl px-3 py-1.5 text-sm focus:outline-none w-64"
+            className="rounded-full px-4 py-1.5 text-sm focus:outline-none w-64"
             style={{
-              background: '#FFFFFF',
-              border: '1px solid #E5E5EA',
-              color: '#1D1D1F',
+              background: 'rgba(255,255,255,0.66)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.52)',
+              color: '#1C1C1E',
+              letterSpacing: '-0.2px',
             }}
           />
         </form>
       </div>
 
-      <div
-        className="rounded-2xl p-6"
-        style={{ background: '#FFFFFF', border: '1px solid #E5E5EA', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}
-      >
+      {/* Table */}
+      <div className="rounded-2xl p-6" style={glass}>
         <MembersTable members={enriched} />
       </div>
     </div>
