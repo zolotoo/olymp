@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import TelegramEditor from './TelegramEditor'
 
 const SEGMENTS = [
   { key: 'dead',   label: 'Мертвяки' },
@@ -136,9 +137,16 @@ export default function RanksWeeklyEditor() {
                     <span className="text-xs font-medium w-20 shrink-0 mt-0.5" style={{ color: 'rgba(28,28,30,0.45)' }}>
                       {s.label}
                     </span>
-                    <span className="text-sm flex-1" style={{ color: '#1C1C1E', letterSpacing: '-0.15px', lineHeight: 1.4 }}>
-                      {getMsg(week, s.key)}
-                    </span>
+                    <span
+                      className="tg-preview text-sm flex-1"
+                      style={{ color: '#1C1C1E', letterSpacing: '-0.15px', lineHeight: 1.4 }}
+                      dangerouslySetInnerHTML={{
+                        __html: getMsg(week, s.key).replace(
+                          /<tg-spoiler>([\s\S]*?)<\/tg-spoiler>/g,
+                          '<span class="tg-spoiler-preview">$1</span>'
+                        ),
+                      }}
+                    />
                     {hasCustom(week, s.key) && (
                       <span className="text-xs shrink-0 mt-0.5" style={{ color: '#0A84FF' }}>✏️</span>
                     )}
@@ -173,18 +181,11 @@ export default function RanksWeeklyEditor() {
               Персональное сообщение
             </h3>
 
-            <textarea
-              className="w-full rounded-2xl px-4 py-3 text-sm resize-none outline-none"
-              style={{
-                background: 'rgba(28,28,30,0.05)',
-                border: '1px solid rgba(28,28,30,0.10)',
-                color: '#1C1C1E',
-                lineHeight: 1.6,
-                minHeight: 140,
-              }}
+            <TelegramEditor
               value={editing.draft}
-              onChange={e => setEditing(prev => prev ? { ...prev, draft: e.target.value } : null)}
+              onChange={draft => setEditing(prev => prev ? { ...prev, draft } : null)}
               placeholder="Введите текст сообщения..."
+              minHeight={130}
             />
 
             <div className="flex gap-2 mt-4">

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import TelegramEditor from './TelegramEditor'
 
 export interface OnJoinItem {
   key: string
@@ -138,18 +139,34 @@ export default function RanksOnJoinList({ rankColor, items }: Props) {
                     </div>
                   </div>
                 )}
-                <div
-                  className="rounded-xl px-4 py-3 text-sm"
-                  style={{
-                    background: 'rgba(28,28,30,0.05)',
-                    color: getContent(selected) ? '#1C1C1E' : '#AEAEB2',
-                    lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap',
-                    minHeight: 60,
-                  }}
-                >
-                  {getContent(selected) || (selected.type === 'action' ? '— системное действие, текст не нужен —' : '— текст не задан —')}
-                </div>
+                {/* Content preview with HTML rendering */}
+                {getContent(selected) ? (
+                  <div
+                    className="tg-preview rounded-xl px-4 py-3 text-sm"
+                    style={{
+                      background: 'rgba(255,255,255,0.80)',
+                      border: '1px solid rgba(10,132,255,0.15)',
+                      color: '#1C1C1E',
+                      lineHeight: 1.65,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      minHeight: 60,
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: getContent(selected).replace(
+                        /<tg-spoiler>([\s\S]*?)<\/tg-spoiler>/g,
+                        '<span class="tg-spoiler-preview">$1</span>'
+                      ),
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="rounded-xl px-4 py-3 text-sm"
+                    style={{ background: 'rgba(28,28,30,0.05)', color: '#AEAEB2', lineHeight: 1.65, minHeight: 60 }}
+                  >
+                    {selected.type === 'action' ? '— системное действие, текст не нужен —' : '— текст не задан —'}
+                  </div>
+                )}
 
                 <div className="flex gap-2 mt-4">
                   {selected.type !== 'action' && (
@@ -191,18 +208,11 @@ export default function RanksOnJoinList({ rankColor, items }: Props) {
                     />
                   </div>
                 )}
-                <textarea
-                  className="w-full rounded-2xl px-4 py-3 text-sm resize-none outline-none"
-                  style={{
-                    background: 'rgba(28,28,30,0.05)',
-                    border: '1px solid rgba(28,28,30,0.12)',
-                    color: '#1C1C1E',
-                    lineHeight: 1.65,
-                    minHeight: selected.type === 'video' ? 100 : 150,
-                  }}
+                <TelegramEditor
                   value={draftContent}
-                  onChange={e => setDraftContent(e.target.value)}
+                  onChange={setDraftContent}
                   placeholder={selected.type === 'video' ? 'Подпись к кружку (необязательно)...' : 'Введите текст сообщения...'}
+                  minHeight={selected.type === 'video' ? 90 : 130}
                 />
                 <div className="flex gap-2 mt-4">
                   <button

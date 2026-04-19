@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import TelegramEditor from './TelegramEditor'
 
 type NodeType = 'root' | 'section' | 'trigger' | 'condition' | 'message' | 'video' | 'action' | 'points'
 
@@ -409,15 +410,22 @@ export default function TreeClient() {
                     </a>
                   </div>
                 )}
-                {/* Content */}
+                {/* Content — rendered as Telegram HTML */}
                 {getContent(selected) && (
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.38)', marginBottom: 6 }}>
                       {selected.type === 'message' ? 'Текст сообщения' : selected.type === 'video' ? 'Описание' : 'Детали'}
                     </div>
-                    <div style={{ background: selected.type === 'message' ? 'rgba(10,132,255,0.05)' : 'rgba(28,28,30,0.04)', border: `1px solid ${selected.type === 'message' ? 'rgba(10,132,255,0.12)' : 'rgba(28,28,30,0.08)'}`, borderRadius: 14, padding: '14px 16px', fontSize: 13.5, color: 'rgba(28,28,30,0.75)', lineHeight: 1.65, whiteSpace: 'pre-line', letterSpacing: '-0.15px' }}>
-                      {getContent(selected)}
-                    </div>
+                    <div
+                      className="tg-preview"
+                      style={{ background: selected.type === 'message' ? 'rgba(10,132,255,0.05)' : 'rgba(28,28,30,0.04)', border: `1px solid ${selected.type === 'message' ? 'rgba(10,132,255,0.12)' : 'rgba(28,28,30,0.08)'}`, borderRadius: 14, padding: '14px 16px', fontSize: 13.5, color: 'rgba(28,28,30,0.85)', lineHeight: 1.65, whiteSpace: 'pre-wrap', letterSpacing: '-0.15px', wordBreak: 'break-word' }}
+                      dangerouslySetInnerHTML={{
+                        __html: getContent(selected).replace(
+                          /<tg-spoiler>([\s\S]*?)<\/tg-spoiler>/g,
+                          '<span class="tg-spoiler-preview">$1</span>'
+                        ),
+                      }}
+                    />
                   </div>
                 )}
                 {saveOk && (
@@ -459,14 +467,14 @@ export default function TreeClient() {
                     />
                   </div>
                 )}
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.45)', marginBottom: 6 }}>
+                <div style={{ marginBottom: 6, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.45)' }}>
                   {selected.type === 'message' ? 'Текст сообщения' : 'Описание'}
-                </label>
-                <textarea
+                </div>
+                <TelegramEditor
                   value={draftContent}
-                  onChange={e => setDraft(e.target.value)}
-                  rows={10}
-                  style={{ width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.70)', border: '1px solid rgba(10,132,255,0.25)', borderRadius: 14, fontSize: 13.5, color: '#1C1C1E', outline: 'none', resize: 'vertical', lineHeight: 1.65, letterSpacing: '-0.15px', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  onChange={setDraft}
+                  placeholder={selected.type === 'video' ? 'Подпись к кружку...' : 'Введите текст сообщения...'}
+                  minHeight={140}
                 />
                 <p style={{ fontSize: 11.5, color: 'rgba(28,28,30,0.42)', marginTop: 6, letterSpacing: '-0.1px' }}>
                   Используй [Имя], [N], [Ранг] как плейсхолдеры — бот подставит значения автоматически.
