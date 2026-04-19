@@ -7,6 +7,7 @@ const LINKS = [
   { href: '/flow',    label: 'Дерево сообщений' },
   { href: '/ranks',   label: 'Ранги' },
   { href: '/bonuses', label: 'Бонусы' },
+  { href: '/wheel',   label: 'Колесо' },
 ]
 
 export default function NavBar() {
