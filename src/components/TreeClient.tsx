@@ -420,7 +420,7 @@ export default function TreeClient() {
                   <button onClick={startEdit} style={{ padding: '5px 12px', background: 'rgba(10,132,255,0.10)', border: '1px solid rgba(10,132,255,0.20)', borderRadius: 50, fontSize: 12.5, fontWeight: 600, color: '#0A84FF', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     ✏️ Редактировать
                   </button>
-                  {getContent(selected) && (
+                  {(getContent(selected) || getVideoUrl(selected)) && (
                     <button onClick={handleTest} disabled={testing} style={{ padding: '5px 12px', background: testing ? 'rgba(48,209,88,0.08)' : 'rgba(48,209,88,0.10)', border: '1px solid rgba(48,209,88,0.24)', borderRadius: 50, fontSize: 12.5, fontWeight: 600, color: '#1C8A3C', cursor: testing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
                       {testing ? '...' : '▶ Проверить'}
                     </button>
