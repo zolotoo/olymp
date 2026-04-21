@@ -224,7 +224,9 @@ export default function TreeClient() {
         body: JSON.stringify({
           key: selected.id,
           label: selected.label,
+          type: selected.type,
           content: getContent(selected),
+          video_url: getVideoUrl(selected) || null,
         }),
       })
       setTestOk(true)
