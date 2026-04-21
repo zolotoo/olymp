@@ -86,7 +86,11 @@ async function handleChatMember(update: TgChatMemberUpdate) {
   const { new_chat_member, chat } = update
 
   const channelId = process.env.TELEGRAM_CHANNEL_ID
-  if (channelId && String(chat.id) !== channelId) return
+  const groupId = process.env.TELEGRAM_GROUP_ID
+  const chatStr = String(chat.id)
+  const isChannel = channelId && chatStr === channelId
+  const isGroup = groupId && chatStr === groupId
+  if (!isChannel && !isGroup) return
 
   const { status } = new_chat_member
   if (!['member', 'administrator'].includes(status)) return
@@ -95,35 +99,44 @@ async function handleChatMember(update: TgChatMemberUpdate) {
   if (user.is_bot) return
 
   const { data: existing } = await supabaseAdmin
-    .from('members').select('id').eq('tg_id', user.id).maybeSingle()
+    .from('members').select('id, rank').eq('tg_id', user.id).maybeSingle()
 
-  if (existing) return
+  let memberId = existing?.id
+  let memberRank: MemberRank = (existing?.rank as MemberRank) || 'newcomer'
 
-  await supabaseAdmin.from('members').insert({
-    tg_id: user.id,
-    tg_username: user.username ?? null,
-    tg_first_name: user.first_name ?? null,
-    tg_last_name: user.last_name ?? null,
-    status: 'active',
-    rank: 'newcomer',
-    points: 0,
-    welcome_sent: false,
-  })
-
-  const { data: member } = await supabaseAdmin
-    .from('members').select('id').eq('tg_id', user.id).single()
-
-  if (member) {
-    await supabaseAdmin.from('events_log').insert({
-      member_id: member.id,
+  if (!existing) {
+    await supabaseAdmin.from('members').insert({
       tg_id: user.id,
-      event_type: 'joined',
-      metadata: { chat_id: chat.id, username: user.username ?? null },
+      tg_username: user.username ?? null,
+      tg_first_name: user.first_name ?? null,
+      tg_last_name: user.last_name ?? null,
+      status: 'active',
+      rank: 'newcomer',
+      points: 0,
+      welcome_sent: false,
     })
+
+    const { data: member } = await supabaseAdmin
+      .from('members').select('id').eq('tg_id', user.id).single()
+    memberId = member?.id
+
+    if (memberId) {
+      await supabaseAdmin.from('events_log').insert({
+        member_id: memberId,
+        tg_id: user.id,
+        event_type: 'joined',
+        metadata: { chat_id: chat.id, username: user.username ?? null },
+      })
+    }
+
+    const name = user.first_name || user.username || String(user.id)
+    addMemory(String(user.id), `${name} вступил в клуб AI Олимп${user.username ? `. Username: @${user.username}` : '.'}`)
   }
 
-  const name = user.first_name || user.username || String(user.id)
-  addMemory(String(user.id), `${name} вступил в клуб AI Олимп${user.username ? `. Username: @${user.username}` : '.'}`)
+  // When user appears in the GROUP, give them the rank title (admin badge).
+  if (isGroup) {
+    await applyRankTitle(user.id, memberRank)
+  }
 
   // Приветствие в DM уже отправляется в handleJoinRequest при одобрении заявки.
   // Публичное приветствие в группе отключено по требованию.
@@ -428,12 +441,20 @@ async function sendSalesPitch(user: TgUser) {
 // ─── Set Telegram rank title (no-rights admin) ────────────────────────────────
 async function applyRankTitle(userId: number, rank: MemberRank) {
   const groupId = process.env.TELEGRAM_GROUP_ID
-  if (!groupId) return
+  if (!groupId) {
+    console.warn('applyRankTitle: TELEGRAM_GROUP_ID is not set')
+    return
+  }
   const rc = RANK_CONFIG[rank]
   try {
-    await promoteChatMember(groupId, userId)
-    await setChatAdministratorCustomTitle(groupId, userId, `${rc.emoji} ${rc.label}`)
-  } catch { /* User may not be in group yet */ }
+    const prom = await promoteChatMember(groupId, userId)
+    if (!prom?.ok) console.error('promoteChatMember failed:', prom)
+    const title = `${rc.emoji} ${rc.label}`.slice(0, 16) // Telegram limit: 16 chars
+    const set = await setChatAdministratorCustomTitle(groupId, userId, title)
+    if (!set?.ok) console.error('setChatAdministratorCustomTitle failed:', set)
+  } catch (e) {
+    console.error('applyRankTitle exception:', e)
+  }
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
