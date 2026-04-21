@@ -365,22 +365,43 @@ async function handleNewGroupMembers(message: TgMessage) {
   }
 }
 
+// ─── bot_messages helper ──────────────────────────────────────────────────────
+async function getBotMessage(key: string): Promise<{ content: string | null; video_url: string | null }> {
+  const { data } = await supabaseAdmin
+    .from('bot_messages')
+    .select('content, video_url')
+    .eq('key', key)
+    .maybeSingle()
+  return { content: data?.content ?? null, video_url: data?.video_url ?? null }
+}
+
+function renderTemplate(tpl: string, user: TgUser): string {
+  const name = user.first_name || user.username || 'участник'
+  return tpl.replace(/\[Имя\]/g, name)
+}
+
 // ─── Welcome helper ───────────────────────────────────────────────────────────
 async function sendWelcome(user: TgUser): Promise<boolean> {
   try {
-    const videoNoteId = process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
+    // 1. Video note: prefer bot_messages[rank_newcomer_video].video_url, fallback to env
+    const videoMsg = await getBotMessage('rank_newcomer_video')
+    const videoNoteId = videoMsg.video_url || process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
     if (videoNoteId) {
       await sendVideoNote(user.id, videoNoteId)
       await delay(1500)
     }
-    const result = await sendMessage(
-      user.id,
-      `👋 <b>Привет, ${user.first_name || 'участник'}!</b>\n\n` +
-      `Добро пожаловать в AI Олимп, рад видеть тебя здесь.\n\n` +
-      `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
-      `Пиши в чат, задавай вопросы, это самый важный шаг.\n\n` +
-      `За активность ты получаешь 🍃 листики и растёшь в ранге. Удачи!`
-    )
+
+    // 2. Welcome text: prefer bot_messages[rank_newcomer_welcome].content
+    const welcomeMsg = await getBotMessage('rank_newcomer_welcome')
+    const text = welcomeMsg.content
+      ? renderTemplate(welcomeMsg.content, user)
+      : `👋 <b>Привет, ${user.first_name || 'участник'}!</b>\n\n` +
+        `Добро пожаловать в AI Олимп, рад видеть тебя здесь.\n\n` +
+        `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
+        `Пиши в чат, задавай вопросы, это самый важный шаг.\n\n` +
+        `За активность ты получаешь 🍃 листики и растёшь в ранге. Удачи!`
+
+    const result = await sendMessage(user.id, text)
     if (!result?.ok) return false
     await supabaseAdmin.from('members').update({ welcome_sent: true }).eq('tg_id', user.id)
     return true
