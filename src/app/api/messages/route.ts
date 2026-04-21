@@ -45,7 +45,12 @@ export async function GET() {
 
   const data = await res.json() as Array<{ key: string; label: string; type: string; content: string; video_url?: string | null }>
   const map: Record<string, { label: string; type: string; content: string; video_url?: string }> =
-    Object.fromEntries(data.map(r => [r.key, r]))
+    Object.fromEntries(data.map(r => [r.key, {
+      label: r.label,
+      type: r.type,
+      content: r.content,
+      video_url: r.video_url ?? undefined,
+    }]))
   return Response.json(map)
 }
 
