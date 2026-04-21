@@ -1,52 +1,51 @@
-import { supabaseAdmin } from '@/lib/supabase'
-
 export const dynamic = 'force-dynamic'
 
-// Direct PostgREST HTTP call — bypasses any client-side staleness.
-// When PostgREST schema cache is stale we send NOTIFY pgrst and retry once.
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+function headers() {
+  return {
+    apikey: SERVICE_KEY,
+    Authorization: `Bearer ${SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+  }
+}
+
 async function pgrstReloadSchema() {
-  // Supabase exposes NOTIFY via the REST endpoint pg_notify
   try {
     await fetch(`${SUPA_URL}/rest/v1/rpc/pgrst_reload_schema`, {
       method: 'POST',
-      headers: {
-        apikey: SERVICE_KEY,
-        Authorization: `Bearer ${SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: headers(),
       body: '{}',
-    }).catch(() => null)
+    })
+    await new Promise(r => setTimeout(r, 500))
   } catch { /* best effort */ }
 }
 
-function isSchemaCacheError(err: { message?: string; code?: string } | null): boolean {
-  if (!err) return false
-  const msg = err.message || ''
-  return msg.includes('schema cache') || err.code === 'PGRST205'
-}
-
 export async function GET() {
-  let { data, error } = await supabaseAdmin
-    .from('bot_messages')
-    .select('key, label, type, content, video_url, updated_at')
+  const url = `${SUPA_URL}/rest/v1/bot_messages?select=key,label,type,content,video_url,updated_at`
 
-  if (isSchemaCacheError(error)) {
-    await pgrstReloadSchema()
-    await new Promise(r => setTimeout(r, 400))
-    ;({ data, error } = await supabaseAdmin
-      .from('bot_messages')
-      .select('key, label, type, content, video_url, updated_at'))
+  let res = await fetch(url, { headers: headers(), cache: 'no-store' })
+  if (res.status === 404 || (res.status >= 400 && res.status < 500)) {
+    const txt = await res.text()
+    if (txt.includes('schema cache') || txt.includes('PGRST205')) {
+      await pgrstReloadSchema()
+      res = await fetch(url, { headers: headers(), cache: 'no-store' })
+    } else {
+      console.error('bot_messages GET failed:', res.status, txt)
+      return Response.json({ error: txt }, { status: 500 })
+    }
   }
 
-  if (error) {
-    console.error('bot_messages GET error:', error)
-    return Response.json({ error: error.message }, { status: 500 })
+  if (!res.ok) {
+    const txt = await res.text()
+    console.error('bot_messages GET failed:', res.status, txt)
+    return Response.json({ error: txt }, { status: 500 })
   }
+
+  const data = await res.json() as Array<{ key: string; label: string; type: string; content: string; video_url?: string | null }>
   const map: Record<string, { label: string; type: string; content: string; video_url?: string }> =
-    Object.fromEntries((data || []).map(r => [r.key, r]))
+    Object.fromEntries(data.map(r => [r.key, r]))
   return Response.json(map)
 }
 
@@ -64,25 +63,36 @@ export async function PATCH(req: Request) {
     updated_at: new Date().toISOString(),
   }
 
-  let { data, error } = await supabaseAdmin
-    .from('bot_messages')
-    .upsert(row, { onConflict: 'key' })
-    .select('key, updated_at')
-    .single()
-
-  if (isSchemaCacheError(error)) {
-    await pgrstReloadSchema()
-    await new Promise(r => setTimeout(r, 400))
-    ;({ data, error } = await supabaseAdmin
-      .from('bot_messages')
-      .upsert(row, { onConflict: 'key' })
-      .select('key, updated_at')
-      .single())
+  async function upsert() {
+    return fetch(`${SUPA_URL}/rest/v1/bot_messages?on_conflict=key`, {
+      method: 'POST',
+      headers: {
+        ...headers(),
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify(row),
+      cache: 'no-store',
+    })
   }
 
-  if (error) {
-    console.error('bot_messages PATCH error:', error, 'body:', body)
-    return Response.json({ error: error.message }, { status: 500 })
+  let res = await upsert()
+  if (!res.ok) {
+    const txt = await res.text()
+    if (txt.includes('schema cache') || txt.includes('PGRST205')) {
+      await pgrstReloadSchema()
+      res = await upsert()
+    } else {
+      console.error('bot_messages PATCH failed:', res.status, txt, 'body:', body)
+      return Response.json({ error: txt }, { status: 500 })
+    }
   }
-  return Response.json({ ok: true, saved: data })
+
+  if (!res.ok) {
+    const txt = await res.text()
+    console.error('bot_messages PATCH failed after retry:', res.status, txt, 'body:', body)
+    return Response.json({ error: txt }, { status: 500 })
+  }
+
+  const data = await res.json()
+  return Response.json({ ok: true, saved: Array.isArray(data) ? data[0] : data })
 }
