@@ -126,7 +126,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
         <div className="rounded-2xl p-6" style={card}>
           <h2 className="font-semibold mb-4" style={{ color: '#1D1D1F' }}>Память участника</h2>
           {!(memories?.results?.length) ? (
-            <p className="text-sm" style={{ color: '#AEAEB2' }}>Память пока пуста — накапливается по мере активности</p>
+            <p className="text-sm" style={{ color: '#AEAEB2' }}>Память пока пуста, накапливается по мере активности</p>
           ) : (
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
               {memories.results.map((m: { id: string; memory: string; created_at?: string }) => (

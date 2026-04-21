@@ -23,7 +23,7 @@ const SEGMENTS: Segment[] = [
     prize: '10 листиков',
     leaves: 10,
     weight: 40,
-    explanation: 'Листики — внутренняя валюта AI Олимпа. Идут в зачёт ранга и отражают твой вклад в сообщество.',
+    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
   },
   {
     label: 'Гайд',
@@ -40,7 +40,7 @@ const SEGMENTS: Segment[] = [
     prize: '20 листиков',
     leaves: 20,
     weight: 35,
-    explanation: 'Листики — внутренняя валюта AI Олимпа. Идут в зачёт ранга и отражают твой вклад в сообщество.',
+    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
   },
   {
     label: 'Секрет',
@@ -57,7 +57,7 @@ const SEGMENTS: Segment[] = [
     prize: '50 листиков',
     leaves: 50,
     weight: 20,
-    explanation: 'Листики — внутренняя валюта AI Олимпа. Большой выигрыш — ты близко к новому рангу!',
+    explanation: 'Листики, внутренняя валюта AI Олимпа. Большой выигрыш, ты близко к новому рангу!',
   },
   {
     label: 'VeoSee',
@@ -65,7 +65,7 @@ const SEGMENTS: Segment[] = [
     color: '#40C8E0', colorDeep: '#2691A3',
     prize: 'Промокод VeoSeeBot',
     neverDrop: true,
-    explanation: 'Эксклюзивный промокод от наших партнёров VeoSeeBot — доступ к дополнительным AI-инструментам. Появится в будущих месяцах.',
+    explanation: 'Эксклюзивный промокод от наших партнёров VeoSeeBot, доступ к дополнительным AI-инструментам. Появится в будущих месяцах.',
   },
   {
     label: '15 🍃',
@@ -74,7 +74,7 @@ const SEGMENTS: Segment[] = [
     prize: '15 листиков',
     leaves: 15,
     weight: 5,
-    explanation: 'Листики — внутренняя валюта AI Олимпа. Идут в зачёт ранга и отражают твой вклад в сообщество.',
+    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
   },
   {
     label: 'Скидка',
@@ -103,8 +103,10 @@ function pickEligibleIndex(): number {
 }
 
 const LEAVES_EXPLANATION =
-  'Листики 🍃 — внутренняя валюта AI Олимпа. Зарабатывай их за реакции, голосования и еженедельный бонус. ' +
-  'Чем больше листиков — тем выше ранг: Адепт → Герой → Чемпион Олимпа → Полубог → Бог.'
+  'Листики 🍃, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают разные бонусы: ' +
+  'консультации от Сергея, групповые созвоны, секретные уроки. ' +
+  'Зарабатывай их за реакции, голосования и еженедельный бонус. ' +
+  'Чем больше листиков, тем выше ранг: Адепт → Герой → Чемпион Олимпа → Полубог → Бог.'
 
 // 1 попытка в месяц — localStorage
 function getMonthKey() {
@@ -181,7 +183,7 @@ export default function FortuneWheel() {
           Крути колесо!
         </h1>
         <p className="text-sm sm:text-base" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.2px' }}>
-          1 попытка в месяц — крути и получай приз
+          1 попытка в месяц, крути и получай приз
         </p>
       </div>
 
@@ -276,17 +278,18 @@ export default function FortuneWheel() {
         <button
           onClick={spin}
           disabled={spinning || !canSpin}
-          className="rounded-full px-10 py-4 text-base font-bold transition-all active:scale-95"
+          className="rounded-full px-10 py-4 text-base font-semibold transition-all active:scale-[0.97]"
           style={{
-            background: (!canSpin || spinning) ? 'rgba(28,28,30,0.10)' : 'linear-gradient(135deg, #0A84FF 0%, #5E5CE6 50%, #BF5AF2 100%)',
-            color: (!canSpin || spinning) ? 'rgba(28,28,30,0.30)' : '#FFFFFF',
+            background: (!canSpin || spinning) ? 'rgba(28,28,30,0.06)' : '#1C1C1E',
+            color: (!canSpin || spinning) ? 'rgba(28,28,30,0.35)' : '#FFFFFF',
             minWidth: 240,
-            boxShadow: (!canSpin || spinning) ? 'none' : '0 12px 32px rgba(10,132,255,0.40), 0 4px 12px rgba(191,90,242,0.20)',
+            boxShadow: (!canSpin || spinning) ? 'none' : '0 10px 30px rgba(28,28,30,0.22), 0 2px 6px rgba(28,28,30,0.10)',
             cursor: (!canSpin || spinning) ? 'not-allowed' : 'pointer',
-            letterSpacing: '-0.3px', border: 'none',
+            letterSpacing: '-0.3px',
+            border: '1px solid rgba(28,28,30,0.08)',
           }}
         >
-          {spinning ? '⏳ Крутится...' : canSpin ? 'Крутить колесо' : 'Попытка использована'}
+          {spinning ? 'Крутится...' : canSpin ? 'Крутить колесо' : 'Попытка использована'}
         </button>
       </div>
 
@@ -297,9 +300,6 @@ export default function FortuneWheel() {
         </div>
         <div className="flex flex-col gap-2">
           {SEGMENTS.map((s, i) => {
-            const pct = s.neverDrop
-              ? null
-              : Math.round((s.weight ?? 0) / ELIGIBLE_TOTAL * 100)
             const isOpen = expanded === i
             return (
               <div key={i}>
@@ -319,15 +319,6 @@ export default function FortuneWheel() {
                   >
                     {s.prize}
                   </span>
-                  {pct !== null ? (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: `${s.color}18`, color: s.color }}>
-                      {pct}%
-                    </span>
-                  ) : (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(142,142,147,0.10)', color: '#8E8E93' }}>
-                      0% · скоро
-                    </span>
-                  )}
                   <span style={{ fontSize: 11, color: 'rgba(28,28,30,0.30)', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>
                 </button>
                 {isOpen && (

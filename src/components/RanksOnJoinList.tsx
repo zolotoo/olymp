@@ -135,7 +135,7 @@ export default function RanksOnJoinList({ rankColor, items }: Props) {
                       className="rounded-xl px-4 py-2.5 text-sm font-mono break-all"
                       style={{ background: 'rgba(28,28,30,0.05)', color: getUrl(selected) ? '#1C1C1E' : '#AEAEB2' }}
                     >
-                      {getUrl(selected) || '— не указана —'}
+                      {getUrl(selected) || '(не указана)'}
                     </div>
                   </div>
                 )}
@@ -164,7 +164,7 @@ export default function RanksOnJoinList({ rankColor, items }: Props) {
                     className="rounded-xl px-4 py-3 text-sm"
                     style={{ background: 'rgba(28,28,30,0.05)', color: '#AEAEB2', lineHeight: 1.65, minHeight: 60 }}
                   >
-                    {selected.type === 'action' ? '— системное действие, текст не нужен —' : '— текст не задан —'}
+                    {selected.type === 'action' ? '(системное действие, текст не нужен)' : '(текст не задан)'}
                   </div>
                 )}
 

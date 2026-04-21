@@ -4,7 +4,7 @@ const MONTHS = [
   {
     num: 1,
     label: 'Приветственный',
-    desc: 'Первый месяц в клубе. Участник только вошёл — знакомство с системой.',
+    desc: 'Первый месяц в клубе. Участник только вошёл, знакомство с системой.',
     prizes: [
       { label: '100 листиков', prob: 'часто', highlight: false, strikethrough: false },
       { label: '200 листиков', prob: 'часто', highlight: false, strikethrough: false },
@@ -17,7 +17,7 @@ const MONTHS = [
   {
     num: 2,
     label: 'Социальный',
-    desc: 'Второй месяц. Участник знает правила — самое время включить в жизнь сообщества.',
+    desc: 'Второй месяц. Участник знает правила, самое время включить в жизнь сообщества.',
     prizes: [
       { label: '100 листиков', prob: 'часто', highlight: false, strikethrough: false },
       { label: '200 листиков', prob: 'часто', highlight: false, strikethrough: false },
@@ -31,7 +31,7 @@ const MONTHS = [
   {
     num: 3,
     label: 'Личный',
-    desc: 'Третий месяц. Участник доказал вовлечённость — приз личного внимания Сергея.',
+    desc: 'Третий месяц. Участник доказал вовлечённость, приз личного внимания Сергея.',
     prizes: [
       { label: '200 листиков', prob: 'часто', highlight: false, strikethrough: false },
       { label: '300 листиков', prob: 'часто', highlight: false, strikethrough: false },
@@ -161,6 +161,37 @@ export default function BonusesPage() {
             )}
           </div>
         ))}
+      </div>
+
+      {/* Internal probabilities (для нас, не для пользователя) */}
+      <div className="rounded-2xl p-6 mt-5" style={{ ...glass, background: 'rgba(255,249,230,0.70)' }}>
+        <div className="text-xs font-semibold mb-2 uppercase" style={{ color: '#B8860B', letterSpacing: '0.8px' }}>
+          Внутренние вероятности · только для нас
+        </div>
+        <h2 className="text-base font-bold mb-3" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
+          Реальные шансы колеса (месяц 1)
+        </h2>
+        <p className="text-sm mb-4" style={{ color: 'rgba(28,28,30,0.60)', letterSpacing: '-0.15px', lineHeight: 1.4 }}>
+          В интерфейсе колеса пользователь видит 8 секторов. Алгоритм выбирает приз только из 4 «листиковых» секторов, остальные 4 визуальные, они никогда не выпадают.
+        </p>
+        <div className="space-y-2">
+          {[
+            { label: '10 🍃 листиков', pct: '40%' },
+            { label: '20 🍃 листиков', pct: '35%' },
+            { label: '50 🍃 листиков', pct: '20%' },
+            { label: '15 🍃 листиков', pct: '5%' },
+            { label: 'Гайд / Секрет / VeoSeeBot / Скидка', pct: '0% (визуально)' },
+          ].map(r => (
+            <div
+              key={r.label}
+              className="flex items-center justify-between rounded-xl px-4 py-2.5"
+              style={{ background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.50)' }}
+            >
+              <span className="text-sm font-medium" style={{ color: '#1C1C1E', letterSpacing: '-0.2px' }}>{r.label}</span>
+              <span className="text-sm font-bold" style={{ color: '#B8860B', letterSpacing: '-0.2px' }}>{r.pct}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Extra rules */}

@@ -125,28 +125,32 @@ async function handleChatMember(update: TgChatMemberUpdate) {
   const name = user.first_name || user.username || String(user.id)
   addMemory(String(user.id), `${name} вступил в клуб AI Олимп${user.username ? `. Username: @${user.username}` : '.'}`)
 
-  const dmSent = await sendWelcome(user)
-
-  if (!dmSent) {
-    const groupId = process.env.TELEGRAM_GROUP_ID
-    if (groupId) {
-      const mention = user.username
-        ? `@${user.username}`
-        : `<a href="tg://user?id=${user.id}">${user.first_name || 'участник'}</a>`
-
-      await sendMessage(
-        groupId,
-        `👋 ${mention} — добро пожаловать в AI Олимп!\n\n` +
-        `Напиши боту /start чтобы получить личное приветствие и активировать профиль 🔥`
-      )
-    }
-  }
+  // Приветствие в DM уже отправляется в handleJoinRequest при одобрении заявки.
+  // Публичное приветствие в группе отключено по требованию.
 }
 
 // ─── Track messages ────────────────────────────────────────────────────────────
 async function handleMessage(message: TgMessage) {
   const user = message.from
   if (!user || user.is_bot) return
+
+  // DEBUG: log incoming video notes so we can grab file_id
+  if ((message as TgMessage & { video_note?: { file_id: string; duration?: number } }).video_note) {
+    const vn = (message as TgMessage & { video_note?: { file_id: string; duration?: number } }).video_note!
+    await supabaseAdmin.from('messages_log').insert({
+      tg_id: user.id,
+      chat_id: message.chat.id,
+      tg_username: user.username ?? null,
+      tg_first_name: user.first_name ?? null,
+      message_text: `VIDEO_NOTE file_id=${vn.file_id} duration=${vn.duration ?? '?'}s`,
+      reason: 'debug:video_note',
+    })
+    await sendMessage(
+      user.id,
+      `✅ Кружок получен!\n\n<code>${vn.file_id}</code>\n\nСкопируй этот file_id в env <code>TELEGRAM_WELCOME_VIDEO_NOTE_ID</code>.`
+    )
+    return
+  }
 
   // /start in private chat
   if (message.text === '/start' && message.chat.id === user.id) {
@@ -168,7 +172,7 @@ async function handleMessage(message: TgMessage) {
         `👋 <b>${user.first_name || 'Привет'}!</b>\n\n` +
         `Ты в AI Олимп уже <b>${days} дней</b>\n` +
         `Ранг: <b>${rankConfig.emoji} ${rankConfig.label}</b> | Листики: <b>${member.points} 🍃</b>\n\n` +
-        `Пиши в клубный чат — там вся жизнь 🔥`
+        `Пиши в клубный чат, там вся жизнь 🔥`
       )
     } else {
       const channelId = process.env.TELEGRAM_CHANNEL_ID
@@ -353,19 +357,8 @@ async function handleNewGroupMembers(message: TgMessage) {
       addMemory(String(user.id), `${user.first_name || user.username || user.id} вступил в AI Олимп`)
     }
 
-    const mention = user.username
-      ? `@${user.username}`
-      : `<a href="tg://user?id=${user.id}">${user.first_name || 'участник'}</a>`
-
-    await sendMessage(
-      message.chat.id,
-      `👋 ${mention} — добро пожаловать в AI Олимп!\n\n` +
-      `Напиши боту /start чтобы активировать профиль и получить приветствие.`
-    )
-
-    if (!existing || !existing.welcome_sent) {
-      await sendWelcome(user)
-    }
+    // Публичное приветствие в группе отключено.
+    // DM-приветствие уже отправляется в handleJoinRequest при одобрении заявки на канал.
 
     // Apply newcomer rank title in the group
     await applyRankTitle(user.id, 'newcomer')
@@ -383,9 +376,9 @@ async function sendWelcome(user: TgUser): Promise<boolean> {
     const result = await sendMessage(
       user.id,
       `👋 <b>Привет, ${user.first_name || 'участник'}!</b>\n\n` +
-      `Добро пожаловать в AI Олимп — рад видеть тебя здесь.\n\n` +
+      `Добро пожаловать в AI Олимп, рад видеть тебя здесь.\n\n` +
       `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
-      `Пиши в чат, задавай вопросы — это самый важный шаг.\n\n` +
+      `Пиши в чат, задавай вопросы, это самый важный шаг.\n\n` +
       `За активность ты получаешь 🍃 листики и растёшь в ранге. Удачи!`
     )
     if (!result?.ok) return false
@@ -402,7 +395,7 @@ async function sendSalesPitch(user: TgUser) {
   await sendMessage(
     user.id,
     `👋 <b>Привет, ${user.first_name || 'друг'}!</b>\n\n` +
-    `<b>AI Олимп</b> — закрытый клуб тех, кто строит будущее с AI.\n\n` +
+    `<b>AI Олимп</b>, закрытый клуб тех, кто строит будущее с AI.\n\n` +
     `🔥 Разборы инструментов и кейсов\n` +
     `📈 Геймификация: листики 🍃, ранги, рейтинги\n` +
     `🤝 Сильное сообщество практиков\n` +

@@ -37,30 +37,6 @@ const RANKS: {
         type: 'message',
         defaultContent: '',
       },
-      {
-        key: 'rank_newcomer_day1',
-        label: 'День 1 — Ранги: что такое Адепт, Герой, Полубог…',
-        type: 'message',
-        defaultContent: '',
-      },
-      {
-        key: 'rank_newcomer_day2',
-        label: 'День 2 — Листики: как зарабатывать и на что тратить',
-        type: 'message',
-        defaultContent: '',
-      },
-      {
-        key: 'rank_newcomer_day3',
-        label: 'День 3 — Про клуб: правила, ценности, форматы',
-        type: 'message',
-        defaultContent: '',
-      },
-      {
-        key: 'rank_newcomer_task',
-        label: 'Первое задание для новичка',
-        type: 'message',
-        defaultContent: '',
-      },
     ],
     weekly: [
       'Кружок от Сергея (еженедельный)',
@@ -212,9 +188,9 @@ export default function RanksPage() {
           Ранги
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.2px' }}>
-          Пять уровней — от Адепта до Бога.{' '}
+          Пять уровней, от Адепта до Бога.{' '}
           <span style={{ color: '#0A84FF' }}>
-            Нажмите на любой пункт «При достижении» чтобы открыть / отредактировать сообщение.
+            Нажмите на любой пункт «При достижении», чтобы открыть или отредактировать сообщение.
           </span>
         </p>
       </div>

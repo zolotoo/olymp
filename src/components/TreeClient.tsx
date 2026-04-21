@@ -30,12 +30,6 @@ const TREE: Node = {
                 { id: 'l_sales', label: 'Продающее сообщение', type: 'message', detail: 'Привет! Клуб AI Олимп...' },
               ],
             },
-            { id: 'c_nowelcome', label: 'Без приветствия', type: 'condition', detail: 'welcome_sent = false',
-              children: [
-                { id: 'l_wvideo', label: 'Кружок от Сергея', type: 'video', detail: 'Личное видео-приветствие.' },
-                { id: 'l_wmsg',   label: 'Приветственное сообщение', type: 'message', detail: '[Имя], добро пожаловать...' },
-              ],
-            },
             { id: 'c_active', label: 'Активный участник', type: 'condition', detail: 'welcome_sent = true',
               children: [
                 { id: 'l_profile', label: 'Профиль участника', type: 'message', detail: 'Ранг + листики + дней в клубе' },
@@ -46,13 +40,12 @@ const TREE: Node = {
         { id: 't_joinreq', label: 'Заявка в канал', type: 'trigger', detail: 'chat_join_request',
           children: [
             { id: 'l_approve', label: 'Авто-одобрение', type: 'action', detail: 'approveChatJoinRequest' },
-            { id: 'l_jrvideo', label: 'Кружок в DM', type: 'video', detail: 'Если DM заблокированы — пропускается' },
+            { id: 'l_jrvideo', label: 'Кружок в DM', type: 'video', detail: 'Если DM заблокированы, пропускается' },
           ],
         },
         { id: 't_newmem', label: 'Вступление в группу', type: 'trigger', detail: 'new_chat_members',
           children: [
-            { id: 'l_grpwel', label: 'Приветствие в группе', type: 'message', detail: '[Имя], добро пожаловать...' },
-            { id: 'l_dmwel',  label: 'Приветствие в DM',    type: 'message', detail: '[Имя], ты в группе...' },
+            { id: 'l_grprank', label: 'Выдача титула «Адепт»', type: 'action', detail: 'applyRankTitle newcomer' },
           ],
         },
       ],
@@ -60,7 +53,7 @@ const TREE: Node = {
     {
       id: 's2', label: '1-й месяц в клубе', type: 'section',
       children: [
-        { id: 't_tribute', label: 'Tribute — подписка', type: 'trigger', detail: 'Webhook от Tribute.co',
+        { id: 't_tribute', label: 'Tribute · подписка', type: 'trigger', detail: 'Webhook от Tribute.co',
           children: [
             { id: 'c_newsub', label: 'Новая подписка', type: 'condition', detail: 'event: new_subscription',
               children: [
@@ -84,7 +77,7 @@ const TREE: Node = {
       ],
     },
     {
-      id: 's3', label: 'Активность — постоянно', type: 'section',
+      id: 's3', label: 'Активность · постоянно', type: 'section',
       children: [
         { id: 't_activity', label: 'Активность → Листики', type: 'trigger',
           children: [
@@ -130,7 +123,7 @@ const TREE: Node = {
             { id: 'w3_active', label: 'Активные',  type: 'condition', detail: '', children: [{ id: 'w3_active_msg', label: 'Топ таблицы лидеров', type: 'message', detail: '' }] },
           ],
         },
-        { id: 'w4', label: 'Неделя 4 — перед продлением', type: 'trigger', detail: 'За 7 дней до продления',
+        { id: 'w4', label: 'Неделя 4 · перед продлением', type: 'trigger', detail: 'За 7 дней до продления',
           children: [
             { id: 'w4_dead',   label: 'Мертвяки',  type: 'condition', detail: '', children: [{ id: 'w4_dead_msg',   label: 'Предупреждение об уходе', type: 'message', detail: '' }] },
             { id: 'w4_silent', label: 'Молчуны',   type: 'condition', detail: '', children: [{ id: 'w4_silent_msg', label: 'Анонс следующего месяца', type: 'message', detail: '' }] },
@@ -314,7 +307,7 @@ export default function TreeClient() {
           Дерево сообщений
         </h1>
         <p className="text-sm mt-1" style={{ color: 'rgba(28,28,30,0.50)', letterSpacing: '-0.2px' }}>
-          Нажмите на узел — посмотрите или отредактируйте сообщение
+          Нажмите на узел, чтобы посмотреть или отредактировать сообщение
         </p>
       </div>
 
@@ -334,7 +327,7 @@ export default function TreeClient() {
             </span>
           ))}
         <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: 'rgba(10,132,255,0.10)', color: '#0A84FF', marginLeft: 8 }}>
-          ✏️ — редактируемые
+          ✏️ редактируемые
         </span>
       </div>
 
@@ -510,7 +503,7 @@ export default function TreeClient() {
                   minHeight={140}
                 />
                 <p style={{ fontSize: 11.5, color: 'rgba(28,28,30,0.42)', marginTop: 6, letterSpacing: '-0.1px' }}>
-                  Используй [Имя], [N], [Ранг] как плейсхолдеры — бот подставит значения автоматически.
+                  Используй [Имя], [N], [Ранг] как плейсхолдеры, бот подставит значения автоматически.
                 </p>
                 <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                   <button onClick={handleSave} disabled={saving}

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase'
 
-export const metadata = { title: 'Лента сообщений — AI Олимп' }
+export const metadata = { title: 'Лента сообщений · AI Олимп' }
 export const dynamic = 'force-dynamic'
 
 const REASON_LABELS: Record<string, string> = {
@@ -55,7 +55,7 @@ export default async function FeedPage() {
           Лента сообщений
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.2px' }}>
-          Все сообщения, отправленные ботом — с датой, временем, получателем и причиной
+          Все сообщения, отправленные ботом: дата, время, получатель и причина
         </p>
       </div>
 

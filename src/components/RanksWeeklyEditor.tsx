@@ -11,10 +11,10 @@ const SEGMENTS = [
 
 const DEFAULTS: Record<number, Record<string, string>> = {
   1: {
-    dead:   'Ни одного сообщения — всё ок? Дарим бонус',
+    dead:   'Ни одного сообщения, всё ок? Дарим бонус',
     silent: 'Вот как получить первые листики',
     medium: 'До следующего ранга осталось X листиков',
-    active: 'Ты в топе — вот твой бейдж',
+    active: 'Ты в топе, вот твой бейдж',
   },
   2: {
     dead:   'Вопрос про ожидания + дайджест',
@@ -23,7 +23,7 @@ const DEFAULTS: Record<number, Record<string, string>> = {
     active: 'Закрытый контент / ранний доступ',
   },
   3: {
-    dead:   'Ещё не поздно — двойные листики прямо сейчас',
+    dead:   'Ещё не поздно, двойные листики прямо сейчас',
     silent: 'Напоминание о колесе месяца',
     medium: 'Итоги листиков за 3 недели',
     active: 'Топ таблицы лидеров + поздравление',
@@ -79,7 +79,7 @@ export default function RanksWeeklyEditor() {
     if (!editing) return
     setSaving(true)
     const key = `weekly_w${editing.week}_${editing.seg}`
-    const label = `Неделя ${editing.week} — ${SEGMENTS.find(s => s.key === editing.seg)?.label}`
+    const label = `Неделя ${editing.week} · ${SEGMENTS.find(s => s.key === editing.seg)?.label}`
     await fetch('/api/messages', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -124,7 +124,7 @@ export default function RanksWeeklyEditor() {
             <div key={week} className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.45)' }}>
               <div className="px-4 py-2.5" style={{ background: 'rgba(28,28,30,0.06)' }}>
                 <span className="text-xs font-semibold uppercase" style={{ color: 'rgba(28,28,30,0.50)', letterSpacing: '0.5px' }}>
-                  Неделя {week}{week === 4 ? ' — перед продлением' : ''}
+                  Неделя {week}{week === 4 ? ' · перед продлением' : ''}
                 </span>
               </div>
               <div className="divide-y" style={{ borderColor: 'rgba(28,28,30,0.06)' }}>
