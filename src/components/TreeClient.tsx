@@ -247,7 +247,7 @@ export default function TreeClient() {
     if (!selected) return
     setSaving(true)
     try {
-      await fetch('/api/messages', {
+      const res = await fetch('/api/messages', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -258,6 +258,11 @@ export default function TreeClient() {
           video_url: draftUrl || null,
         }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'unknown error' }))
+        alert(`Не удалось сохранить: ${err.error || res.statusText}`)
+        return
+      }
       setMessages(prev => ({
         ...prev,
         [selected.id]: {
@@ -269,6 +274,8 @@ export default function TreeClient() {
       }))
       setEditing(false)
       setSaveOk(true)
+    } catch (e) {
+      alert(`Сеть недоступна: ${e instanceof Error ? e.message : 'unknown'}`)
     } finally {
       setSaving(false)
     }

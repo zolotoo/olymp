@@ -1,10 +1,15 @@
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('bot_messages')
     .select('key, label, type, content, video_url, updated_at')
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('bot_messages GET error:', error)
+    return Response.json({ error: error.message }, { status: 500 })
+  }
   const map: Record<string, { label: string; type: string; content: string; video_url?: string }> =
     Object.fromEntries((data || []).map(r => [r.key, r]))
   return Response.json(map)
@@ -15,12 +20,17 @@ export async function PATCH(req: Request) {
   const { key, content, video_url, label, type } = body
   if (!key) return Response.json({ error: 'key required' }, { status: 400 })
 
-  const { error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('bot_messages')
     .upsert(
       { key, content: content ?? '', video_url: video_url ?? null, label: label ?? key, type: type ?? 'message', updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     )
-  if (error) return Response.json({ error: error.message }, { status: 500 })
-  return Response.json({ ok: true })
+    .select('key, updated_at')
+    .single()
+  if (error) {
+    console.error('bot_messages PATCH error:', error, 'body:', body)
+    return Response.json({ error: error.message }, { status: 500 })
+  }
+  return Response.json({ ok: true, saved: data })
 }
