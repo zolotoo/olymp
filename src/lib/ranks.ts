@@ -2,11 +2,11 @@ import type { MemberRank } from './types'
 
 // Вселенная Олимпа — ранги
 export const RANK_CONFIG: Record<MemberRank, { label: string; emoji: string; minPoints: number; color: string }> = {
-  newcomer:  { label: 'Адепт',          emoji: '⚡',  minPoints: 0,   color: '#8E8E93' },
-  member:    { label: 'Герой',          emoji: '⚔️',  minPoints: 50,  color: '#0A84FF' },
-  active:    { label: 'Чемпион Олимпа', emoji: '👑',  minPoints: 100, color: '#BF5AF2' },
-  champion:  { label: 'Полубог',        emoji: '🌊',  minPoints: 150, color: '#FF9500' },
-  legend:    { label: 'Бог',            emoji: '🔱',  minPoints: 200, color: '#FF9F0A' },
+  newcomer:  { label: 'Адепт',          emoji: '', minPoints: 0,   color: '#8E8E93' },
+  member:    { label: 'Герой',          emoji: '', minPoints: 50,  color: '#0A84FF' },
+  active:    { label: 'Чемпион Олимпа', emoji: '', minPoints: 100, color: '#BF5AF2' },
+  champion:  { label: 'Полубог',        emoji: '', minPoints: 150, color: '#FF9500' },
+  legend:    { label: 'Бог',            emoji: '', minPoints: 200, color: '#FF9F0A' },
 }
 
 const THRESHOLDS: { min: number; rank: MemberRank }[] = [
