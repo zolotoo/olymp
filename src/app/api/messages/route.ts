@@ -59,10 +59,11 @@ export async function PATCH(req: Request) {
   const { key, content, video_url, label, type } = body
   if (!key) return Response.json({ error: 'key required' }, { status: 400 })
 
+  const trimmedVideo = typeof video_url === 'string' ? video_url.trim() : video_url
   const row = {
     key,
     content: content ?? '',
-    video_url: video_url ?? null,
+    video_url: trimmedVideo ? trimmedVideo : null,
     label: label ?? key,
     type: type ?? 'message',
     updated_at: new Date().toISOString(),

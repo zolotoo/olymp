@@ -14,7 +14,7 @@ export async function sendMessage(chatId: number | string, text: string) {
 }
 
 export async function sendVideoNote(chatId: number | string, fileId: string) {
-  return call('sendVideoNote', { chat_id: chatId, video_note: fileId })
+  return call('sendVideoNote', { chat_id: chatId, video_note: fileId.trim() })
 }
 
 export async function setWebhook(url: string) {
