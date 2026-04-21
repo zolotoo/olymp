@@ -449,7 +449,9 @@ async function applyRankTitle(userId: number, rank: MemberRank) {
   try {
     const prom = await promoteChatMember(groupId, userId)
     if (!prom?.ok) console.error('promoteChatMember failed:', prom)
-    const title = `${rc.emoji} ${rc.label}`.slice(0, 16) // Telegram limit: 16 chars
+    // Telegram запрещает произвольные эмодзи в custom_title (CUSTOM_TITLE_EMOJI_NOT_ALLOWED).
+    // Используем только текст, лимит 16 символов.
+    const title = rc.label.slice(0, 16)
     const set = await setChatAdministratorCustomTitle(groupId, userId, title)
     if (!set?.ok) console.error('setChatAdministratorCustomTitle failed:', set)
   } catch (e) {
