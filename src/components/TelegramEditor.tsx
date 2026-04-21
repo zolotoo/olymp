@@ -13,17 +13,22 @@ const FORMATS = [
   { label: 'К',  tag: 'i',           title: 'Курсив',         style: { fontStyle: 'italic' } },
   { label: 'П',  tag: 'u',           title: 'Подчёркнутый',   style: { textDecoration: 'underline' } },
   { label: 'З',  tag: 's',           title: 'Зачёркнутый',    style: { textDecoration: 'line-through' } },
-  { label: '>',  tag: 'blockquote',  title: 'Цитата',         style: {} },
-  { label: '<>', tag: 'code',        title: 'Код (моно)',      style: { fontFamily: 'monospace', fontSize: '0.9em' } },
-  { label: '||', tag: 'tg-spoiler',  title: 'Спойлер',        style: {} },
+  { label: '>',  tag: 'blockquote',     title: 'Цитата',                    style: {} },
+  { label: '>▾', tag: 'blockquote-exp', title: 'Сворачиваемая цитата',      style: {} },
+  { label: '<>', tag: 'code',           title: 'Код (моно)',                style: { fontFamily: 'monospace', fontSize: '0.9em' } },
+  { label: '||', tag: 'tg-spoiler',     title: 'Спойлер',                   style: {} },
 ] as const
 
 function toPreview(html: string): string {
-  // Replace tg-spoiler with a styled span for preview
-  return html.replace(
-    /<tg-spoiler>([\s\S]*?)<\/tg-spoiler>/g,
-    '<span class="tg-spoiler-preview">$1</span>'
-  )
+  return html
+    .replace(
+      /<tg-spoiler>([\s\S]*?)<\/tg-spoiler>/g,
+      '<span class="tg-spoiler-preview">$1</span>'
+    )
+    .replace(
+      /<blockquote expandable>([\s\S]*?)<\/blockquote>/g,
+      '<blockquote class="tg-quote-expandable">$1<span class="tg-quote-toggle">▾ развернуть</span></blockquote>'
+    )
 }
 
 export default function TelegramEditor({ value, onChange, placeholder, minHeight = 140 }: Props) {
@@ -35,8 +40,9 @@ export default function TelegramEditor({ value, onChange, placeholder, minHeight
     const start = el.selectionStart
     const end = el.selectionEnd
     const selected = value.slice(start, end)
-    const open = `<${tag}>`
-    const close = `</${tag}>`
+    const isExpQuote = tag === 'blockquote-exp'
+    const open = isExpQuote ? '<blockquote expandable>' : `<${tag}>`
+    const close = isExpQuote ? '</blockquote>' : `</${tag}>`
     const newVal = value.slice(0, start) + open + selected + close + value.slice(end)
     onChange(newVal)
     requestAnimationFrame(() => {

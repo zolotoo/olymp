@@ -106,6 +106,20 @@ body {
   padding: 2px 0 2px 10px;
   color: rgba(28,28,30,0.72);
 }
+.tg-preview blockquote.tg-quote-expandable {
+  position: relative;
+  max-height: 3.4em;
+  overflow: hidden;
+  padding-bottom: 18px;
+}
+.tg-preview .tg-quote-toggle {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0A84FF;
+  letter-spacing: 0.2px;
+}
 .tg-spoiler-preview {
   background: #1C1C1E;
   color: #1C1C1E;
