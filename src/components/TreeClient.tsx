@@ -88,7 +88,7 @@ const TREE: Node = {
       children: [
         { id: 't_activity', label: 'Активность → Листики', type: 'trigger',
           children: [
-            { id: 'l_msgpts',    label: 'Сообщение в чате',  type: 'points', detail: '+1 листик автору' },
+            { id: 'l_msgpts',    label: 'Сообщение в чате',  type: 'points', detail: 'Отслеживается для еженедельного бонуса (листики не начисляются)' },
             { id: 'l_reactgive', label: 'Поставить реакцию', type: 'points', detail: '+1 листик тому, кто поставил' },
             { id: 'l_reactrecv', label: 'Получить реакцию',  type: 'points', detail: '+3 листика автору сообщения' },
             { id: 'l_poll',      label: 'Голосование',       type: 'points', detail: '+5 листиков проголосовавшему' },
@@ -193,6 +193,8 @@ export default function TreeClient() {
   const [draftUrl, setDraftUrl]   = useState('')
   const [saving, setSaving]       = useState(false)
   const [saveOk, setSaveOk]       = useState(false)
+  const [testing, setTesting]     = useState(false)
+  const [testOk, setTestOk]       = useState(false)
 
   // Fetch all messages from DB on mount
   useEffect(() => {
@@ -215,6 +217,27 @@ export default function TreeClient() {
     setSelected(node)
     setEditing(false)
     setSaveOk(false)
+    setTestOk(false)
+  }
+
+  const handleTest = async () => {
+    if (!selected) return
+    setTesting(true)
+    setTestOk(false)
+    try {
+      await fetch('/api/messages/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: selected.id,
+          label: selected.label,
+          content: getContent(selected),
+        }),
+      })
+      setTestOk(true)
+    } finally {
+      setTesting(false)
+    }
   }
 
   const startEdit = () => {
@@ -391,9 +414,16 @@ export default function TreeClient() {
                 {selected.label}
               </h2>
               {EDITABLE_TYPES.includes(selected.type) && !editing && (
-                <button onClick={startEdit} style={{ flexShrink: 0, padding: '5px 12px', background: 'rgba(10,132,255,0.10)', border: '1px solid rgba(10,132,255,0.20)', borderRadius: 50, fontSize: 12.5, fontWeight: 600, color: '#0A84FF', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  ✏️ Редактировать
-                </button>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button onClick={startEdit} style={{ padding: '5px 12px', background: 'rgba(10,132,255,0.10)', border: '1px solid rgba(10,132,255,0.20)', borderRadius: 50, fontSize: 12.5, fontWeight: 600, color: '#0A84FF', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    ✏️ Редактировать
+                  </button>
+                  {getContent(selected) && (
+                    <button onClick={handleTest} disabled={testing} style={{ padding: '5px 12px', background: testing ? 'rgba(48,209,88,0.08)' : 'rgba(48,209,88,0.10)', border: '1px solid rgba(48,209,88,0.24)', borderRadius: 50, fontSize: 12.5, fontWeight: 600, color: '#1C8A3C', cursor: testing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+                      {testing ? '...' : '▶ Проверить'}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -430,6 +460,9 @@ export default function TreeClient() {
                 )}
                 {saveOk && (
                   <div style={{ marginTop: 10, fontSize: 12.5, color: '#1C8A3C', fontWeight: 500 }}>✓ Сохранено</div>
+                )}
+                {testOk && (
+                  <div style={{ marginTop: 10, fontSize: 12.5, color: '#1C8A3C', fontWeight: 500 }}>✓ Отправлено в @sergeyzolotykh</div>
                 )}
                 {/* Children */}
                 {selected.children?.length ? (

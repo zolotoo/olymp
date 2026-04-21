@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import {
   sendMessage, sendVideoNote, getChatMember, approveChatJoinRequest,
-  promoteChatMember, setChatAdministratorCustomTitle,
+  promoteChatMember, setChatAdministratorCustomTitle, addChatMember,
 } from '@/lib/telegram'
 import { addMemory } from '@/lib/mem0'
 import { getRank, POINTS, RANK_CONFIG } from '@/lib/ranks'
@@ -71,6 +71,14 @@ async function handleJoinRequest(update: { chat: TgChat; from: TgUser }) {
 
   await sendWelcome(user)
   await approveChatJoinRequest(chat.id, user.id)
+
+  // Invite to the linked group after approving the channel join
+  const groupId = process.env.TELEGRAM_GROUP_ID
+  if (groupId) {
+    try {
+      await addChatMember(Number(groupId), user.id)
+    } catch { /* user may already be in group or bot lacks rights */ }
+  }
 }
 
 // ─── New member joins channel ─────────────────────────────────────────────────
@@ -204,34 +212,12 @@ async function handleMessage(message: TgMessage) {
     )
   }
 
-  const newPoints = member.points + POINTS.MESSAGE
-  const newRank = getRank(newPoints)
-
+  // Листики за сообщения отключены (POINTS.MESSAGE = 0)
+  // Обновляем только last_active
   await supabaseAdmin
     .from('members')
-    .update({ last_active: new Date().toISOString(), points: newPoints, rank: newRank })
+    .update({ last_active: new Date().toISOString() })
     .eq('tg_id', user.id)
-
-  await supabaseAdmin.from('points_log').insert({
-    member_id: member.id,
-    tg_id: user.id,
-    points: POINTS.MESSAGE,
-    reason: 'message',
-  })
-
-  // Rank-up: set Telegram admin title
-  if (newRank !== member.rank) {
-    await applyRankTitle(user.id, newRank)
-    try {
-      const rc = RANK_CONFIG[newRank]
-      await sendMessage(
-        user.id,
-        `🎉 <b>Новый ранг!</b>\n\n` +
-        `Ты достиг ранга <b>${rc.emoji} ${rc.label}</b> в AI Олимп!\n` +
-        `Твой титул в чате обновлён. Продолжай — ты на правильном пути 🍃`
-      )
-    } catch { /* DM blocked */ }
-  }
 
   // Weekly activity counter
   const weekStart = currentWeekStart()
@@ -380,6 +366,9 @@ async function handleNewGroupMembers(message: TgMessage) {
     if (!existing || !existing.welcome_sent) {
       await sendWelcome(user)
     }
+
+    // Apply newcomer rank title in the group
+    await applyRankTitle(user.id, 'newcomer')
   }
 }
 

@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/ranks',   label: 'Ранги' },
   { href: '/bonuses', label: 'Бонусы' },
   { href: '/wheel',   label: 'Колесо' },
+  { href: '/feed',    label: 'Лента' },
 ]
 
 export default function NavBar() {

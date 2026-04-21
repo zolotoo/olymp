@@ -19,7 +19,7 @@ const RANKS: {
     key: 'newcomer',
     label: 'Адепт',
     minPoints: 0,
-    maxPoints: 499,
+    maxPoints: 49,
     minMonths: 0,
     color: '#636366',
     dotColor: '#C7C7CC',
@@ -71,12 +71,12 @@ const RANKS: {
   {
     key: 'member',
     label: 'Герой',
-    minPoints: 500,
-    maxPoints: 1499,
+    minPoints: 50,
+    maxPoints: 99,
     minMonths: 0,
     color: '#0A84FF',
     dotColor: '#0A84FF',
-    description: 'Участник освоился, начал активно участвовать.',
+    description: 'Участник освоился, начал зарабатывать листики.',
     onJoin: [
       {
         key: 'rank_member_rank_up',
@@ -99,17 +99,17 @@ const RANKS: {
   },
   {
     key: 'active',
-    label: 'Полубог',
-    minPoints: 1500,
-    maxPoints: 3499,
-    minMonths: 2,
-    color: '#FF9500',
-    dotColor: '#FF9500',
-    description: 'Постоянный участник, 2+ месяца в клубе.',
+    label: 'Чемпион Олимпа',
+    minPoints: 100,
+    maxPoints: 149,
+    minMonths: 0,
+    color: '#BF5AF2',
+    dotColor: '#BF5AF2',
+    description: 'Активный участник, стабильно вовлечён в жизнь клуба.',
     onJoin: [
       {
         key: 'rank_active_rank_up',
-        label: 'DM-уведомление: «Ты достиг ранга Полубог»',
+        label: 'DM-уведомление: «Ты достиг ранга Чемпион Олимпа»',
         type: 'message',
         defaultContent: '',
       },
@@ -128,17 +128,17 @@ const RANKS: {
   },
   {
     key: 'champion',
-    label: 'Бог Олимпа',
-    minPoints: 3500,
-    maxPoints: 6999,
-    minMonths: 3,
-    color: '#FF9F0A',
-    dotColor: '#FF9F0A',
-    description: 'Лидер сообщества, 3+ месяца активного участия.',
+    label: 'Полубог',
+    minPoints: 150,
+    maxPoints: 199,
+    minMonths: 0,
+    color: '#FF9500',
+    dotColor: '#FF9500',
+    description: 'Лидер сообщества, высокая вовлечённость в клуб.',
     onJoin: [
       {
         key: 'rank_champion_rank_up',
-        label: 'DM-уведомление: «Ты достиг ранга Бог Олимпа»',
+        label: 'DM-уведомление: «Ты достиг ранга Полубог»',
         type: 'message',
         defaultContent: '',
       },
@@ -157,17 +157,17 @@ const RANKS: {
   },
   {
     key: 'legend',
-    label: 'Чемпион Олимпа',
-    minPoints: 7000,
+    label: 'Бог',
+    minPoints: 200,
     maxPoints: null,
-    minMonths: 6,
-    color: '#BF5AF2',
-    dotColor: '#BF5AF2',
-    description: 'Легенда клуба. Высший уровень. 6+ месяцев, максимальная вовлечённость.',
+    minMonths: 0,
+    color: '#FF9F0A',
+    dotColor: '#FF9F0A',
+    description: 'Высший ранг. Абсолютная вовлечённость и вклад в AI Олимп.',
     onJoin: [
       {
         key: 'rank_legend_rank_up',
-        label: 'DM-уведомление: «Ты достиг ранга Чемпион Олимпа»',
+        label: 'DM-уведомление: «Ты достиг ранга Бог»',
         type: 'message',
         defaultContent: '',
       },
@@ -212,7 +212,7 @@ export default function RanksPage() {
           Ранги
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.2px' }}>
-          Пять уровней — от Адепта до Чемпиона Олимпа.{' '}
+          Пять уровней — от Адепта до Бога.{' '}
           <span style={{ color: '#0A84FF' }}>
             Нажмите на любой пункт «При достижении» чтобы открыть / отредактировать сообщение.
           </span>
@@ -227,11 +227,10 @@ export default function RanksPage() {
         >
           Система листиков
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { action: 'Голосование в опросе', pts: '+5' },
             { action: 'Реакция на ваше сообщение', pts: '+3' },
-            { action: 'Сообщение в чате', pts: '+1' },
             { action: 'Ваша реакция на чужое', pts: '+1' },
           ].map(r => (
             <div

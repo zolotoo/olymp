@@ -63,3 +63,7 @@ export async function setChatAdministratorCustomTitle(chatId: string | number, u
     custom_title: customTitle,
   })
 }
+
+export async function addChatMember(chatId: string | number, userId: number) {
+  return call('addChatMember', { chat_id: chatId, user_id: userId })
+}
