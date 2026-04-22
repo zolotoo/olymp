@@ -1,0 +1,114 @@
+// Shared wheel configuration. Imported by both the API route (server)
+// and the FortuneWheel component (client).
+
+export interface Segment {
+  label: string
+  emoji: string
+  color: string
+  colorDeep: string
+  prize: string
+  explanation: string
+  leaves?: number
+  neverDrop?: boolean
+  weight?: number
+}
+
+export const SEGMENTS: Segment[] = [
+  {
+    label: '10 🍃',
+    emoji: '🍃',
+    color: '#0A84FF', colorDeep: '#0066CC',
+    prize: '10 листиков',
+    leaves: 10,
+    weight: 40,
+    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
+  },
+  {
+    label: 'Гайд',
+    emoji: '📘',
+    color: '#BF5AF2', colorDeep: '#8E3BC9',
+    prize: 'Закрытый гайд',
+    neverDrop: true,
+    explanation: 'Закрытый авторский гайд по AI-инструментам. Появится в будущих месяцах.',
+  },
+  {
+    label: '20 🍃',
+    emoji: '🍃',
+    color: '#30D158', colorDeep: '#1FA544',
+    prize: '20 листиков',
+    leaves: 20,
+    weight: 35,
+    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
+  },
+  {
+    label: 'Секрет',
+    emoji: '🔒',
+    color: '#FF375F', colorDeep: '#C82747',
+    prize: 'Секретный контент',
+    neverDrop: true,
+    explanation: 'Доступ к закрытым материалам клуба. Появится в будущих месяцах.',
+  },
+  {
+    label: '50 🍃',
+    emoji: '🍃',
+    color: '#FF9500', colorDeep: '#CC7600',
+    prize: '50 листиков',
+    leaves: 50,
+    weight: 20,
+    explanation: 'Листики, внутренняя валюта AI Олимпа. Большой выигрыш, ты близко к новому рангу!',
+  },
+  {
+    label: 'VeoSee',
+    emoji: '🎁',
+    color: '#40C8E0', colorDeep: '#2691A3',
+    prize: 'Промокод VeoSeeBot',
+    neverDrop: true,
+    explanation: 'Эксклюзивный промокод от наших партнёров VeoSeeBot, доступ к дополнительным AI-инструментам. Появится в будущих месяцах.',
+  },
+  {
+    label: '15 🍃',
+    emoji: '🍃',
+    color: '#5E5CE6', colorDeep: '#3C3AB8',
+    prize: '15 листиков',
+    leaves: 15,
+    weight: 5,
+    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
+  },
+  {
+    label: 'Скидка',
+    emoji: '🎟️',
+    color: '#FFD60A', colorDeep: '#CC9A00',
+    prize: 'Скидка 50% на месяц',
+    neverDrop: true,
+    explanation: 'Скидка 50% на продление подписки в AI Олимп. Появится в будущих месяцах.',
+  },
+]
+
+export const LEAVES_EXPLANATION =
+  'Листики 🍃, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают разные бонусы: ' +
+  'консультации от Сергея, групповые созвоны, секретные уроки. ' +
+  'Зарабатывай их за реакции, голосования и еженедельный бонус. ' +
+  'Чем больше листиков, тем выше ранг: Адепт → Герой → Чемпион Олимпа → Полубог → Бог.'
+
+interface EligibleEntry {
+  segmentIndex: number
+  leaves: number
+  weight: number
+}
+
+const ELIGIBLE: EligibleEntry[] = SEGMENTS
+  .map((s, i) => ({ s, i }))
+  .filter(({ s }) => !s.neverDrop && s.weight !== undefined && s.leaves !== undefined)
+  .map(({ s, i }) => ({ segmentIndex: i, leaves: s.leaves!, weight: s.weight! }))
+
+const ELIGIBLE_TOTAL = ELIGIBLE.reduce((sum, e) => sum + e.weight, 0)
+
+export function pickWheelPrize(): { segmentIndex: number; leaves: number } {
+  let rand = Math.random() * ELIGIBLE_TOTAL
+  for (const e of ELIGIBLE) {
+    rand -= e.weight
+    if (rand <= 0) return { segmentIndex: e.segmentIndex, leaves: e.leaves }
+  }
+  const fallback = ELIGIBLE[0]
+  return { segmentIndex: fallback.segmentIndex, leaves: fallback.leaves }
+}

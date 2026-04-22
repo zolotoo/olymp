@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase'
+import { getAuthedUser } from '@/lib/telegram-auth'
+import { RANK_CONFIG } from '@/lib/ranks'
+
+export async function GET(req: NextRequest) {
+  const initData = req.headers.get('x-telegram-init-data')
+  const user = getAuthedUser(initData)
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const tgId = user.id
+
+  const { data: member } = await supabaseAdmin
+    .from('members')
+    .select('id, tg_id, tg_username, tg_first_name, rank, points, joined_at, status')
+    .eq('tg_id', tgId)
+    .maybeSingle()
+
+  // If not a club member yet — return a stub so the Mini App can show a join CTA.
+  if (!member) {
+    return NextResponse.json({
+      isMember: false,
+      user: { id: tgId, first_name: user.first_name, username: user.username, photo_url: user.photo_url },
+    })
+  }
+
+  // Leaderboard position among active members (by points desc)
+  const { count: ahead } = await supabaseAdmin
+    .from('members')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active')
+    .gt('points', member.points)
+
+  const { count: total } = await supabaseAdmin
+    .from('members')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active')
+
+  const position = (ahead ?? 0) + 1
+
+  const { data: spins } = await supabaseAdmin
+    .from('wheel_spins')
+    .select('month, prize_leaves, created_at')
+    .eq('tg_id', tgId)
+    .order('created_at', { ascending: false })
+    .limit(12)
+
+  const rankInfo = RANK_CONFIG[member.rank as keyof typeof RANK_CONFIG] ?? RANK_CONFIG.newcomer
+
+  return NextResponse.json({
+    isMember: true,
+    user: { id: tgId, first_name: user.first_name, username: user.username, photo_url: user.photo_url },
+    member: {
+      rank: member.rank,
+      rankLabel: rankInfo.label,
+      rankColor: rankInfo.color,
+      points: member.points,
+      joined_at: member.joined_at,
+      status: member.status,
+    },
+    leaderboard: { position, total: total ?? 0 },
+    spins: spins ?? [],
+  })
+}

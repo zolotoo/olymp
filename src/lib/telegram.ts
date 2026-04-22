@@ -73,3 +73,14 @@ export async function addChatMember(chatId: string | number, userId: number) {
 export async function deleteMessage(chatId: string | number, messageId: number) {
   return call('deleteMessage', { chat_id: chatId, message_id: messageId })
 }
+
+// Set the persistent Mini App button next to the message input (all private chats).
+export async function setChatMenuButton(webAppUrl: string, text = 'AI Олимп') {
+  return call('setChatMenuButton', {
+    menu_button: { type: 'web_app', text, web_app: { url: webAppUrl } },
+  })
+}
+
+export async function setMyCommands(commands: { command: string; description: string }[]) {
+  return call('setMyCommands', { commands })
+}
