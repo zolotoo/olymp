@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import {
   sendMessage, sendVideoNote, getChatMember, approveChatJoinRequest,
-  promoteChatMember, setChatAdministratorCustomTitle, addChatMember,
+  promoteChatMember, setChatAdministratorCustomTitle, addChatMember, deleteMessage,
 } from '@/lib/telegram'
 import { addMemory } from '@/lib/mem0'
 import { getRank, POINTS, RANK_CONFIG } from '@/lib/ranks'
@@ -12,6 +12,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   try {
+    // Delete service messages about users joining/leaving (requires bot admin with can_delete_messages)
+    const m = body.message as { message_id?: number; chat?: { id: number }; new_chat_members?: unknown[]; left_chat_member?: unknown } | undefined
+    if (m?.message_id && m.chat?.id && (m.new_chat_members || m.left_chat_member)) {
+      try { await deleteMessage(m.chat.id, m.message_id) } catch (e) { console.error('deleteMessage (service) failed:', e) }
+    }
+
     if (body.chat_join_request) await handleJoinRequest(body.chat_join_request)
     if (body.chat_member) await handleChatMember(body.chat_member)
     if (body.message) await handleMessage(body.message)
@@ -477,6 +483,6 @@ function delay(ms: number) {
 interface TgUser { id: number; is_bot?: boolean; first_name?: string; last_name?: string; username?: string }
 interface TgChat { id: number }
 interface TgChatMemberUpdate { chat: TgChat; new_chat_member: { user: TgUser; status: string } }
-interface TgMessage { message_id?: number; from?: TgUser; chat: TgChat; text?: string; new_chat_members?: TgUser[] }
+interface TgMessage { message_id?: number; from?: TgUser; chat: TgChat; text?: string; new_chat_members?: TgUser[]; left_chat_member?: TgUser }
 interface TgReaction { user?: TgUser; chat?: TgChat; message_id?: number; new_reaction?: unknown[] }
 interface TgPollAnswer { poll_id: string; user?: TgUser; option_ids: number[] }

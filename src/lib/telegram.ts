@@ -69,3 +69,7 @@ export async function setChatAdministratorCustomTitle(chatId: string | number, u
 export async function addChatMember(chatId: string | number, userId: number) {
   return call('addChatMember', { chat_id: chatId, user_id: userId })
 }
+
+export async function deleteMessage(chatId: string | number, messageId: number) {
+  return call('deleteMessage', { chat_id: chatId, message_id: messageId })
+}
