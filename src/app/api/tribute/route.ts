@@ -32,16 +32,20 @@ export async function POST(req: NextRequest) {
 }
 
 // ─── New subscription ─────────────────────────────────────────────────────────
+// "New" here means a fresh payment #1 for this subscription cycle.
+// If the member previously churned, we reset the cycle (new 7-day timer, new
+// subscription_count=1, no spin credits) but preserve points/history.
 async function onNewSubscription(payload: TributePayload) {
   const tgId = payload.telegram_user_id
   if (!tgId) return
 
-  // Upsert member
   const { data: existing } = await supabaseAdmin
     .from('members')
-    .select('id, points, rank')
+    .select('id, points, rank, status')
     .eq('tg_id', tgId)
     .maybeSingle()
+
+  const nowIso = new Date().toISOString()
 
   if (!existing) {
     await supabaseAdmin.from('members').insert({
@@ -50,13 +54,32 @@ async function onNewSubscription(payload: TributePayload) {
       rank: 'newcomer',
       points: 0,
       welcome_sent: false,
+      subscription_count: 1,
+      spins_available: 0,
+      first_week_spin_granted: false,
     })
   } else {
-    // Re-subscription — reactivate
+    // Returning user (active or churned). Start a fresh cycle:
+    // reset the 7-day timer and subscription counter; keep points/history.
     await supabaseAdmin
       .from('members')
-      .update({ status: 'active' })
+      .update({
+        status: 'active',
+        joined_at: nowIso,
+        subscription_count: 1,
+        spins_available: 0,
+        first_week_spin_granted: false,
+      })
       .eq('tg_id', tgId)
+
+    if (existing.status === 'churned') {
+      await supabaseAdmin.from('events_log').insert({
+        member_id: existing.id,
+        tg_id: tgId,
+        event_type: 'rejoined',
+        metadata: { subscription_id: payload.subscription_id },
+      })
+    }
   }
 
   const { data: member } = await supabaseAdmin
@@ -108,47 +131,65 @@ async function onNewSubscription(payload: TributePayload) {
 }
 
 // ─── Renewed subscription ─────────────────────────────────────────────────────
+// Each renewal: +10 фантиков and +1 spin credit. Increments subscription_count.
+const RENEWAL_BONUS_POINTS = 10
+
 async function onRenewed(payload: TributePayload) {
   const tgId = payload.telegram_user_id
   if (!tgId) return
 
   const { data: member } = await supabaseAdmin
     .from('members')
-    .select('id, points')
+    .select('id, points, spins_available, subscription_count')
     .eq('tg_id', tgId)
     .maybeSingle()
 
-  if (member) {
-    // Bonus points for renewal
-    const bonus = 100
-    const newPoints = member.points + bonus
-    await supabaseAdmin
-      .from('members')
-      .update({ points: newPoints, rank: getRank(newPoints), status: 'active' })
-      .eq('tg_id', tgId)
+  if (!member) return
 
-    await supabaseAdmin.from('points_log').insert({
-      member_id: member.id,
-      tg_id: tgId,
-      points: bonus,
-      reason: 'subscription_renewal',
+  const newPoints = member.points + RENEWAL_BONUS_POINTS
+  const newSpins = (member.spins_available ?? 0) + 1
+  const newCount = (member.subscription_count ?? 0) + 1
+
+  await supabaseAdmin
+    .from('members')
+    .update({
+      points: newPoints,
+      rank: getRank(newPoints),
+      status: 'active',
+      spins_available: newSpins,
+      subscription_count: newCount,
     })
+    .eq('tg_id', tgId)
 
-    await supabaseAdmin.from('events_log').insert({
+  await supabaseAdmin.from('points_log').insert({
+    member_id: member.id,
+    tg_id: tgId,
+    points: RENEWAL_BONUS_POINTS,
+    reason: 'subscription_renewal',
+  })
+
+  await supabaseAdmin.from('events_log').insert([
+    {
       member_id: member.id,
       tg_id: tgId,
       event_type: 'tribute_renewed',
-      metadata: { expires_at: payload.expires_at, period: payload.period },
-    })
-  }
+      metadata: { expires_at: payload.expires_at, period: payload.period, subscription_count: newCount },
+    },
+    {
+      member_id: member.id,
+      tg_id: tgId,
+      event_type: 'spin_credit_granted',
+      metadata: { reason: 'renewal', subscription_count: newCount },
+    },
+  ])
 
   try {
     await sendMessage(
       tgId,
       `✅ <b>Подписка продлена!</b>\n\n` +
-      `Спасибо что остаёшься в AI Olymp — это важно.\n` +
+      `Спасибо что остаёшься в AI Олимп.\n` +
       `Активна до ${formatDate(payload.expires_at)}\n\n` +
-      `+100 фантиков за верность`
+      `+${RENEWAL_BONUS_POINTS} фантиков за верность и открылась ещё одна попытка в колесе 🎡`
     )
   } catch { /* DM blocked */ }
 }
@@ -165,9 +206,15 @@ async function onCancelled(payload: TributePayload) {
     .maybeSingle()
 
   if (member) {
+    // Clear spin credits and reset the 7-day flag so a future re-subscription
+    // starts a fresh cycle. Points and history stay intact.
     await supabaseAdmin
       .from('members')
-      .update({ status: 'churned' })
+      .update({
+        status: 'churned',
+        spins_available: 0,
+        first_week_spin_granted: false,
+      })
       .eq('tg_id', tgId)
 
     await supabaseAdmin.from('events_log').insert({

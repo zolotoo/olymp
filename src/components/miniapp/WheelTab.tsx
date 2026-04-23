@@ -26,6 +26,9 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
   const [spinning, setSpinning] = useState(false)
   const [result, setResult] = useState<Segment | null>(null)
   const [canSpin, setCanSpin] = useState<boolean | null>(null)
+  const [spinsAvailable, setSpinsAvailable] = useState<number>(0)
+  const [reason, setReason] = useState<string | null>(null)
+  const [nextSpinAt, setNextSpinAt] = useState<string | null>(null)
   const [prevPrize, setPrevPrize] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showExplanation, setShowExp] = useState(false)
@@ -49,7 +52,10 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
           return
         }
         setCanSpin(Boolean(d.canSpin))
-        if (d.spin?.prize_leaves != null) setPrevPrize(d.spin.prize_leaves)
+        setSpinsAvailable(typeof d.spinsAvailable === 'number' ? d.spinsAvailable : 0)
+        setReason(d.reason ?? null)
+        setNextSpinAt(d.nextSpinAt ?? null)
+        if (d.lastSpin?.prize_leaves != null) setPrevPrize(d.lastSpin.prize_leaves)
       })
       .catch(() => { if (!cancelled) setError('Сеть недоступна') })
     return () => { cancelled = true }
@@ -65,7 +71,12 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
       const res = await tgFetch('/api/wheel', initData, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error === 'already_spun' ? 'Ты уже крутил в этом месяце' : (data.error || 'Ошибка'))
+        const msg = data.error === 'no_credit'
+          ? 'Нет доступных попыток'
+          : data.error === 'not_member'
+            ? 'Ты не в клубе'
+            : (data.error || 'Ошибка')
+        setError(msg)
         setSpinning(false)
         return
       }
@@ -80,7 +91,10 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
       setTimeout(() => {
         setResult({ ...SEGMENTS[winIdx], leaves })
         setSpinning(false)
-        setCanSpin(false)
+        const remaining = typeof data.spinsAvailable === 'number' ? data.spinsAvailable : 0
+        setSpinsAvailable(remaining)
+        setCanSpin(remaining > 0)
+        if (remaining === 0) setReason('awaiting_renewal')
         setPrevPrize(leaves)
         window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
         onSpinComplete?.()
@@ -90,6 +104,22 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
       setSpinning(false)
     }
   }
+
+  const statusLabel = canSpin === null
+    ? 'загружаем…'
+    : canSpin
+      ? (spinsAvailable > 1 ? `${spinsAvailable} попытки доступно` : 'попытка доступна')
+      : reason === 'first_week_pending'
+        ? 'первый спин через неделю'
+        : reason === 'awaiting_renewal'
+          ? 'продли подписку'
+          : reason === 'not_member'
+            ? 'только для участников'
+            : 'нет попыток'
+
+  const daysUntilFirstSpin = nextSpinAt
+    ? Math.max(0, Math.ceil((new Date(nextSpinAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null
 
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
@@ -103,17 +133,21 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
             border: '1px solid rgba(10,132,255,0.18)',
           }}
         >
-          {canSpin === null ? 'загружаем…' : canSpin ? 'попытка доступна' : 'попытка использована'}
+          {statusLabel}
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold mb-2 mt-3" style={{ color: '#1C1C1E', letterSpacing: '-1.2px', lineHeight: 1 }}>
           Крути колесо!
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
-          1 попытка в месяц, крути и получай фантики
+          {reason === 'first_week_pending' && daysUntilFirstSpin != null
+            ? `Первая попытка откроется через ${daysUntilFirstSpin} дн.`
+            : reason === 'awaiting_renewal'
+              ? 'Следующая попытка откроется при продлении подписки'
+              : 'Крути и получай фантики'}
         </p>
         {prevPrize != null && !canSpin && !result && (
           <p className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.45)' }}>
-            В этом месяце ты выиграл {prevPrize}
+            В прошлый раз ты выиграл {prevPrize}
           </p>
         )}
       </div>
@@ -217,7 +251,17 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
             border: '1px solid rgba(28,28,30,0.08)',
           }}
         >
-          {spinning ? 'Крутится...' : canSpin ? 'Крутить колесо' : canSpin === null ? 'Загрузка...' : 'Попытка использована'}
+          {spinning
+            ? 'Крутится...'
+            : canSpin
+              ? 'Крутить колесо'
+              : canSpin === null
+                ? 'Загрузка...'
+                : reason === 'first_week_pending'
+                  ? 'Первая попытка через неделю'
+                  : reason === 'awaiting_renewal'
+                    ? 'Продли подписку'
+                    : 'Попыток нет'}
         </button>
       </div>
 
