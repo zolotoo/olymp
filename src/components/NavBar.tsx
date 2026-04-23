@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/bonuses', label: 'Бонусы' },
   { href: '/wheel',   label: 'Колесо' },
   { href: '/feed',    label: 'Лента' },
+  { href: '/audience', label: 'Аудитория' },
 ]
 
 export default function NavBar() {

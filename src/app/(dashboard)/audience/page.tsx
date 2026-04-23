@@ -1,0 +1,165 @@
+import { supabaseAdmin } from '@/lib/supabase'
+
+export const metadata = { title: 'Аудитория бота · AI Олимп' }
+export const dynamic = 'force-dynamic'
+
+interface BotUser {
+  tg_id: number
+  tg_username: string | null
+  tg_first_name: string | null
+  tg_last_name: string | null
+  language_code: string | null
+  is_channel_member: boolean | null
+  first_seen_at: string
+  last_seen_at: string
+  last_event_type: string | null
+  events_count: number
+}
+
+async function loadData() {
+  const [{ data: users }, { count: total }] = await Promise.all([
+    supabaseAdmin
+      .from('bot_users')
+      .select('*')
+      .order('last_seen_at', { ascending: false })
+      .limit(500) as unknown as Promise<{ data: BotUser[] | null }>,
+    supabaseAdmin.from('bot_users').select('tg_id', { count: 'exact', head: true }),
+  ])
+
+  const { count: channelMembers } = await supabaseAdmin
+    .from('bot_users')
+    .select('tg_id', { count: 'exact', head: true })
+    .eq('is_channel_member', true)
+
+  const { count: clubMembers } = await supabaseAdmin
+    .from('members')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active')
+
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { count: active24h } = await supabaseAdmin
+    .from('bot_users')
+    .select('tg_id', { count: 'exact', head: true })
+    .gte('last_seen_at', since24h)
+
+  return {
+    users: users ?? [],
+    total: total ?? 0,
+    channelMembers: channelMembers ?? 0,
+    clubMembers: clubMembers ?? 0,
+    active24h: active24h ?? 0,
+  }
+}
+
+function formatRel(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return 'только что'
+  if (min < 60) return `${min} мин назад`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h} ч назад`
+  const d = Math.floor(h / 24)
+  return `${d} дн назад`
+}
+
+export default async function AudiencePage() {
+  const data = await loadData()
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-0.8px' }}>
+          Аудитория бота
+        </h1>
+        <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
+          Все, кто хоть раз взаимодействовал с @AI_Olymp_bot
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Всего в боте" value={data.total} />
+        <StatCard label="В канале" value={data.channelMembers} />
+        <StatCard label="В клубе (members)" value={data.clubMembers} />
+        <StatCard label="Активны за 24ч" value={data.active24h} />
+      </div>
+
+      <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.08)' }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: 'rgba(28,28,30,0.03)' }}>
+              <Th>Пользователь</Th>
+              <Th>В канале</Th>
+              <Th>Событий</Th>
+              <Th>Последнее</Th>
+              <Th>Действие</Th>
+              <Th>Первый визит</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.users.map(u => (
+              <tr key={u.tg_id} style={{ borderTop: '1px solid rgba(28,28,30,0.06)' }}>
+                <Td>
+                  <div style={{ fontWeight: 500, color: '#1C1C1E' }}>
+                    {u.tg_first_name || u.tg_username || `id:${u.tg_id}`}
+                  </div>
+                  {u.tg_username && (
+                    <div style={{ fontSize: 12, color: 'rgba(28,28,30,0.45)' }}>@{u.tg_username}</div>
+                  )}
+                </Td>
+                <Td>
+                  {u.is_channel_member === true ? (
+                    <Badge color="#30D158">в канале</Badge>
+                  ) : u.is_channel_member === false ? (
+                    <Badge color="#FF3B30">нет</Badge>
+                  ) : (
+                    <Badge color="#8E8E93">?</Badge>
+                  )}
+                </Td>
+                <Td>{u.events_count}</Td>
+                <Td style={{ color: 'rgba(28,28,30,0.70)' }}>{formatRel(u.last_seen_at)}</Td>
+                <Td style={{ color: 'rgba(28,28,30,0.60)', fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>
+                  {u.last_event_type ?? '—'}
+                </Td>
+                <Td style={{ color: 'rgba(28,28,30,0.55)' }}>
+                  {new Date(u.first_seen_at).toLocaleDateString('ru-RU')}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {data.users.length === 0 && (
+          <div className="text-center py-10 text-sm" style={{ color: 'rgba(28,28,30,0.45)' }}>
+            Пока никто не взаимодействовал с ботом
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl p-4" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.06)' }}>
+      <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.6px' }}>
+        {label}
+      </div>
+      <div className="text-2xl font-bold" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'rgba(28,28,30,0.55)' }}>{children}</th>
+}
+function Td({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return <td style={{ padding: '12px 14px', ...style }}>{children}</td>
+}
+function Badge({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 8, background: `${color}18`, color, fontSize: 11, fontWeight: 600 }}>
+      {children}
+    </span>
+  )
+}

@@ -1,17 +1,28 @@
 'use client'
-import { useState } from 'react'
-import { TelegramProvider, useTelegram } from '@/components/miniapp/TelegramProvider'
+import { useEffect, useState } from 'react'
+import { TelegramProvider, useTelegram, tgFetch } from '@/components/miniapp/TelegramProvider'
 import WheelTab from '@/components/miniapp/WheelTab'
 import ProfileTab from '@/components/miniapp/ProfileTab'
 
 type Tab = 'wheel' | 'profile'
 
 function Shell() {
-  const { ready, isTelegram } = useTelegram()
+  const { ready, isTelegram, initData } = useTelegram()
   const [tab, setTab] = useState<Tab>('wheel')
   const [profileReload, setProfileReload] = useState(0)
+  const [gate, setGate] = useState<{ allowed: boolean; reason?: string } | null>(null)
 
-  if (!ready) {
+  useEffect(() => {
+    if (!ready || !isTelegram) return
+    let cancelled = false
+    tgFetch('/api/gate', initData)
+      .then(r => r.json())
+      .then(d => { if (!cancelled) setGate(d) })
+      .catch(() => { if (!cancelled) setGate({ allowed: false, reason: 'network_error' }) })
+    return () => { cancelled = true }
+  }, [ready, isTelegram, initData])
+
+  if (!ready || (isTelegram && !gate)) {
     return <div className="text-center text-sm p-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Загрузка…</div>
   }
 
@@ -24,6 +35,29 @@ function Shell() {
           <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
             Эта страница работает только как мини-приложение внутри Telegram. Запустите её через бота @AI_Olymp_bot.
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!gate?.allowed) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-12 text-center">
+        <div className="rounded-3xl p-8" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.08)' }}>
+          <div style={{ fontSize: 56, marginBottom: 12 }}>🔒</div>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: '#1C1C1E', letterSpacing: '-0.5px' }}>
+            Только для членов клуба
+          </h2>
+          <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
+            Чтобы крутить рулетку, копить фантики и расти в рангах — вступай в AI Олимп.
+          </p>
+          <button
+            onClick={() => window.Telegram?.WebApp?.close()}
+            className="w-full rounded-full py-3 text-sm font-semibold"
+            style={{ background: '#0A84FF', color: '#fff', border: 'none', cursor: 'pointer' }}
+          >
+            Написать боту
+          </button>
         </div>
       </div>
     )

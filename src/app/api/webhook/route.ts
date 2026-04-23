@@ -7,11 +7,14 @@ import {
 import { addMemory } from '@/lib/mem0'
 import { getRank, POINTS, RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
+import { trackBotInteraction } from '@/lib/bot-tracking'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
 
   try {
+    await trackIncomingUpdate(body)
+
     // Delete service messages about users joining/leaving (requires bot admin with can_delete_messages)
     const m = body.message as { message_id?: number; chat?: { id: number }; new_chat_members?: unknown[]; left_chat_member?: unknown } | undefined
     if (m?.message_id && m.chat?.id && (m.new_chat_members || m.left_chat_member)) {
@@ -29,6 +32,54 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true })
+}
+
+// Classify the update and log it into bot_users / bot_events.
+// Only records interactions we care about (bot audience in private chats + join flow).
+async function trackIncomingUpdate(body: Record<string, unknown>): Promise<void> {
+  const ch = process.env.TELEGRAM_CHANNEL_ID
+  const grp = process.env.TELEGRAM_GROUP_ID
+
+  if (body.chat_join_request) {
+    const r = body.chat_join_request as { from: TgUser; chat: TgChat }
+    if (!r.from?.is_bot) {
+      await trackBotInteraction({ user: r.from, eventType: 'join_request', chatId: r.chat.id })
+    }
+    return
+  }
+
+  if (body.message) {
+    const msg = body.message as TgMessage & { text?: string }
+    if (!msg.from || msg.from.is_bot) return
+    // Only track private-chat interactions in the bot audience —
+    // messages in the group/channel are tracked by `activity_log` already.
+    const isPrivate = msg.chat.type === 'private' || msg.chat.id === msg.from.id
+    const inTrackedChat = (ch && String(msg.chat.id) === ch) || (grp && String(msg.chat.id) === grp)
+    if (!isPrivate && !inTrackedChat) return
+
+    const text = msg.text ?? ''
+    const eventType = text.startsWith('/')
+      ? `command:${text.split(/\s+/)[0].toLowerCase()}`
+      : isPrivate ? 'message:private' : 'message:group'
+    await trackBotInteraction({
+      user: msg.from,
+      eventType,
+      chatId: msg.chat.id,
+      payload: text ? { text: text.slice(0, 500) } : undefined,
+    })
+    return
+  }
+
+  if ((body as { callback_query?: unknown }).callback_query) {
+    const cb = (body as { callback_query: { from: TgUser; data?: string; message?: { chat?: TgChat } } }).callback_query
+    if (cb.from?.is_bot) return
+    await trackBotInteraction({
+      user: cb.from,
+      eventType: 'callback',
+      chatId: cb.message?.chat?.id,
+      payload: cb.data ? { data: cb.data.slice(0, 200) } : undefined,
+    })
+  }
 }
 
 export async function GET() {
@@ -481,7 +532,7 @@ function delay(ms: number) {
 
 // ─── Minimal Telegram types ───────────────────────────────────────────────────
 interface TgUser { id: number; is_bot?: boolean; first_name?: string; last_name?: string; username?: string }
-interface TgChat { id: number }
+interface TgChat { id: number; type?: string }
 interface TgChatMemberUpdate { chat: TgChat; new_chat_member: { user: TgUser; status: string } }
 interface TgMessage { message_id?: number; from?: TgUser; chat: TgChat; text?: string; new_chat_members?: TgUser[]; left_chat_member?: TgUser }
 interface TgReaction { user?: TgUser; chat?: TgChat; message_id?: number; new_reaction?: unknown[] }

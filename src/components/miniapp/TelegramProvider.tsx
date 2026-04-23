@@ -31,6 +31,8 @@ declare global {
         initDataUnsafe: { user?: TgUser }
         ready: () => void
         expand: () => void
+        close: () => void
+        openTelegramLink?: (url: string) => void
         MainButton: {
           text: string
           show: () => void
@@ -68,12 +70,19 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     }
     tg.ready()
     tg.expand()
+    const initData = tg.initData || null
     setState({
-      initData: tg.initData || null,
+      initData,
       user: tg.initDataUnsafe?.user ?? null,
       ready: true,
-      isTelegram: Boolean(tg.initData),
+      isTelegram: Boolean(initData),
     })
+    if (initData) {
+      fetch('/api/analytics/mini-app-open', {
+        method: 'POST',
+        headers: { 'X-Telegram-Init-Data': initData },
+      }).catch(() => {})
+    }
   }, [])
 
   return <TgContext.Provider value={state}>{children}</TgContext.Provider>
