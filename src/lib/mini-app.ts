@@ -1,9 +1,7 @@
 import { setUserWebAppMenuButton, resetUserMenuButton } from './telegram'
 
 export function miniAppUrl(): string {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://aiolymp.vercel.app')
+  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://aiolymp.vercel.app'
   return `${base.replace(/\/$/, '')}/app`
 }
 
