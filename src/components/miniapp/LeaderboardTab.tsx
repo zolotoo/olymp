@@ -10,6 +10,7 @@ interface LeaderMember {
   tg_id: number
   name: string
   username: string | null
+  photo_url: string | null
   rank: MemberRank
   points: number
 }
@@ -27,6 +28,38 @@ function initials(name: string) {
 function avatarColor(id: number) {
   const palette = ['#0A84FF', '#BF5AF2', '#FF9500', '#34C759', '#FF2D55', '#5AC8FA', '#FFD60A', '#FF453A']
   return palette[Math.abs(id) % palette.length]
+}
+
+function Avatar({ member }: { member: LeaderMember }) {
+  const [broken, setBroken] = useState(false)
+  const showImg = member.photo_url && !broken
+  return (
+    <div style={{
+      width: 40, height: 40, borderRadius: '50%',
+      background: avatarColor(member.tg_id),
+      color: '#fff', fontWeight: 700, fontSize: 14,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0, overflow: 'hidden',
+    }}>
+      {showImg ? (
+        <img
+          src={member.photo_url!}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : initials(member.name)}
+    </div>
+  )
+}
+
+function formatRange(idx: number) {
+  const cur = RANK_CONFIG[RANK_ORDER[idx]]
+  const next = RANK_ORDER[idx + 1] ? RANK_CONFIG[RANK_ORDER[idx + 1]] : null
+  if (!next) return `${cur.minPoints}+ фантиков`
+  return `${cur.minPoints}–${next.minPoints - 1} фантиков`
 }
 
 function Trophy({ color }: { color: string }) {
@@ -164,7 +197,7 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
           {cfg.label}
         </h1>
         <div className="text-center mt-2" style={{ color: 'rgba(255,255,255,0.82)', fontSize: 14 }}>
-          от {cfg.minPoints} фантиков
+          {idx !== null && formatRange(idx)}
         </div>
         {/* Dots */}
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 16 }}>
@@ -232,15 +265,7 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
               }}>
                 {medal ?? i + 1}
               </div>
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: avatarColor(m.tg_id),
-                color: '#fff', fontWeight: 700, fontSize: 14,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                {initials(m.name)}
-              </div>
+              <Avatar member={m} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="font-semibold truncate" style={{ color: '#1C1C1E', fontSize: 15, letterSpacing: '-0.2px' }}>
                   {m.name}{isMe && <span style={{ color: cfg.color, fontWeight: 600 }}> · ты</span>}
@@ -252,6 +277,21 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
             </div>
           )
         })}
+      </div>
+
+      <div className="mx-4 mt-4 rounded-2xl p-4" style={{
+        background: 'rgba(10,132,255,0.06)',
+        border: '1px solid rgba(10,132,255,0.14)',
+      }}>
+        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#0A84FF', letterSpacing: '0.6px' }}>
+          Как устроен топ
+        </div>
+        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.75 }}>
+          <li>Каждому титулу — свой кубок и своя таблица.</li>
+          <li>Внутри титула места распределяются по фантикам: больше — выше.</li>
+          <li>Листай стрелками ‹ › — увидишь топ любого титула, от Адепта до Бога.</li>
+          <li>Наберёшь больше фантиков — перейдёшь в следующий титул и начнёшь там с нуля относительно его лидеров.</li>
+        </ul>
       </div>
     </div>
   )

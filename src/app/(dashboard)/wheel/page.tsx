@@ -1,6 +1,6 @@
 import FortuneWheel from '@/components/FortuneWheel'
 
-export const metadata = { title: 'Колесо фортуны · AI Олимп' }
+export const metadata = { title: 'Колесо удачи · AI Олимп' }
 
 export default function WheelPage() {
   return (

@@ -61,7 +61,7 @@ export default function ProfileTab({ reloadKey }: { reloadKey?: number }) {
             Привет, {displayName || 'друг'}!
           </h2>
           <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
-            Ты ещё не в клубе AI Олимп. Чтобы открыть рулетку, титулы и фантики — вступай в клуб через бота.
+            Ты ещё не в клубе AI Олимп. Чтобы открыть Колесо удачи, титулы и фантики — вступай в клуб через бота.
           </p>
         </div>
       </div>

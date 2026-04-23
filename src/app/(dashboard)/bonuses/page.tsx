@@ -39,7 +39,7 @@ export default function BonusesPage() {
           Геймификация
         </div>
         <h1 className="text-3xl font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-1px', lineHeight: 1.1 }}>
-          Колесо фортуны
+          Колесо удачи
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.2px' }}>
           Колесо крутится по попыткам. Попытки копятся: первая — через неделю после вступления, далее — за каждое продление подписки.

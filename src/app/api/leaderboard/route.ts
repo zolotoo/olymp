@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from('members')
-    .select('tg_id, tg_username, tg_first_name, rank, points')
+    .select('tg_id, tg_username, tg_first_name, rank, points, photo_url')
     .eq('status', 'active')
     .order('points', { ascending: false })
     .limit(1000)
@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
       tg_id: m.tg_id,
       name: m.tg_first_name || m.tg_username || 'Гость',
       username: m.tg_username,
+      photo_url: m.photo_url ?? null,
       rank: m.rank,
       points: m.points ?? 0,
     })),

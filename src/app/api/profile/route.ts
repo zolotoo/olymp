@@ -12,9 +12,21 @@ export async function GET(req: NextRequest) {
 
   const { data: member } = await supabaseAdmin
     .from('members')
-    .select('id, tg_id, tg_username, tg_first_name, rank, points, joined_at, status')
+    .select('id, tg_id, tg_username, tg_first_name, rank, points, joined_at, status, photo_url')
     .eq('tg_id', tgId)
     .maybeSingle()
+
+  // Opportunistically refresh photo_url / name from Telegram initData on each visit.
+  if (member && (user.photo_url !== member.photo_url || user.first_name !== member.tg_first_name || user.username !== member.tg_username)) {
+    await supabaseAdmin
+      .from('members')
+      .update({
+        photo_url: user.photo_url ?? null,
+        tg_first_name: user.first_name ?? member.tg_first_name,
+        tg_username: user.username ?? member.tg_username,
+      })
+      .eq('id', member.id)
+  }
 
   // If not a club member yet — return a stub so the Mini App can show a join CTA.
   if (!member) {

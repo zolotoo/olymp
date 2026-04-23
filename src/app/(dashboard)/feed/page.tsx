@@ -10,7 +10,7 @@ const REASON_LABELS: Record<string, string> = {
   inactive:       'Напоминание (неактивен)',
   milestone:      'Веха',
   sales_pitch:    'Продающее сообщение',
-  wheel_spin:     'Колесо фортуны',
+  wheel_spin:     'Колесо удачи',
   weekly_digest:  'Дайджест недели',
 }
 

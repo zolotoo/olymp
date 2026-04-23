@@ -210,7 +210,13 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
             {activeMilestone.cfg.label}
           </div>
           <div className="text-xs font-semibold" style={{ color: activeMilestone.cfg.color }}>
-            от {activeMilestone.cfg.minPoints} фантиков
+            {(() => {
+              const i = RANK_ORDER.indexOf(activeMilestone.rank)
+              const nxt = RANK_ORDER[i + 1] ? RANK_CONFIG[RANK_ORDER[i + 1]] : null
+              return nxt
+                ? `${activeMilestone.cfg.minPoints}–${nxt.minPoints - 1} фантиков`
+                : `${activeMilestone.cfg.minPoints}+ фантиков`
+            })()}
           </div>
         </div>
         <div className="text-sm" style={{ color: 'rgba(28,28,30,0.60)', lineHeight: 1.55 }}>

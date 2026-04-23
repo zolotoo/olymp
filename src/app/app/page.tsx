@@ -10,7 +10,7 @@ type Tab = 'wheel' | 'titul' | 'leaderboard' | 'profile'
 
 function Shell() {
   const { ready, isTelegram, initData } = useTelegram()
-  const [tab, setTab] = useState<Tab>('wheel')
+  const [tab, setTab] = useState<Tab>('titul')
   const [profileReload, setProfileReload] = useState(0)
   const [gate, setGate] = useState<{ allowed: boolean; reason?: string } | null>(null)
 
@@ -51,7 +51,7 @@ function Shell() {
             Только для членов клуба
           </h2>
           <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
-            Чтобы крутить рулетку, копить фантики и расти в титулах — вступай в AI Олимп.
+            Чтобы крутить Колесо удачи, копить фантики и расти в титулах — вступай в AI Олимп.
           </p>
           <button
             onClick={() => window.Telegram?.WebApp?.close()}
@@ -85,10 +85,10 @@ function Shell() {
           zIndex: 30,
         }}
       >
-        {(['wheel', 'titul', 'leaderboard', 'profile'] as Tab[]).map(t => {
+        {(['titul', 'leaderboard', 'profile', 'wheel'] as Tab[]).map(t => {
           const active = tab === t
-          const label = t === 'wheel' ? 'Рулетка' : t === 'titul' ? 'Титул' : t === 'leaderboard' ? 'Топ' : 'Профиль'
-          const emoji = t === 'wheel' ? '🎰' : t === 'titul' ? '🏔' : t === 'leaderboard' ? '🏆' : '👤'
+          const label = t === 'wheel' ? 'Колесо' : t === 'titul' ? 'Титул' : t === 'leaderboard' ? 'Топ' : 'Профиль'
+          const emoji = t === 'wheel' ? '🎁' : t === 'titul' ? '🏔' : t === 'leaderboard' ? '🏆' : '👤'
           return (
             <button
               key={t}
