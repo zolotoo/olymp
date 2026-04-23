@@ -18,12 +18,23 @@ export async function GET(req: NextRequest) {
 
   const { data: member } = await supabaseAdmin
     .from('members')
-    .select('id, status')
+    .select('id, status, photo_url, tg_first_name, tg_username')
     .eq('tg_id', tgId)
     .maybeSingle()
 
   if (member && member.status === 'active') {
     setBotUserChannelMember(tgId, true).catch(() => {})
+    if (user.photo_url !== member.photo_url || user.first_name !== member.tg_first_name || user.username !== member.tg_username) {
+      supabaseAdmin
+        .from('members')
+        .update({
+          photo_url: user.photo_url ?? null,
+          tg_first_name: user.first_name ?? member.tg_first_name,
+          tg_username: user.username ?? member.tg_username,
+        })
+        .eq('id', member.id)
+        .then(() => {})
+    }
     return NextResponse.json({ allowed: true, reason: 'member' })
   }
 
@@ -50,6 +61,7 @@ export async function GET(req: NextRequest) {
         tg_username: user.username ?? null,
         tg_first_name: user.first_name ?? null,
         tg_last_name: user.last_name ?? null,
+        photo_url: user.photo_url ?? null,
         status: 'active',
         rank: 'newcomer',
         points: 0,

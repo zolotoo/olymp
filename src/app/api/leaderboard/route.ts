@@ -7,6 +7,15 @@ export async function GET(req: NextRequest) {
   const user = getAuthedUser(initData)
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
+  // Opportunistically persist caller's photo_url so avatars accumulate.
+  if (user.photo_url) {
+    supabaseAdmin
+      .from('members')
+      .update({ photo_url: user.photo_url })
+      .eq('tg_id', user.id)
+      .then(() => {})
+  }
+
   const { data, error } = await supabaseAdmin
     .from('members')
     .select('tg_id, tg_username, tg_first_name, rank, points, photo_url')
