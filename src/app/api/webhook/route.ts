@@ -8,6 +8,7 @@ import { addMemory } from '@/lib/mem0'
 import { getRank, POINTS, RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
 import { trackBotInteraction } from '@/lib/bot-tracking'
+import { enableMiniAppButton, disableMiniAppButton } from '@/lib/mini-app'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -128,6 +129,7 @@ async function handleJoinRequest(update: { chat: TgChat; from: TgUser }) {
 
   await sendWelcome(user)
   await approveChatJoinRequest(chat.id, user.id)
+  await enableMiniAppButton(user.id)
 
   // Invite to the linked group after approving the channel join
   const groupId = process.env.TELEGRAM_GROUP_ID
@@ -150,10 +152,21 @@ async function handleChatMember(update: TgChatMemberUpdate) {
   if (!isChannel && !isGroup) return
 
   const { status } = new_chat_member
-  if (!['member', 'administrator'].includes(status)) return
-
   const user = new_chat_member.user
   if (user.is_bot) return
+
+  // On leave from the channel: strip the personal Mini App button.
+  if (isChannel && ['left', 'kicked', 'banned'].includes(status)) {
+    await disableMiniAppButton(user.id)
+    return
+  }
+
+  if (!['member', 'administrator'].includes(status)) return
+
+  // On join to the channel: give the user the personal Mini App button.
+  if (isChannel) {
+    await enableMiniAppButton(user.id)
+  }
 
   const { data: existing } = await supabaseAdmin
     .from('members').select('id, rank').eq('tg_id', user.id).maybeSingle()
@@ -263,6 +276,7 @@ async function handleMessage(message: TgMessage) {
           })
           addMemory(String(user.id), `${user.first_name || user.username || user.id} зарегистрирован через /start`)
           await sendWelcome(user)
+          await enableMiniAppButton(user.id)
         } else {
           await sendSalesPitch(user)
         }

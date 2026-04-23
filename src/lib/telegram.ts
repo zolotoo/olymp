@@ -74,10 +74,26 @@ export async function deleteMessage(chatId: string | number, messageId: number) 
   return call('deleteMessage', { chat_id: chatId, message_id: messageId })
 }
 
-// Set the persistent Mini App button next to the message input (all private chats).
-export async function setChatMenuButton(webAppUrl: string, text = 'AI Олимп') {
+// Set the default menu button for all users who haven't been individually configured.
+// type 'default' → standard commands menu (see setMyCommands).
+export async function setDefaultMenuButtonToCommands() {
+  return call('setChatMenuButton', { menu_button: { type: 'default' } })
+}
+
+// Enable the Mini App button ONLY for a specific user (private chat context).
+// Use after approving a join request or when a user becomes a club member.
+export async function setUserWebAppMenuButton(chatId: number, webAppUrl: string, text = 'AI Олимп') {
   return call('setChatMenuButton', {
+    chat_id: chatId,
     menu_button: { type: 'web_app', text, web_app: { url: webAppUrl } },
+  })
+}
+
+// Reset a specific user back to the default menu — call when user leaves the club.
+export async function resetUserMenuButton(chatId: number) {
+  return call('setChatMenuButton', {
+    chat_id: chatId,
+    menu_button: { type: 'default' },
   })
 }
 

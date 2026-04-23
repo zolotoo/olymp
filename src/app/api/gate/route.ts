@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedUser } from '@/lib/telegram-auth'
 import { getChatMember } from '@/lib/telegram'
 import { trackBotInteraction, setBotUserChannelMember } from '@/lib/bot-tracking'
+import { enableMiniAppButton } from '@/lib/mini-app'
 
 // GET /api/gate — returns whether the user may use the full Mini App.
 // Rule: membership = row in `members` with status='active'. If absent but the
@@ -57,6 +58,7 @@ export async function GET(req: NextRequest) {
       await supabaseAdmin.from('members').update({ status: 'active' }).eq('id', member.id)
     }
     trackBotInteraction({ user, eventType: 'auto_registered_via_mini_app' }).catch(() => {})
+    enableMiniAppButton(tgId).catch(() => {})
     return NextResponse.json({ allowed: true, reason: 'auto_registered' })
   }
 
