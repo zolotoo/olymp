@@ -52,7 +52,6 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
     reaction_given: 'За реакцию (+1)',
     reaction_received: 'Реакции на посты (+3)',
     poll_vote: 'За голосование (+5)',
-    weekly_active_bonus: 'Бонус активности',
     subscription_renewal: 'Продление подписки',
   }
 

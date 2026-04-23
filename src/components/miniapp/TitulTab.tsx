@@ -230,7 +230,6 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
           <li>+1 за реакцию на чужое сообщение</li>
           <li>+3 за реакцию на твоё сообщение</li>
           <li>+5 за участие в опросе</li>
-          <li>+50 за активную неделю</li>
           <li>Колесо — фантики выпадают случайно</li>
         </ul>
       </div>
