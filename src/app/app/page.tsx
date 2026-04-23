@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import { TelegramProvider, useTelegram, tgFetch } from '@/components/miniapp/TelegramProvider'
 import WheelTab from '@/components/miniapp/WheelTab'
 import ProfileTab from '@/components/miniapp/ProfileTab'
+import TitulTab from '@/components/miniapp/TitulTab'
 
-type Tab = 'wheel' | 'profile'
+type Tab = 'wheel' | 'titul' | 'profile'
 
 function Shell() {
   const { ready, isTelegram, initData } = useTelegram()
@@ -66,6 +67,7 @@ function Shell() {
   return (
     <div style={{ paddingTop: 12, paddingBottom: 80 }}>
       {tab === 'wheel' && <WheelTab onSpinComplete={() => setProfileReload(k => k + 1)} />}
+      {tab === 'titul' && <TitulTab reloadKey={profileReload} />}
       {tab === 'profile' && <ProfileTab reloadKey={profileReload} />}
 
       <nav
@@ -81,10 +83,10 @@ function Shell() {
           zIndex: 30,
         }}
       >
-        {(['wheel', 'profile'] as Tab[]).map(t => {
+        {(['wheel', 'titul', 'profile'] as Tab[]).map(t => {
           const active = tab === t
-          const label = t === 'wheel' ? 'Рулетка' : 'Профиль'
-          const emoji = t === 'wheel' ? '🎰' : '👤'
+          const label = t === 'wheel' ? 'Рулетка' : t === 'titul' ? 'Титул' : 'Профиль'
+          const emoji = t === 'wheel' ? '🎰' : t === 'titul' ? '🏔' : '👤'
           return (
             <button
               key={t}

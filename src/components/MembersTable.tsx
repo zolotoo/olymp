@@ -19,6 +19,13 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
     )
   }
 
+  const tierFor = (n: number) => {
+    if (n === 0) return { label: 'мертвяк', bg: 'rgba(255,59,48,0.10)',  color: '#FF3B30' }
+    if (n < 3)   return { label: 'тихий',   bg: 'rgba(255,149,0,0.10)',  color: '#FF9500' }
+    if (n < 10)  return { label: 'живой',   bg: 'rgba(10,132,255,0.10)', color: '#0A84FF' }
+    return          { label: 'активный',    bg: 'rgba(48,209,88,0.10)',  color: '#30D158' }
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -38,8 +45,7 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
         <tbody>
           {members.map((m) => {
             const rank = RANK_CONFIG[m.rank]
-            const isAtRisk = !m.last_active ||
-              Date.now() - new Date(m.last_active).getTime() > 7 * 24 * 60 * 60 * 1000
+            const tier = tierFor(m.messages_this_week)
 
             return (
               <tr
@@ -76,11 +82,9 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
                 <td className="py-3 text-right text-xs" style={{ color: 'rgba(28,28,30,0.40)' }}>{daysSince(m.last_active)}</td>
                 <td className="py-3 text-right">
                   {m.status === 'churned' ? (
-                    <StatusChip label="вышел" bg="rgba(255,59,48,0.10)" color="#FF3B30" />
-                  ) : isAtRisk ? (
-                    <StatusChip label="риск" bg="rgba(255,149,0,0.10)" color="#FF9500" />
+                    <StatusChip label="вышел" bg="rgba(99,99,102,0.10)" color="#636366" />
                   ) : (
-                    <StatusChip label="активен" bg="rgba(48,209,88,0.10)" color="#30D158" />
+                    <StatusChip label={tier.label} bg={tier.bg} color={tier.color} />
                   )}
                 </td>
               </tr>

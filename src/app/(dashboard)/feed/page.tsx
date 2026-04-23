@@ -44,6 +44,27 @@ export default async function FeedPage() {
     .order('sent_at', { ascending: false })
     .limit(200)
 
+  // Resolve chat_id → member name for logs missing recipient info (e.g. admin tests).
+  const missingIds = Array.from(new Set(
+    (logs ?? [])
+      .filter(l => !l.tg_first_name && !l.tg_username && !l.tg_id && l.chat_id)
+      .map(l => l.chat_id as number)
+  ))
+  const nameByChatId = new Map<number, string>()
+  if (missingIds.length > 0) {
+    const { data: members } = await supabaseAdmin
+      .from('members')
+      .select('tg_id, tg_username, tg_first_name')
+      .in('tg_id', missingIds)
+    for (const m of members ?? []) {
+      const name = [m.tg_first_name, m.tg_username ? `@${m.tg_username}` : ''].filter(Boolean).join(' ').trim()
+      if (name) nameByChatId.set(m.tg_id as number, name)
+    }
+    const adminEnv = process.env.TELEGRAM_ADMIN_TG_ID || process.env.TELEGRAM_ADMIN_CHAT_ID
+    const adminId = adminEnv && /^-?\d+$/.test(adminEnv) ? Number(adminEnv) : null
+    if (adminId) nameByChatId.set(adminId, nameByChatId.get(adminId) ?? 'Админ (проверка)')
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
@@ -97,7 +118,8 @@ export default async function FeedPage() {
                       <span className="text-sm font-semibold" style={{ color: '#1C1C1E', letterSpacing: '-0.2px' }}>
                         {log.tg_first_name || log.tg_username
                           ? `${log.tg_first_name || ''} ${log.tg_username ? `@${log.tg_username}` : ''}`.trim()
-                          : log.tg_id ? `tg:${log.tg_id}` : `chat:${log.chat_id}`}
+                          : nameByChatId.get(log.chat_id)
+                            ?? (log.tg_id ? `tg:${log.tg_id}` : `chat:${log.chat_id}`)}
                       </span>
                       <span className="text-xs" style={{ color: 'rgba(28,28,30,0.38)' }}>
                         {dateStr} · {timeStr}

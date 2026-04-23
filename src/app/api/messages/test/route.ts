@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabaseAdmin.from('messages_log').insert({
       chat_id: chatIdNum,
       message_text: text,
-      reason: `test:${key || label || 'unknown'}`,
+      reason: `test:${label || key || 'unknown'}`,
     })
     if (error) console.error('messages_log insert error:', error)
   }

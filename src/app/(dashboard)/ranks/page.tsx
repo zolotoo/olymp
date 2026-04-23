@@ -23,7 +23,7 @@ const RANKS: {
     minMonths: 0,
     color: '#636366',
     dotColor: '#C7C7CC',
-    description: 'Начальный уровень. Участник только познакомился с клубом.',
+    description: 'Стартовый титул — присваивается автоматически при вступлении, не триггерится повышением.',
     onJoin: [
       {
         key: 'rank_newcomer_video',
@@ -283,7 +283,7 @@ export default function RanksPage() {
                       className="text-xs font-semibold uppercase mb-2"
                       style={{ color: 'rgba(28,28,30,0.38)', letterSpacing: '0.6px' }}
                     >
-                      При достижении
+                      {rank.key === 'newcomer' ? 'При вступлении в клуб' : 'При достижении'}
                     </div>
                     <RanksOnJoinList rankColor={rank.color} items={rank.onJoin} />
                   </div>
