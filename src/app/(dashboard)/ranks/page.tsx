@@ -1,7 +1,7 @@
 import RanksWeeklyEditor from '@/components/RanksWeeklyEditor'
 import RanksOnJoinList, { type OnJoinItem } from '@/components/RanksOnJoinList'
 
-export const metadata = { title: 'Ранги — AI Олимп' }
+export const metadata = { title: 'Титулы — AI Олимп' }
 
 const RANKS: {
   key: string
@@ -33,7 +33,7 @@ const RANKS: {
       },
       {
         key: 'rank_newcomer_welcome',
-        label: 'Приветственное сообщение с описанием клуба, рангов и системы листиков',
+        label: 'Приветственное сообщение с описанием клуба, титулов и системы фантиков',
         type: 'message',
         defaultContent: '',
       },
@@ -52,11 +52,11 @@ const RANKS: {
     minMonths: 0,
     color: '#0A84FF',
     dotColor: '#0A84FF',
-    description: 'Участник освоился, начал зарабатывать листики.',
+    description: 'Участник освоился, начал зарабатывать фантики.',
     onJoin: [
       {
         key: 'rank_member_rank_up',
-        label: 'DM-уведомление: «Ты достиг ранга Герой»',
+        label: 'DM-уведомление: «Ты достиг титула Герой»',
         type: 'message',
         defaultContent: '',
       },
@@ -85,7 +85,7 @@ const RANKS: {
     onJoin: [
       {
         key: 'rank_active_rank_up',
-        label: 'DM-уведомление: «Ты достиг ранга Чемпион Олимпа»',
+        label: 'DM-уведомление: «Ты достиг титула Чемпион Олимпа»',
         type: 'message',
         defaultContent: '',
       },
@@ -114,7 +114,7 @@ const RANKS: {
     onJoin: [
       {
         key: 'rank_champion_rank_up',
-        label: 'DM-уведомление: «Ты достиг ранга Полубог»',
+        label: 'DM-уведомление: «Ты достиг титула Полубог»',
         type: 'message',
         defaultContent: '',
       },
@@ -139,11 +139,11 @@ const RANKS: {
     minMonths: 0,
     color: '#FF9F0A',
     dotColor: '#FF9F0A',
-    description: 'Высший ранг. Абсолютная вовлечённость и вклад в AI Олимп.',
+    description: 'Высший титул. Абсолютная вовлечённость и вклад в AI Олимп.',
     onJoin: [
       {
         key: 'rank_legend_rank_up',
-        label: 'DM-уведомление: «Ты достиг ранга Бог»',
+        label: 'DM-уведомление: «Ты достиг титула Бог»',
         type: 'message',
         defaultContent: '',
       },
@@ -185,7 +185,7 @@ export default function RanksPage() {
           className="text-3xl font-bold mb-1"
           style={{ color: '#1C1C1E', letterSpacing: '-1px', lineHeight: 1.1 }}
         >
-          Ранги
+          Титулы
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.2px' }}>
           Пять уровней, от Адепта до Бога.{' '}
@@ -201,7 +201,7 @@ export default function RanksPage() {
           className="text-base font-bold mb-4"
           style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}
         >
-          Система листиков
+          Система фантиков
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
@@ -265,7 +265,7 @@ export default function RanksPage() {
                     style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '-0.2px' }}
                   >
                     {rank.minPoints.toLocaleString()}
-                    {rank.maxPoints ? `–${rank.maxPoints.toLocaleString()}` : '+'} листиков
+                    {rank.maxPoints ? `–${rank.maxPoints.toLocaleString()}` : '+'} фантиков
                     {rank.minMonths > 0 ? ` · ${rank.minMonths}+ мес.` : ''}
                   </span>
                 </div>

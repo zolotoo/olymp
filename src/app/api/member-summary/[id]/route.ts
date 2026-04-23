@@ -36,12 +36,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 Имя: ${member.tg_first_name || member.tg_username || 'Без имени'}
 Юзернейм: ${member.tg_username ? '@' + member.tg_username : 'нет'}
-Ранг: ${rank.emoji} ${rank.label}
-Листики: ${member.points}
+Титул: ${rank.emoji} ${rank.label}
+Фантики: ${member.points}
 Дней в клубе: ${daysSinceJoin}
 Дней с последней активности: ${daysSinceActive ?? 'нет активности'}
 Всего сообщений: ${totalMessages}
-Источники листиков: ${JSON.stringify(pointsByReason)}
+Источники фантиков: ${JSON.stringify(pointsByReason)}
 Статус: ${member.status}
 Событий: ${(events || []).map(e => e.event_type).join(', ') || 'нет'}
 

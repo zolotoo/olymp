@@ -95,7 +95,7 @@ async function onNewSubscription(payload: TributePayload) {
       `Рад видеть тебя в клубе. Подписка активна до ${formatDate(payload.expires_at)}.\n\n` +
       `Инвайт-ссылка придёт отдельным сообщением от @Tribute — она одноразовая, не пересылай.\n\n` +
       `Как попадёшь в чат — пиши, задавай вопросы. ` +
-      `За активность ты будешь получать 🍃 листики и расти в ранге. Вперёд! 🔥`
+      `За активность ты будешь получать фантики и расти в титуле. Вперёд! 🔥`
     )
 
     await supabaseAdmin
@@ -148,7 +148,7 @@ async function onRenewed(payload: TributePayload) {
       `✅ <b>Подписка продлена!</b>\n\n` +
       `Спасибо что остаёшься в AI Olymp — это важно.\n` +
       `Активна до ${formatDate(payload.expires_at)}\n\n` +
-      `+100 листиков за верность 🍃`
+      `+100 фантиков за верность`
     )
   } catch { /* DM blocked */ }
 }

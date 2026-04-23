@@ -6,9 +6,9 @@ const MONTHS = [
     label: 'Приветственный',
     desc: 'Первый месяц в клубе. Участник только вошёл, знакомство с системой.',
     prizes: [
-      { label: '100 листиков', prob: 'часто', highlight: false, strikethrough: false },
-      { label: '200 листиков', prob: 'часто', highlight: false, strikethrough: false },
-      { label: '300 листиков', prob: 'редко', highlight: false, strikethrough: false },
+      { label: '100 фантиков', prob: 'часто', highlight: false, strikethrough: false },
+      { label: '200 фантиков', prob: 'часто', highlight: false, strikethrough: false },
+      { label: '300 фантиков', prob: 'редко', highlight: false, strikethrough: false },
       { label: 'Закрытый гайд / шаблон', prob: 'часто', highlight: true, strikethrough: false },
       { label: 'Доступ к секретному контенту', prob: 'редко', highlight: true, strikethrough: false },
       { label: 'Скидка 50%', prob: 'никогда', highlight: false, strikethrough: true },
@@ -19,9 +19,9 @@ const MONTHS = [
     label: 'Социальный',
     desc: 'Второй месяц. Участник знает правила, самое время включить в жизнь сообщества.',
     prizes: [
-      { label: '100 листиков', prob: 'часто', highlight: false, strikethrough: false },
-      { label: '200 листиков', prob: 'часто', highlight: false, strikethrough: false },
-      { label: '300 листиков', prob: 'редко', highlight: false, strikethrough: false },
+      { label: '100 фантиков', prob: 'часто', highlight: false, strikethrough: false },
+      { label: '200 фантиков', prob: 'часто', highlight: false, strikethrough: false },
+      { label: '300 фантиков', prob: 'редко', highlight: false, strikethrough: false },
       { label: 'Место в групповом эфире', prob: 'часто', highlight: true, strikethrough: false },
       { label: 'Упоминание / репост в stories Сергея', prob: 'редко', highlight: true, strikethrough: false },
       { label: '1 вакансия на биржу Сергея', prob: 'редко', highlight: true, strikethrough: false },
@@ -33,9 +33,9 @@ const MONTHS = [
     label: 'Личный',
     desc: 'Третий месяц. Участник доказал вовлечённость, приз личного внимания Сергея.',
     prizes: [
-      { label: '200 листиков', prob: 'часто', highlight: false, strikethrough: false },
-      { label: '300 листиков', prob: 'часто', highlight: false, strikethrough: false },
-      { label: '500 листиков', prob: 'редко', highlight: false, strikethrough: false },
+      { label: '200 фантиков', prob: 'часто', highlight: false, strikethrough: false },
+      { label: '300 фантиков', prob: 'часто', highlight: false, strikethrough: false },
+      { label: '500 фантиков', prob: 'редко', highlight: false, strikethrough: false },
       { label: 'Консультация с Сергеем 15–20 мин', prob: 'редко', highlight: true, strikethrough: false },
       { label: 'Совместный пост в Instagram', prob: 'редко', highlight: true, strikethrough: false },
       { label: 'Скидка 50%', prob: 'никогда', highlight: false, strikethrough: true },
@@ -80,7 +80,7 @@ export default function BonusesPage() {
           {[
             { step: '1', text: 'Каждый месяц бот отправляет участнику кнопку «Крутить колесо»' },
             { step: '2', text: 'Система выбирает случайный приз из пула текущего месяца' },
-            { step: '3', text: 'Участник получает приз в DM. Листики зачисляются автоматически' },
+            { step: '3', text: 'Участник получает приз в DM. Фантики зачисляются автоматически' },
           ].map(s => (
             <div key={s.step} className="flex gap-3 rounded-xl p-3.5" style={{ background: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.45)' }}>
               <div
@@ -172,14 +172,14 @@ export default function BonusesPage() {
           Реальные шансы колеса (месяц 1)
         </h2>
         <p className="text-sm mb-4" style={{ color: 'rgba(28,28,30,0.60)', letterSpacing: '-0.15px', lineHeight: 1.4 }}>
-          В интерфейсе колеса пользователь видит 8 секторов. Алгоритм выбирает приз только из 4 «листиковых» секторов, остальные 4 визуальные, они никогда не выпадают.
+          В интерфейсе колеса пользователь видит 8 секторов. Алгоритм выбирает приз только из 4 «фантиковых» секторов, остальные 4 визуальные, они никогда не выпадают.
         </p>
         <div className="space-y-2">
           {[
-            { label: '10 🍃 листиков', pct: '40%' },
-            { label: '20 🍃 листиков', pct: '35%' },
-            { label: '50 🍃 листиков', pct: '20%' },
-            { label: '15 🍃 листиков', pct: '5%' },
+            { label: '10 фантиков', pct: '40%' },
+            { label: '20 фантиков', pct: '35%' },
+            { label: '50 фантиков', pct: '20%' },
+            { label: '15 фантиков', pct: '5%' },
             { label: 'Гайд / Секрет / VeoSeeBot / Скидка', pct: '0% (визуально)' },
           ].map(r => (
             <div
@@ -202,8 +202,8 @@ export default function BonusesPage() {
         <div className="space-y-3">
           {[
             { title: 'Блокировка на 6 месяцев', desc: 'При отписке нельзя вернуться раньше 6 месяцев. Проверяется по дате subscription_started_at.' },
-            { title: 'Пропуск активности', desc: 'Участник предупредил о паузе заранее — листики не сгорают, место в таблице сохраняется.' },
-            { title: 'Таблица лидеров', desc: 'Топ-10 участников по листикам. Показывается в дашборде. Еженедельно публикуется в канале.' },
+            { title: 'Пропуск активности', desc: 'Участник предупредил о паузе заранее — фантики не сгорают, место в таблице сохраняется.' },
+            { title: 'Таблица лидеров', desc: 'Топ-10 участников по фантикам. Показывается в дашборде. Еженедельно публикуется в канале.' },
           ].map(r => (
             <div key={r.title} className="flex gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.45)' }}>
               <div className="shrink-0 w-1 rounded-full mt-1" style={{ background: '#0A84FF', height: 16 }} />

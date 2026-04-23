@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 const LINKS = [
   { href: '/',        label: 'Участники' },
   { href: '/flow',    label: 'Дерево сообщений' },
-  { href: '/ranks',   label: 'Ранги' },
+  { href: '/ranks',   label: 'Титулы' },
   { href: '/bonuses', label: 'Бонусы' },
   { href: '/wheel',   label: 'Колесо' },
   { href: '/feed',    label: 'Лента' },

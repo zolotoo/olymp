@@ -257,9 +257,9 @@ export default function FortuneWheel() {
             <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.15px' }}>Ты выиграл приз</p>
 
             <div className="rounded-2xl px-5 py-5 mb-4" style={{ background: `linear-gradient(135deg, ${result.color}1A 0%, ${result.color}0A 100%)`, border: `1px solid ${result.color}33` }}>
-              <div style={{ fontSize: 36, marginBottom: 4 }}>🍃</div>
+              <div style={{ fontSize: 36, marginBottom: 4 }}></div>
               <div className="text-2xl font-bold" style={{ color: result.color, letterSpacing: '-0.5px' }}>
-                {result.leaves} листиков
+                {result.leaves} фантиков
               </div>
             </div>
 
@@ -268,7 +268,7 @@ export default function FortuneWheel() {
               className="w-full rounded-xl py-2.5 text-sm font-medium mb-4 transition-all"
               style={{ background: showExplanation ? 'rgba(10,132,255,0.08)' : 'transparent', border: '1px solid rgba(10,132,255,0.20)', color: '#0A84FF', cursor: 'pointer', letterSpacing: '-0.15px' }}
             >
-              {showExplanation ? '▲ Скрыть' : '▼ Что такое листики?'}
+              {showExplanation ? '▲ Скрыть' : '▼ Что такое фантики?'}
             </button>
             {showExplanation && (
               <div className="rounded-xl px-4 py-3 mb-4 text-left text-xs" style={{ background: 'rgba(10,132,255,0.05)', border: '1px solid rgba(10,132,255,0.12)', color: 'rgba(28,28,30,0.70)', lineHeight: 1.65, letterSpacing: '-0.1px' }}>

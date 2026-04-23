@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 const REASON_LABELS: Record<string, string> = {
   welcome:        'Приветствие',
-  rank_up:        'Повышение ранга',
+  rank_up:        'Повышение титула',
   weekly_bonus:   'Недельный бонус',
   inactive:       'Напоминание (неактивен)',
   milestone:      'Веха',

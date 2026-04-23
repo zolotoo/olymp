@@ -32,7 +32,7 @@ const TREE: Node = {
             },
             { id: 'c_active', label: 'Активный участник', type: 'condition', detail: 'welcome_sent = true',
               children: [
-                { id: 'l_profile', label: 'Профиль участника', type: 'message', detail: 'Ранг + листики + дней в клубе' },
+                { id: 'l_profile', label: 'Профиль участника', type: 'message', detail: 'Титул + фантики + дней в клубе' },
               ],
             },
           ],
@@ -63,7 +63,7 @@ const TREE: Node = {
             },
             { id: 'c_renew', label: 'Продление', type: 'condition', detail: 'event: renewed_subscription',
               children: [
-                { id: 'l_renewmsg', label: 'Подписка продлена', type: 'message', detail: '+100 листиков за верность' },
+                { id: 'l_renewmsg', label: 'Подписка продлена', type: 'message', detail: '+100 фантиков за верность' },
               ],
             },
             { id: 'c_cancel', label: 'Отписка', type: 'condition', detail: 'event: cancelled_subscription',
@@ -79,16 +79,16 @@ const TREE: Node = {
     {
       id: 's3', label: 'Активность · постоянно', type: 'section',
       children: [
-        { id: 't_activity', label: 'Активность → Листики', type: 'trigger',
+        { id: 't_activity', label: 'Активность → Фантики', type: 'trigger',
           children: [
-            { id: 'l_msgpts',    label: 'Сообщение в чате',  type: 'points', detail: 'Отслеживается для еженедельного бонуса (листики не начисляются)' },
-            { id: 'l_reactgive', label: 'Поставить реакцию', type: 'points', detail: '+1 листик тому, кто поставил' },
-            { id: 'l_reactrecv', label: 'Получить реакцию',  type: 'points', detail: '+3 листика автору сообщения' },
-            { id: 'l_poll',      label: 'Голосование',       type: 'points', detail: '+5 листиков проголосовавшему' },
-            { id: 'c_rankup', label: 'Новый ранг', type: 'condition', detail: 'Порог листиков пересечён',
+            { id: 'l_msgpts',    label: 'Сообщение в чате',  type: 'points', detail: 'Отслеживается для еженедельного бонуса (фантики не начисляются)' },
+            { id: 'l_reactgive', label: 'Поставить реакцию', type: 'points', detail: '+1 фантик тому, кто поставил' },
+            { id: 'l_reactrecv', label: 'Получить реакцию',  type: 'points', detail: '+3 фантика автору сообщения' },
+            { id: 'l_poll',      label: 'Голосование',       type: 'points', detail: '+5 фантиков проголосовавшему' },
+            { id: 'c_rankup', label: 'Новый титул', type: 'condition', detail: 'Порог фантиков пересечён',
               children: [
                 { id: 'l_title',     label: 'Обновление титула', type: 'action',  detail: 'promoteChatMember + setChatAdministratorCustomTitle' },
-                { id: 'l_ranknotif', label: 'Уведомление в DM',  type: 'message', detail: 'Поздравляю! Ты достиг ранга [Ранг]!' },
+                { id: 'l_ranknotif', label: 'Уведомление в DM',  type: 'message', detail: 'Поздравляю! Ты достиг титула [Титул]!' },
               ],
             },
           ],
@@ -102,8 +102,8 @@ const TREE: Node = {
         { id: 'w1', label: 'Неделя 1', type: 'trigger', detail: 'Первая неделя в клубе',
           children: [
             { id: 'w1_dead',   label: 'Мертвяки',   type: 'condition', detail: 'Ни одного сообщения', children: [{ id: 'w1_dead_msg',   label: 'Бонус за первый шаг',    type: 'message', detail: '' }] },
-            { id: 'w1_silent', label: 'Молчуны',    type: 'condition', detail: 'Менее 3 сообщений',   children: [{ id: 'w1_silent_msg', label: 'Как получить листики',   type: 'message', detail: '' }] },
-            { id: 'w1_medium', label: 'Середняки',  type: 'condition', detail: '3–9 сообщений',       children: [{ id: 'w1_medium_msg', label: 'До следующего ранга',    type: 'message', detail: '' }] },
+            { id: 'w1_silent', label: 'Молчуны',    type: 'condition', detail: 'Менее 3 сообщений',   children: [{ id: 'w1_silent_msg', label: 'Как получить фантики',   type: 'message', detail: '' }] },
+            { id: 'w1_medium', label: 'Середняки',  type: 'condition', detail: '3–9 сообщений',       children: [{ id: 'w1_medium_msg', label: 'До следующего титула',    type: 'message', detail: '' }] },
             { id: 'w1_active', label: 'Активные',   type: 'condition', detail: '10+ сообщений',       children: [{ id: 'w1_active_msg', label: 'Бейдж топа',             type: 'message', detail: '' }] },
           ],
         },
@@ -117,7 +117,7 @@ const TREE: Node = {
         },
         { id: 'w3', label: 'Неделя 3', type: 'trigger', detail: 'Третья неделя',
           children: [
-            { id: 'w3_dead',   label: 'Мертвяки',  type: 'condition', detail: '', children: [{ id: 'w3_dead_msg',   label: 'Двойные листики',     type: 'message', detail: '' }] },
+            { id: 'w3_dead',   label: 'Мертвяки',  type: 'condition', detail: '', children: [{ id: 'w3_dead_msg',   label: 'Двойные фантики',     type: 'message', detail: '' }] },
             { id: 'w3_silent', label: 'Молчуны',   type: 'condition', detail: '', children: [{ id: 'w3_silent_msg', label: 'Напоминание о колесе', type: 'message', detail: '' }] },
             { id: 'w3_medium', label: 'Середняки', type: 'condition', detail: '', children: [{ id: 'w3_medium_msg', label: 'Итоги за 3 недели',    type: 'message', detail: '' }] },
             { id: 'w3_active', label: 'Активные',  type: 'condition', detail: '', children: [{ id: 'w3_active_msg', label: 'Топ таблицы лидеров', type: 'message', detail: '' }] },
@@ -172,7 +172,7 @@ const TYPE_STYLE: Record<NodeType, { bg: string; border: string; textColor: stri
   message:   { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'сообщение', badgeBg: 'rgba(10,132,255,0.12)',  badgeColor: '#0A84FF' },
   video:     { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'видео',     badgeBg: 'rgba(191,90,242,0.12)',  badgeColor: '#BF5AF2' },
   action:    { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'действие',  badgeBg: 'rgba(48,209,88,0.12)',   badgeColor: '#1C8A3C' },
-  points:    { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'листики',   badgeBg: 'rgba(48,209,88,0.12)',   badgeColor: '#1C8A3C' },
+  points:    { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'фантики',   badgeBg: 'rgba(48,209,88,0.12)',   badgeColor: '#1C8A3C' },
 }
 
 const EDITABLE_TYPES: NodeType[] = ['message', 'video', 'action']
@@ -512,7 +512,7 @@ export default function TreeClient() {
                   minHeight={140}
                 />
                 <p style={{ fontSize: 11.5, color: 'rgba(28,28,30,0.42)', marginTop: 6, letterSpacing: '-0.1px' }}>
-                  Используй [Имя], [N], [Ранг] как плейсхолдеры, бот подставит значения автоматически.
+                  Используй [Имя], [N], [Титул] как плейсхолдеры, бот подставит значения автоматически.
                 </p>
                 <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                   <button onClick={handleSave} disabled={saving}

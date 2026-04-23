@@ -61,7 +61,7 @@ export default function ProfileTab({ reloadKey }: { reloadKey?: number }) {
             Привет, {displayName || 'друг'}!
           </h2>
           <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
-            Ты ещё не в клубе AI Олимп. Чтобы открыть рулетку, ранги и фантики — вступай в клуб через бота.
+            Ты ещё не в клубе AI Олимп. Чтобы открыть рулетку, титулы и фантики — вступай в клуб через бота.
           </p>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function ProfileTab({ reloadKey }: { reloadKey?: number }) {
             Фантики
           </div>
           <div className="text-2xl font-bold" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
-            {m.points} 🍃
+            {m.points}
           </div>
         </div>
         <div className="rounded-2xl p-4" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.06)' }}>
@@ -132,7 +132,7 @@ export default function ProfileTab({ reloadKey }: { reloadKey?: number }) {
             {data.spins.map((s, i) => (
               <div key={i} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: 'rgba(10,132,255,0.06)', border: '1px solid rgba(10,132,255,0.12)' }}>
                 <div className="text-sm font-medium" style={{ color: '#1C1C1E' }}>{formatMonth(s.month)}</div>
-                <div className="text-sm font-semibold" style={{ color: '#0A84FF' }}>+{s.prize_leaves} 🍃</div>
+                <div className="text-sm font-semibold" style={{ color: '#0A84FF' }}>+{s.prize_leaves}</div>
               </div>
             ))}
           </div>

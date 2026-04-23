@@ -64,7 +64,7 @@ export async function checkInactiveMembers() {
       ADMIN_CHAT_ID,
       `⚠️ <b>${name}</b> (@${member.tg_username || member.tg_id}) молчит ${TRIGGER_CONFIG.INACTIVE_DAYS}+ дней\n` +
       `Последняя активность: ${lastSeen}\n` +
-      `Баллы: ${member.points} | Ранг: ${member.rank}`
+      `Баллы: ${member.points} | Титул: ${member.rank}`
     )
 
     await logEvent(member.id, member.tg_id, 'inactive_notified', { days: TRIGGER_CONFIG.INACTIVE_DAYS })

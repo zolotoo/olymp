@@ -48,10 +48,10 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
   }, {})
 
   const reasonLabels: Record<string, string> = {
-    message: 'За сообщения (+1 🍃)',
-    reaction_given: 'За реакцию (+1 🍃)',
-    reaction_received: 'Реакции на посты (+3 🍃)',
-    poll_vote: 'За голосование (+5 🍃)',
+    message: 'За сообщения (+1)',
+    reaction_given: 'За реакцию (+1)',
+    reaction_received: 'Реакции на посты (+3)',
+    poll_vote: 'За голосование (+5)',
     weekly_active_bonus: 'Бонус активности',
     subscription_renewal: 'Продление подписки',
   }
@@ -97,7 +97,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
             <div className="text-4xl font-bold" style={{ color: '#1D1D1F', letterSpacing: '-1px' }}>
               {member.points.toLocaleString()}
             </div>
-            <div className="text-sm mt-0.5" style={{ color: '#6E6E73' }}>листиков 🍃</div>
+            <div className="text-sm mt-0.5" style={{ color: '#6E6E73' }}>фантиков</div>
           </div>
         </div>
 
@@ -144,7 +144,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
 
         {/* Points breakdown */}
         <div className="rounded-2xl p-6" style={card}>
-          <h2 className="font-semibold mb-4" style={{ color: '#1D1D1F' }}>Откуда листики 🍃</h2>
+          <h2 className="font-semibold mb-4" style={{ color: '#1D1D1F' }}>Откуда фантики</h2>
           {Object.keys(pointsByReason).length === 0 ? (
             <p className="text-sm" style={{ color: '#AEAEB2' }}>Нет данных</p>
           ) : (

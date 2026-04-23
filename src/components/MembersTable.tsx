@@ -24,7 +24,7 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
       <table className="w-full text-sm">
         <thead>
           <tr style={{ borderBottom: '1px solid rgba(28,28,30,0.08)' }}>
-            {['Участник', 'Ранг', 'Листики', 'За неделю', 'Всего', 'Активность', 'Статус'].map((h, i) => (
+            {['Участник', 'Титул', 'Фантики', 'За неделю', 'Всего', 'Активность', 'Статус'].map((h, i) => (
               <th
                 key={h}
                 className={`pb-3 font-semibold text-xs${i >= 2 ? ' text-right' : ''}`}

@@ -26,11 +26,11 @@ export const WELCOME_FUNNEL = {
     // env: TELEGRAM_WELCOME_VIDEO_NOTE_ID
   },
   day1: {
-    desc: 'Про ранги Олимпа — как работает система',
+    desc: 'Про титулы Олимпа — как работает система',
     type: 'message' as const,
   },
   day2: {
-    desc: 'Про листики — как зарабатывать',
+    desc: 'Про фантики — как зарабатывать',
     type: 'message' as const,
   },
   day3: {
@@ -47,9 +47,9 @@ export const FORTUNE_WHEEL = {
   month1: {
     label: 'Приветственный',
     prizes: [
-      { label: '100 листиков',             weight: 30 },
-      { label: '200 листиков',             weight: 20 },
-      { label: '300 листиков',             weight: 10 },
+      { label: '100 фантиков',             weight: 30 },
+      { label: '200 фантиков',             weight: 20 },
+      { label: '300 фантиков',             weight: 10 },
       { label: 'Закрытый гайд / шаблон',   weight: 25 },
       { label: 'Доступ к секретному контенту', weight: 10 },
       { label: 'Скидка 50%',               weight: 5,  neverDrops: true },
@@ -58,9 +58,9 @@ export const FORTUNE_WHEEL = {
   month2: {
     label: 'Социальный',
     prizes: [
-      { label: '100 листиков',             weight: 25 },
-      { label: '200 листиков',             weight: 20 },
-      { label: '300 листиков',             weight: 10 },
+      { label: '100 фантиков',             weight: 25 },
+      { label: '200 фантиков',             weight: 20 },
+      { label: '300 фантиков',             weight: 10 },
       { label: 'Место в групповом эфире',  weight: 20 },
       { label: 'Упоминание в stories Сергея', weight: 15 },
       { label: '1 вакансия на биржу Сергея',  weight: 5 },
@@ -70,9 +70,9 @@ export const FORTUNE_WHEEL = {
   month3: {
     label: 'Личный',
     prizes: [
-      { label: '200 листиков',             weight: 25 },
-      { label: '300 листиков',             weight: 20 },
-      { label: '500 листиков',             weight: 10 },
+      { label: '200 фантиков',             weight: 25 },
+      { label: '300 фантиков',             weight: 20 },
+      { label: '500 фантиков',             weight: 10 },
       { label: 'Консультация 15–20 мин',   weight: 15 },
       { label: 'Совместный пост в Instagram', weight: 20 },
       { label: 'Скидка 50%',               weight: 10, neverDrops: true },
@@ -98,26 +98,26 @@ export const ACTIVITY_SEGMENTS = {
 export const WEEKLY_MESSAGES: Record<1|2|3|4, Record<keyof typeof ACTIVITY_SEGMENTS, string>> = {
   1: {
     dead:   'Ни одного сообщения — всё ок? Дарим бонус 🎁',
-    silent: 'Вот как получить первые листики 🍃',
-    medium: 'До следующего ранга осталось X листиков',
+    silent: 'Вот как получить первые фантики',
+    medium: 'До следующего титула осталось X фантиков',
     active: 'Ты в топе — вот твой бейдж 🏆',
   },
   2: {
     dead:   'Вопрос про ожидания + дайджест',
-    silent: 'Напоминание про листики + дайджест',
+    silent: 'Напоминание про фантики + дайджест',
     medium: 'Тизер следующей недели + дайджест',
     active: 'Закрытый контент / ранний доступ',
   },
   3: {
-    dead:   'Ещё не поздно — двойные листики прямо сейчас 🔥',
+    dead:   'Ещё не поздно — двойные фантики прямо сейчас',
     silent: 'Напоминание о колесе месяца 🎡',
-    medium: 'Итоги листиков за 3 недели',
+    medium: 'Итоги фантиков за 3 недели',
     active: 'Топ таблицы лидеров + поздравление',
   },
   4: {
     dead:   'Подписка через 7 дней. Если отпишешься — 6 месяцев нельзя вернуться',
     silent: 'Предупреждение о продлении + расписание следующего месяца',
-    medium: 'Итоги месяца + ранг + что ждёт дальше',
+    medium: 'Итоги месяца + титул + что ждёт дальше',
     active: 'Личная благодарность + анонс следующего месяца',
   },
 }

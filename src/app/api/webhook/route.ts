@@ -254,7 +254,7 @@ async function handleMessage(message: TgMessage) {
         user.id,
         `👋 <b>${user.first_name || 'Привет'}!</b>\n\n` +
         `Ты в AI Олимп уже <b>${days} дней</b>\n` +
-        `Ранг: <b>${rankConfig.emoji} ${rankConfig.label}</b> | Листики: <b>${member.points} 🍃</b>\n\n` +
+        `Титул: <b>${rankConfig.emoji} ${rankConfig.label}</b> | Фантики: <b>${member.points}</b>\n\n` +
         `Пиши в клубный чат, там вся жизнь 🔥`
       )
     } else {
@@ -300,7 +300,7 @@ async function handleMessage(message: TgMessage) {
     )
   }
 
-  // Листики за сообщения отключены (POINTS.MESSAGE = 0)
+  // Фантики за сообщения отключены (POINTS.MESSAGE = 0)
   // Обновляем только last_active
   await supabaseAdmin
     .from('members')
@@ -344,7 +344,7 @@ async function handleReaction(reaction: TgReaction) {
 
   const reactorId = reaction.user.id
 
-  // 1. REACTION_GIVEN листики to the person who reacted
+  // 1. REACTION_GIVEN фантики to the person who reacted
   const { data: actor } = await supabaseAdmin
     .from('members').select('id, points, rank').eq('tg_id', reactorId).maybeSingle()
 
@@ -362,7 +362,7 @@ async function handleReaction(reaction: TgReaction) {
     if (newRank !== actor.rank) await applyRankTitle(reactorId, newRank)
   }
 
-  // 2. REACTION_RECEIVED листики to the original message author
+  // 2. REACTION_RECEIVED фантики to the original message author
   if (reaction.chat?.id && reaction.message_id) {
     const { data: msg } = await supabaseAdmin
       .from('tg_messages')
@@ -483,7 +483,7 @@ async function sendWelcome(user: TgUser): Promise<boolean> {
         `Добро пожаловать в AI Олимп, рад видеть тебя здесь.\n\n` +
         `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
         `Пиши в чат, задавай вопросы, это самый важный шаг.\n\n` +
-        `За активность ты получаешь 🍃 листики и растёшь в ранге. Удачи!`
+        `За активность ты получаешь фантики и растёшь в титуле. Удачи!`
 
     const result = await sendMessage(user.id, text)
     if (!result?.ok) return false
@@ -502,7 +502,7 @@ async function sendSalesPitch(user: TgUser) {
     `👋 <b>Привет, ${user.first_name || 'друг'}!</b>\n\n` +
     `<b>AI Олимп</b>, закрытый клуб тех, кто строит будущее с AI.\n\n` +
     `🔥 Разборы инструментов и кейсов\n` +
-    `📈 Геймификация: листики 🍃, ранги, рейтинги\n` +
+    `📈 Геймификация: фантики, титулы, рейтинги\n` +
     `🤝 Сильное сообщество практиков\n` +
     `🎥 Личное приветствие от основателя\n\n` +
     `<b>Оформить подписку:</b>\n${tributeLink}`

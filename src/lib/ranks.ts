@@ -1,6 +1,6 @@
 import type { MemberRank } from './types'
 
-// Вселенная Олимпа — ранги
+// Вселенная Олимпа — титулы
 export const RANK_CONFIG: Record<MemberRank, { label: string; emoji: string; minPoints: number; color: string }> = {
   newcomer:  { label: 'Адепт',          emoji: '', minPoints: 0,   color: '#8E8E93' },
   member:    { label: 'Герой',          emoji: '', minPoints: 50,  color: '#0A84FF' },
@@ -22,7 +22,7 @@ export function getRank(points: number): MemberRank {
 }
 
 export const POINTS = {
-  MESSAGE: 0,  // листики за сообщения отключены
+  MESSAGE: 0,  // фантики за сообщения отключены
   REACTION_GIVEN: 1,
   REACTION_RECEIVED: 3,
   POLL_VOTE: 5,

@@ -113,7 +113,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
         </p>
         {prevPrize != null && !canSpin && !result && (
           <p className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.45)' }}>
-            В этом месяце ты выиграл {prevPrize} 🍃
+            В этом месяце ты выиграл {prevPrize}
           </p>
         )}
       </div>
@@ -275,7 +275,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
             <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)' }}>Ты выиграл приз</p>
 
             <div className="rounded-2xl px-5 py-5 mb-4" style={{ background: `linear-gradient(135deg, ${result.color}1A 0%, ${result.color}0A 100%)`, border: `1px solid ${result.color}33` }}>
-              <div style={{ fontSize: 36, marginBottom: 4 }}>🍃</div>
+              <div style={{ fontSize: 36, marginBottom: 4 }}></div>
               <div className="text-2xl font-bold" style={{ color: result.color, letterSpacing: '-0.5px' }}>
                 {result.leaves} фантиков
               </div>

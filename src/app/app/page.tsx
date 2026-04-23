@@ -49,7 +49,7 @@ function Shell() {
             Только для членов клуба
           </h2>
           <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
-            Чтобы крутить рулетку, копить фантики и расти в рангах — вступай в AI Олимп.
+            Чтобы крутить рулетку, копить фантики и расти в титулах — вступай в AI Олимп.
           </p>
           <button
             onClick={() => window.Telegram?.WebApp?.close()}
