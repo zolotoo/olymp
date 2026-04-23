@@ -1,92 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { SEGMENTS, LEAVES_EXPLANATION, type Segment } from '@/lib/wheel-prizes'
 
-// ─── Segments ─────────────────────────────────────────────────────────────────
-// neverDrop: true — сектор виден на колесе, но не выпадает в этом месяце
-interface Segment {
-  label: string
-  emoji: string
-  color: string
-  colorDeep: string
-  prize: string
-  explanation: string
-  leaves?: number       // если это листики
-  neverDrop?: boolean   // «подкручено» — не выпадает
-  weight?: number       // вес для случайного выбора (только у eligible)
-}
+// Admin preview of the wheel: client-side only (localStorage), no API.
+// The production wheel lives in /app (Mini App) and uses the server.
 
-const SEGMENTS: Segment[] = [
-  {
-    label: '10 🍃',
-    emoji: '🍃',
-    color: '#0A84FF', colorDeep: '#0066CC',
-    prize: '10 листиков',
-    leaves: 10,
-    weight: 40,
-    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
-  },
-  {
-    label: 'Гайд',
-    emoji: '📘',
-    color: '#BF5AF2', colorDeep: '#8E3BC9',
-    prize: 'Закрытый гайд',
-    neverDrop: true,
-    explanation: 'Закрытый авторский гайд по AI-инструментам. Появится в будущих месяцах.',
-  },
-  {
-    label: '20 🍃',
-    emoji: '🍃',
-    color: '#30D158', colorDeep: '#1FA544',
-    prize: '20 листиков',
-    leaves: 20,
-    weight: 35,
-    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
-  },
-  {
-    label: 'Секрет',
-    emoji: '🔒',
-    color: '#FF375F', colorDeep: '#C82747',
-    prize: 'Секретный контент',
-    neverDrop: true,
-    explanation: 'Доступ к закрытым материалам клуба. Появится в будущих месяцах.',
-  },
-  {
-    label: '50 🍃',
-    emoji: '🍃',
-    color: '#FF9500', colorDeep: '#CC7600',
-    prize: '50 листиков',
-    leaves: 50,
-    weight: 20,
-    explanation: 'Листики, внутренняя валюта AI Олимпа. Большой выигрыш, ты близко к новому рангу!',
-  },
-  {
-    label: 'VeoSee',
-    emoji: '🎁',
-    color: '#40C8E0', colorDeep: '#2691A3',
-    prize: 'Промокод VeoSeeBot',
-    neverDrop: true,
-    explanation: 'Эксклюзивный промокод от наших партнёров VeoSeeBot, доступ к дополнительным AI-инструментам. Появится в будущих месяцах.',
-  },
-  {
-    label: '15 🍃',
-    emoji: '🍃',
-    color: '#5E5CE6', colorDeep: '#3C3AB8',
-    prize: '15 листиков',
-    leaves: 15,
-    weight: 5,
-    explanation: 'Листики, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают бонусы: консультации от Сергея, групповые созвоны, секретные уроки.',
-  },
-  {
-    label: 'Скидка',
-    emoji: '🎟️',
-    color: '#FFD60A', colorDeep: '#CC9A00',
-    prize: 'Скидка 50% на месяц',
-    neverDrop: true,
-    explanation: 'Скидка 50% на продление подписки в AI Олимп. Появится в будущих месяцах.',
-  },
-]
-
-// Только eligible сектора (с весом, не подкручены)
 const ELIGIBLE = SEGMENTS
   .map((s, i) => ({ s, i }))
   .filter(({ s }) => !s.neverDrop && s.weight !== undefined)
@@ -101,12 +19,6 @@ function pickEligibleIndex(): number {
   }
   return ELIGIBLE[0].i
 }
-
-const LEAVES_EXPLANATION =
-  'Листики 🍃, внутренняя валюта AI Олимпа. Идут в зачёт ранга и дают разные бонусы: ' +
-  'консультации от Сергея, групповые созвоны, секретные уроки. ' +
-  'Зарабатывай их за реакции, голосования и еженедельный бонус. ' +
-  'Чем больше листиков, тем выше ранг: Адепт → Герой → Чемпион Олимпа → Полубог → Бог.'
 
 // 1 попытка в месяц — localStorage
 function getMonthKey() {
