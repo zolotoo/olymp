@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export const metadata = { title: 'Аудитория бота · AI Олимп' }
@@ -97,14 +98,20 @@ export default async function AudiencePage() {
           </thead>
           <tbody>
             {data.users.map(u => (
-              <tr key={u.tg_id} style={{ borderTop: '1px solid rgba(28,28,30,0.06)' }}>
+              <tr
+                key={u.tg_id}
+                style={{ borderTop: '1px solid rgba(28,28,30,0.06)', cursor: 'pointer' }}
+                className="hover:bg-black/[0.02] transition-colors"
+              >
                 <Td>
-                  <div style={{ fontWeight: 500, color: '#1C1C1E' }}>
-                    {u.tg_first_name || u.tg_username || `id:${u.tg_id}`}
-                  </div>
-                  {u.tg_username && (
-                    <div style={{ fontSize: 12, color: 'rgba(28,28,30,0.45)' }}>@{u.tg_username}</div>
-                  )}
+                  <Link href={`/audience/${u.tg_id}`} className="block">
+                    <div style={{ fontWeight: 500, color: '#1C1C1E' }}>
+                      {u.tg_first_name || u.tg_username || `id:${u.tg_id}`}
+                    </div>
+                    {u.tg_username && (
+                      <div style={{ fontSize: 12, color: 'rgba(28,28,30,0.45)' }}>@{u.tg_username}</div>
+                    )}
+                  </Link>
                 </Td>
                 <Td>
                   {u.is_channel_member === true ? (

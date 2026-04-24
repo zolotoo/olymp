@@ -26,6 +26,9 @@ export async function POST(req: NextRequest) {
     if (body.chat_join_request) await handleJoinRequest(body.chat_join_request)
     if (body.chat_member) await handleChatMember(body.chat_member)
     if (body.message) await handleMessage(body.message)
+    if (body.edited_message) await storeIncomingMessage(body.edited_message as TgMessage, true)
+    if (body.channel_post) await storeIncomingMessage(body.channel_post as TgMessage, false)
+    if (body.edited_channel_post) await storeIncomingMessage(body.edited_channel_post as TgMessage, true)
     if (body.message_reaction) await handleReaction(body.message_reaction)
     if (body.poll_answer) await handlePollAnswer(body.poll_answer)
     if (body.message?.new_chat_members) await handleNewGroupMembers(body.message)
@@ -244,6 +247,10 @@ async function handleMessage(message: TgMessage) {
   const user = message.from
   if (!user || user.is_bot) return
 
+  // Persist full text + metadata for every incoming message (any chat, any user).
+  // Must run before early-returns below so we never lose a record.
+  await storeIncomingMessage(message, false)
+
   // DEBUG: log incoming video notes so we can grab file_id
   if ((message as TgMessage & { video_note?: { file_id: string; duration?: number } }).video_note) {
     const vn = (message as TgMessage & { video_note?: { file_id: string; duration?: number } }).video_note!
@@ -327,13 +334,7 @@ async function handleMessage(message: TgMessage) {
 
   if (!member) return
 
-  // Store message for reaction tracking
-  if (message.message_id && message.chat.id) {
-    await supabaseAdmin.from('tg_messages').upsert(
-      { message_id: message.message_id, chat_id: message.chat.id, author_tg_id: user.id },
-      { onConflict: 'message_id,chat_id' }
-    )
-  }
+  // (tg_messages uprise happened at top via storeIncomingMessage)
 
   // Фантики за сообщения отключены (POINTS.MESSAGE = 0)
   // Обновляем только last_active
@@ -367,45 +368,116 @@ async function handleMessage(message: TgMessage) {
     })
   }
 
-  if (message.text && message.text.length > 30) {
+  if (message.text) {
     addMemory(String(user.id), message.text)
   }
 }
 
 // ─── Track reactions ──────────────────────────────────────────────────────────
+// Telegram присылает и постановку, и снятие. Мы логируем каждое событие:
+// diff(old vs new) → rows 'added' / 'removed' в reactions_log.
 async function handleReaction(reaction: TgReaction) {
   if (!reaction.user?.id) return
-  if (!reaction.new_reaction?.length) return // skip removal
-
   const reactorId = reaction.user.id
+  if (!reaction.chat?.id || !reaction.message_id) return
 
-  // Фантики за реакцию на чужое сообщение больше не выдаются (POINTS.REACTION_GIVEN = 0).
-  // Титулы теперь по месяцам — rank здесь не пересчитывается.
+  const oldR = reaction.old_reaction ?? []
+  const newR = reaction.new_reaction ?? []
+  const keyOf = (r: TgReactionType) =>
+    r.type === 'emoji' ? `e:${r.emoji}` :
+    r.type === 'custom_emoji' ? `c:${r.custom_emoji_id}` :
+    `p:paid`
+  const oldKeys = new Set(oldR.map(keyOf))
+  const newKeys = new Set(newR.map(keyOf))
+  const added = newR.filter((r) => !oldKeys.has(keyOf(r)))
+  const removed = oldR.filter((r) => !newKeys.has(keyOf(r)))
 
-  // REACTION_RECEIVED фантики to the original message author
-  if (reaction.chat?.id && reaction.message_id) {
-    const { data: msg } = await supabaseAdmin
-      .from('tg_messages')
-      .select('author_tg_id')
-      .eq('message_id', reaction.message_id)
-      .eq('chat_id', reaction.chat.id)
-      .maybeSingle()
+  // Определяем автора исходного сообщения (если знаем)
+  const { data: msg } = await supabaseAdmin
+    .from('tg_messages')
+    .select('author_tg_id')
+    .eq('message_id', reaction.message_id)
+    .eq('chat_id', reaction.chat.id)
+    .maybeSingle()
+  const authorTgId: number | null = msg?.author_tg_id ?? null
 
-    if (msg && msg.author_tg_id !== reactorId) {
-      const { data: author } = await supabaseAdmin
-        .from('members').select('id, points').eq('tg_id', msg.author_tg_id).maybeSingle()
+  // Логируем каждое изменение
+  const rows: Array<{
+    message_id: number
+    chat_id: number
+    reactor_tg_id: number
+    author_tg_id: number | null
+    emoji: string | null
+    emoji_type: string
+    action: 'added' | 'removed'
+  }> = []
+  for (const r of added) {
+    rows.push({
+      message_id: reaction.message_id, chat_id: reaction.chat.id,
+      reactor_tg_id: reactorId, author_tg_id: authorTgId,
+      emoji: r.emoji ?? r.custom_emoji_id ?? null, emoji_type: r.type,
+      action: 'added',
+    })
+  }
+  for (const r of removed) {
+    rows.push({
+      message_id: reaction.message_id, chat_id: reaction.chat.id,
+      reactor_tg_id: reactorId, author_tg_id: authorTgId,
+      emoji: r.emoji ?? r.custom_emoji_id ?? null, emoji_type: r.type,
+      action: 'removed',
+    })
+  }
+  if (rows.length) {
+    try {
+      await supabaseAdmin.from('reactions_log').insert(rows)
+    } catch (e) {
+      console.error('reactions_log insert failed:', e)
+    }
+  }
 
-      if (author) {
-        const newPoints = author.points + POINTS.REACTION_RECEIVED
-        await supabaseAdmin
-          .from('members')
-          .update({ points: newPoints })
-          .eq('id', author.id)
-        await supabaseAdmin.from('points_log').insert({
-          member_id: author.id, tg_id: msg.author_tg_id,
-          points: POINTS.REACTION_RECEIVED, reason: 'reaction_received',
-        })
-      }
+  // Трек в bot_events — чтобы реакции светились в аудитории
+  if (added.length || removed.length) {
+    await trackBotInteraction({
+      user: reaction.user,
+      eventType: added.length ? 'reaction:added' : 'reaction:removed',
+      chatId: reaction.chat.id,
+      payload: {
+        message_id: reaction.message_id,
+        added: added.map((r) => r.emoji ?? r.custom_emoji_id),
+        removed: removed.map((r) => r.emoji ?? r.custom_emoji_id),
+        author_tg_id: authorTgId,
+      },
+    })
+  }
+
+  // Engagement-прокси: если реакция поставлена на исходящую рассылку боту,
+  // помечаем доставку как "прочитано".
+  if (added.length && authorTgId === null) {
+    try {
+      await supabaseAdmin
+        .from('message_deliveries')
+        .update({ engaged_at: new Date().toISOString(), engagement_kind: 'reaction' })
+        .eq('tg_id', reactorId)
+        .is('engaged_at', null)
+        .gte('sent_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    } catch { /* best-effort */ }
+  }
+
+  // REACTION_RECEIVED фантики автору — только за новые (added) реакции от других
+  if (added.length && authorTgId && authorTgId !== reactorId) {
+    const { data: author } = await supabaseAdmin
+      .from('members').select('id, points').eq('tg_id', authorTgId).maybeSingle()
+
+    if (author) {
+      const delta = POINTS.REACTION_RECEIVED * added.length
+      await supabaseAdmin
+        .from('members')
+        .update({ points: author.points + delta })
+        .eq('id', author.id)
+      await supabaseAdmin.from('points_log').insert({
+        member_id: author.id, tg_id: authorTgId,
+        points: delta, reason: 'reaction_received',
+      })
     }
   }
 }
@@ -569,8 +641,87 @@ function delay(ms: number) {
 
 // ─── Minimal Telegram types ───────────────────────────────────────────────────
 interface TgUser { id: number; is_bot?: boolean; first_name?: string; last_name?: string; username?: string }
-interface TgChat { id: number; type?: string }
+interface TgChat { id: number; type?: string; title?: string }
 interface TgChatMemberUpdate { chat: TgChat; new_chat_member: { user: TgUser; status: string } }
-interface TgMessage { message_id?: number; from?: TgUser; chat: TgChat; text?: string; new_chat_members?: TgUser[]; left_chat_member?: TgUser }
-interface TgReaction { user?: TgUser; chat?: TgChat; message_id?: number; new_reaction?: unknown[] }
+interface TgMessage {
+  message_id?: number
+  from?: TgUser
+  sender_chat?: TgChat
+  chat: TgChat
+  date?: number
+  edit_date?: number
+  text?: string
+  caption?: string
+  reply_to_message?: { message_id: number }
+  new_chat_members?: TgUser[]
+  left_chat_member?: TgUser
+  photo?: unknown[]
+  video?: unknown
+  video_note?: unknown
+  voice?: unknown
+  audio?: unknown
+  document?: unknown
+  sticker?: unknown
+  animation?: unknown
+}
+interface TgReactionType { type: 'emoji' | 'custom_emoji' | 'paid'; emoji?: string; custom_emoji_id?: string }
+interface TgReaction {
+  user?: TgUser
+  actor_chat?: TgChat
+  chat?: TgChat
+  message_id?: number
+  old_reaction?: TgReactionType[]
+  new_reaction?: TgReactionType[]
+}
 interface TgPollAnswer { poll_id: string; user?: TgUser; option_ids: number[] }
+
+// Media classifier for tg_messages.media_kind
+function classifyMedia(m: TgMessage): { has: boolean; kind: string | null } {
+  if (m.photo) return { has: true, kind: 'photo' }
+  if (m.video) return { has: true, kind: 'video' }
+  if (m.video_note) return { has: true, kind: 'video_note' }
+  if (m.voice) return { has: true, kind: 'voice' }
+  if (m.audio) return { has: true, kind: 'audio' }
+  if (m.document) return { has: true, kind: 'document' }
+  if (m.sticker) return { has: true, kind: 'sticker' }
+  if (m.animation) return { has: true, kind: 'animation' }
+  return { has: false, kind: null }
+}
+
+// Persist any incoming chat message (original or edited) to tg_messages.
+// Called for message / edited_message / channel_post / edited_channel_post.
+async function storeIncomingMessage(msg: TgMessage, isEdit: boolean): Promise<void> {
+  if (!msg.message_id || !msg.chat?.id) return
+  // Author: prefer from.id; for channel posts Telegram provides sender_chat instead.
+  const authorId = msg.from?.id ?? msg.sender_chat?.id
+  if (!authorId) return
+  if (msg.from?.is_bot) return
+
+  const text = msg.text ?? msg.caption ?? null
+  const media = classifyMedia(msg)
+  const sentAt = msg.date ? new Date(msg.date * 1000).toISOString() : new Date().toISOString()
+  const editedAt = isEdit
+    ? (msg.edit_date ? new Date(msg.edit_date * 1000).toISOString() : new Date().toISOString())
+    : null
+
+  try {
+    await supabaseAdmin.from('tg_messages').upsert(
+      {
+        message_id: msg.message_id,
+        chat_id: msg.chat.id,
+        author_tg_id: authorId,
+        text,
+        chat_type: msg.chat.type ?? null,
+        chat_title: msg.chat.title ?? null,
+        reply_to_message_id: msg.reply_to_message?.message_id ?? null,
+        has_media: media.has,
+        media_kind: media.kind,
+        sent_at: sentAt,
+        edited_at: editedAt,
+      },
+      { onConflict: 'message_id,chat_id' },
+    )
+  } catch (e) {
+    console.error('storeIncomingMessage failed:', e)
+  }
+}
