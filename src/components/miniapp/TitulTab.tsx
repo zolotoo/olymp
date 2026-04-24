@@ -20,8 +20,18 @@ interface ProfileResponse {
     rank: MemberRank
     points: number
     subscriptionCount: number
+    joined_at?: string
   }
   titles?: TitleInfo[]
+}
+
+function daysWord(n: number) {
+  const mod100 = n % 100
+  const mod10 = n % 10
+  if (mod100 >= 11 && mod100 <= 14) return 'дней'
+  if (mod10 === 1) return 'день'
+  if (mod10 >= 2 && mod10 <= 4) return 'дня'
+  return 'дней'
 }
 
 export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
@@ -40,7 +50,8 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
   }, [ready, isTelegram, initData, reloadKey])
 
   const points = data?.member?.points ?? 0
-  const months = data?.member?.subscriptionCount ?? 1
+  const subCount = data?.member?.subscriptionCount ?? 1
+  const joinedAt = data?.member?.joined_at ? new Date(data.member.joined_at) : null
   const currentRank: MemberRank = data?.member?.rank ?? 'newcomer'
   const currentIdx = RANK_ORDER.indexOf(currentRank)
   const titles = data?.titles ?? []
@@ -49,7 +60,21 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
 
   const cur = byRank[currentRank]
   const next = RANK_ORDER[currentIdx + 1] ? byRank[RANK_ORDER[currentIdx + 1]] : null
-  const monthsLeft = next ? Math.max(0, next.month - months) : 0
+  const laterTitles = RANK_ORDER.slice(currentIdx + 2).map(r => byRank[r]).filter(Boolean)
+
+  // Время до следующего титула отсчитывается от joined_at + subscription_count * 30 дней
+  // (очередное продление Tribute → +1 к subscription_count → новый титул).
+  const nextRenewal = joinedAt ? new Date(joinedAt.getTime() + subCount * 30 * 86400000) : null
+  const daysLeft = nextRenewal
+    ? Math.max(0, Math.ceil((nextRenewal.getTime() - Date.now()) / 86400000))
+    : null
+  const timeUntilNext = next
+    ? daysLeft != null
+      ? daysLeft === 0
+        ? 'сегодня'
+        : `через ${daysLeft} ${daysWord(daysLeft)}`
+      : `через ${Math.max(0, next.month - subCount)} мес.`
+    : ''
 
   const MILESTONES = RANK_ORDER.map((rank, i) => {
     const cfg = byRank[rank] ?? { label: rank, color: '#8E8E93', month: i + 1, bonusPoints: 0, perks: [], rank }
@@ -90,7 +115,7 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
           {next
-            ? `Следующий титул — ${next.label}, через ${monthsLeft} ${monthsLeft === 1 ? 'месяц' : monthsLeft < 5 ? 'месяца' : 'месяцев'}`
+            ? `Следующий титул — ${next.label}, ${timeUntilNext}`
             : 'Ты достиг высшего титула'}
         </p>
       </div>
@@ -228,7 +253,7 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
       {next && (
         <div className="rounded-2xl p-5 mt-3" style={{ background: `linear-gradient(135deg, ${next.color}10 0%, ${next.color}04 100%)`, border: `1px solid ${next.color}28` }}>
           <div className="text-xs font-semibold uppercase mb-2" style={{ color: next.color, letterSpacing: '0.6px' }}>
-            Следующий титул · через {monthsLeft} {monthsLeft === 1 ? 'месяц' : monthsLeft < 5 ? 'месяца' : 'месяцев'}
+            Следующий титул · {timeUntilNext}
           </div>
           <div className="text-base font-bold mb-2" style={{ color: '#1C1C1E', letterSpacing: '-0.3px' }}>
             {next.label}
@@ -246,6 +271,45 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
         </div>
       )}
 
+      {/* Future titles — collapsed */}
+      {laterTitles.map((t) => {
+        const isOpen = selected === t.rank
+        return (
+          <div
+            key={t.rank}
+            className="rounded-2xl mt-2 overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.66)', border: `1px solid ${t.color}20` }}
+          >
+            <button
+              onClick={() => setSelected(isOpen ? null : t.rank)}
+              className="w-full flex items-center justify-between px-5 py-3 text-left"
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="flex items-center gap-3">
+                <div style={{ width: 8, height: 8, borderRadius: 4, background: t.color }} />
+                <span className="text-sm font-semibold" style={{ color: '#1C1C1E', letterSpacing: '-0.3px' }}>
+                  {t.label}
+                </span>
+                <span className="text-xs" style={{ color: 'rgba(28,28,30,0.45)' }}>
+                  {t.month}-й месяц
+                </span>
+              </div>
+              <span style={{ fontSize: 11, color: 'rgba(28,28,30,0.35)' }}>{isOpen ? '▲' : '▼'}</span>
+            </button>
+            {isOpen && t.perks.length > 0 && (
+              <ul className="text-sm px-5 pb-4" style={{ color: 'rgba(28,28,30,0.72)', lineHeight: 1.55 }}>
+                {t.perks.map((perk, i) => (
+                  <li key={i} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                    <span style={{ color: t.color, fontWeight: 700 }}>+</span>
+                    <span>{perk}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )
+      })}
+
       <div className="mt-4 rounded-2xl p-4" style={{ background: 'rgba(10,132,255,0.06)', border: '1px solid rgba(10,132,255,0.14)' }}>
         <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#0A84FF', letterSpacing: '0.6px' }}>
           Как получить фантики
@@ -254,11 +318,34 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
           <li>+3 за реакцию на твоё сообщение</li>
           <li>+5 за участие в опросе</li>
           <li>+10 за каждое продление подписки</li>
-          <li>Колесо — фантики выпадают случайно</li>
+          <li>Также фантики могут выпасть в Колесе удачи</li>
         </ul>
         <div className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.55)' }}>
           У тебя сейчас <b style={{ color: '#1C1C1E' }}>{points}</b> фантиков.
         </div>
+      </div>
+
+      <div className="mt-3 rounded-2xl p-4" style={{ background: 'rgba(191,90,242,0.06)', border: '1px solid rgba(191,90,242,0.16)' }}>
+        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#BF5AF2', letterSpacing: '0.6px' }}>
+          Как работает Колесо удачи
+        </div>
+        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
+          <li>Первая попытка — через неделю после вступления</li>
+          <li>Новая попытка — каждое продление подписки (вместе с новым титулом)</li>
+          <li>Призы: фантики, гайды, промокоды, разбор Instagram и созвон с Сергеем</li>
+        </ul>
+      </div>
+
+      <div className="mt-3 rounded-2xl p-4" style={{ background: 'rgba(255,149,0,0.06)', border: '1px solid rgba(255,149,0,0.16)' }}>
+        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#FF9500', letterSpacing: '0.6px' }}>
+          Что купить в Киоске
+        </div>
+        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
+          <li>Доп. попытку в Колесе</li>
+          <li>Промокоды от партнёров</li>
+          <li>Личный разбор и консультацию с Сергеем</li>
+          <li>Закрытые гайды и эксклюзивный контент</li>
+        </ul>
       </div>
     </div>
   )

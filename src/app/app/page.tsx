@@ -90,7 +90,7 @@ function Shell() {
         {(['titul', 'leaderboard', 'kiosk', 'wheel', 'profile'] as Tab[]).map(t => {
           const active = tab === t
           const label = t === 'wheel' ? 'Колесо' : t === 'titul' ? 'Титул' : t === 'leaderboard' ? 'Топ' : t === 'kiosk' ? 'Киоск' : 'Профиль'
-          const emoji = t === 'wheel' ? '🎡' : t === 'titul' ? '🏔' : t === 'leaderboard' ? '🏆' : t === 'kiosk' ? '🛍' : '👤'
+          const emoji = t === 'wheel' ? '🎁' : t === 'titul' ? '🏔' : t === 'leaderboard' ? '🏆' : t === 'kiosk' ? '🛍' : '👤'
           return (
             <button
               key={t}

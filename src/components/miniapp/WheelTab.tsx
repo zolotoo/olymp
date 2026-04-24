@@ -224,12 +224,14 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
               const end = (i + 1) * SEG_ANGLE
               const mid = start + SEG_ANGLE / 2
               const textPos = polar(mid, R * 0.62)
+              const len = s.label.length
+              const fontSize = len > 10 ? 12 : len > 8 ? 14 : 17
               return (
                 <g key={i}>
                   <path d={arcPath(start, end)} fill={`url(#grad-${i})`} stroke="rgba(255,255,255,0.45)" strokeWidth="2" />
                   <text
                     x={textPos.x} y={textPos.y}
-                    fill="#FFFFFF" fontSize="17" fontWeight="800"
+                    fill="#FFFFFF" fontSize={fontSize} fontWeight="800"
                     textAnchor="middle" dominantBaseline="middle"
                     transform={`rotate(${mid}, ${textPos.x}, ${textPos.y})`}
                     style={{ letterSpacing: '-0.5px', userSelect: 'none' }}
