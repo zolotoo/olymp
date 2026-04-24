@@ -59,6 +59,7 @@ async function onNewSubscription(payload: TributePayload) {
       subscription_count: 1,
       spins_available: 0,
       first_week_spin_granted: false,
+      expires_at: payload.expires_at || null,
     })
   } else {
     // Returning user (active or churned). Start a fresh cycle:
@@ -71,6 +72,7 @@ async function onNewSubscription(payload: TributePayload) {
         subscription_count: 1,
         spins_available: 0,
         first_week_spin_granted: false,
+        expires_at: payload.expires_at || null,
       })
       .eq('tg_id', tgId)
 
@@ -168,6 +170,7 @@ async function onRenewed(payload: TributePayload) {
       status: 'active',
       spins_available: newSpins,
       subscription_count: newCount,
+      expires_at: payload.expires_at || null,
     })
     .eq('tg_id', tgId)
 

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const { data: member } = await supabaseAdmin
     .from('members')
-    .select('id, tg_id, tg_username, tg_first_name, rank, points, joined_at, status, photo_url, subscription_count')
+    .select('id, tg_id, tg_username, tg_first_name, rank, points, joined_at, status, photo_url, subscription_count, expires_at')
     .eq('tg_id', tgId)
     .maybeSingle()
 
@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
       joined_at: member.joined_at,
       status: member.status,
       subscriptionCount: member.subscription_count ?? 1,
+      expires_at: member.expires_at ?? null,
     },
     titles: titleList,
     leaderboard: { position, total: total ?? 0 },

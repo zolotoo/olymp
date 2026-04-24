@@ -21,6 +21,7 @@ interface ProfileResponse {
     points: number
     subscriptionCount: number
     joined_at?: string
+    expires_at?: string | null
   }
   titles?: TitleInfo[]
 }
@@ -52,6 +53,7 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
   const points = data?.member?.points ?? 0
   const subCount = data?.member?.subscriptionCount ?? 1
   const joinedAt = data?.member?.joined_at ? new Date(data.member.joined_at) : null
+  const expiresAt = data?.member?.expires_at ? new Date(data.member.expires_at) : null
   const currentRank: MemberRank = data?.member?.rank ?? 'newcomer'
   const currentIdx = RANK_ORDER.indexOf(currentRank)
   const titles = data?.titles ?? []
@@ -62,18 +64,19 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
   const next = RANK_ORDER[currentIdx + 1] ? byRank[RANK_ORDER[currentIdx + 1]] : null
   const laterTitles = RANK_ORDER.slice(currentIdx + 2).map(r => byRank[r]).filter(Boolean)
 
-  // Время до следующего титула = дни до ближайшей 30-дневной отсечки от joined_at.
-  // Считаем по модулю 30, чтобы корректно работать и когда subscription_count был
-  // забэкфилен (миграция 005 выставила =1 всем активным — и joined_at может быть
-  // уже старше, чем subCount × 30 дней).
-  const daysLeft = joinedAt
-    ? (() => {
-        const daysSince = (Date.now() - joinedAt.getTime()) / 86400000
-        const pos = ((daysSince % 30) + 30) % 30
-        const left = Math.ceil(30 - pos)
-        return left === 0 ? 30 : left
-      })()
-    : null
+  // Время до следующего титула. Предпочитаем expires_at из Tribute (точная дата
+  // окончания оплаченного периода). Если его нет — fallback на позицию внутри
+  // 30-дневного цикла от joined_at.
+  const daysLeft = expiresAt
+    ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86400000))
+    : joinedAt
+      ? (() => {
+          const daysSince = (Date.now() - joinedAt.getTime()) / 86400000
+          const pos = ((daysSince % 30) + 30) % 30
+          const left = Math.ceil(30 - pos)
+          return left === 0 ? 30 : left
+        })()
+      : null
   const timeUntilNext = next
     ? daysLeft != null
       ? daysLeft === 0
