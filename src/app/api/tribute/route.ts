@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendMessage, sendVideoNote } from '@/lib/telegram'
 import { addMemory } from '@/lib/mem0'
-import { getRankByMonth, loadTitles } from '@/lib/ranks'
+import { getRankByMonth } from '@/lib/ranks'
+import { loadTitles } from '@/lib/ranks-server'
 import { getBotText } from '@/lib/bot-messages'
 
 export async function POST(req: NextRequest) {

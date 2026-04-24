@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedUser } from '@/lib/telegram-auth'
-import { RANK_CONFIG, RANK_ORDER, loadTitles } from '@/lib/ranks'
+import { RANK_CONFIG, RANK_ORDER } from '@/lib/ranks'
+import { loadTitles } from '@/lib/ranks-server'
 
 export async function GET(req: NextRequest) {
   const initData = req.headers.get('x-telegram-init-data')
