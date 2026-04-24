@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'no_credit' }, { status: 409 })
   }
 
-  const { pickWheelPrizeFromDb } = await import('@/lib/wheel-prizes')
+  const { pickWheelPrizeFromDb } = await import('@/lib/wheel-prizes-server')
   const pick = await pickWheelPrizeFromDb()
   if (!pick) return NextResponse.json({ error: 'no_prizes_configured' }, { status: 500 })
 
