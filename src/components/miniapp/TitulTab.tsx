@@ -325,17 +325,6 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
         </div>
       </div>
 
-      <div className="mt-3 rounded-2xl p-4" style={{ background: 'rgba(191,90,242,0.06)', border: '1px solid rgba(191,90,242,0.16)' }}>
-        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#BF5AF2', letterSpacing: '0.6px' }}>
-          Как работает Колесо удачи
-        </div>
-        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
-          <li>Первая попытка — через неделю после вступления</li>
-          <li>Новая попытка — каждое продление подписки (вместе с новым титулом)</li>
-          <li>Призы: фантики, гайды, промокоды, разбор Instagram и созвон с Сергеем</li>
-        </ul>
-      </div>
-
       <div className="mt-3 rounded-2xl p-4" style={{ background: 'rgba(255,149,0,0.06)', border: '1px solid rgba(255,149,0,0.16)' }}>
         <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#FF9500', letterSpacing: '0.6px' }}>
           Что купить в Киоске

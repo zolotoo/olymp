@@ -284,6 +284,18 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
         <div className="text-center text-sm mb-4" style={{ color: '#FF3B30' }}>{error}</div>
       )}
 
+      <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(191,90,242,0.06)', border: '1px solid rgba(191,90,242,0.16)' }}>
+        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#BF5AF2', letterSpacing: '0.6px' }}>
+          Как работает Колесо удачи
+        </div>
+        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
+          <li>Первая попытка — через неделю после вступления</li>
+          <li>Новая попытка — каждое продление подписки (вместе с новым титулом)</li>
+          <li>Призы: фантики, гайды, промокоды, разбор Instagram и созвон с Сергеем</li>
+          <li>Доп. попытки можно купить за фантики в Киоске</li>
+        </ul>
+      </div>
+
       <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.66)', backdropFilter: 'blur(28px) saturate(160%)', WebkitBackdropFilter: 'blur(28px) saturate(160%)', border: '1px solid rgba(255,255,255,0.52)', boxShadow: '0 8px 32px rgba(0,0,0,0.10)' }}>
         <div className="text-xs font-semibold uppercase mb-3" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.7px' }}>
           Возможные призы
