@@ -309,22 +309,22 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
                   onClick={() => setExpanded(isOpen ? null : i)}
                   className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-all"
                   style={{
-                    background: s.neverDrop ? 'rgba(142,142,147,0.06)' : `${s.color}10`,
-                    border: `1px solid ${s.neverDrop ? 'rgba(142,142,147,0.18)' : s.color + '28'}`,
+                    background: `${s.color}10`,
+                    border: `1px solid ${s.color}28`,
                     cursor: 'pointer',
                   }}
                 >
                   <span style={{ fontSize: 18, flexShrink: 0 }}>{s.emoji}</span>
                   <span
                     className="flex-1 text-sm font-medium truncate"
-                    style={{ color: s.neverDrop ? 'rgba(28,28,30,0.42)' : '#1C1C1E', letterSpacing: '-0.2px' }}
+                    style={{ color: '#1C1C1E', letterSpacing: '-0.2px' }}
                   >
                     {s.prize}
                   </span>
                   <span style={{ fontSize: 11, color: 'rgba(28,28,30,0.30)', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>
                 </button>
                 {isOpen && (
-                  <div className="rounded-xl px-3 py-2.5 mt-1 text-xs" style={{ background: s.neverDrop ? 'rgba(142,142,147,0.04)' : `${s.color}08`, border: `1px solid ${s.neverDrop ? 'rgba(142,142,147,0.10)' : s.color + '18'}`, color: 'rgba(28,28,30,0.60)', lineHeight: 1.65 }}>
+                  <div className="rounded-xl px-3 py-2.5 mt-1 text-xs" style={{ background: `${s.color}08`, border: `1px solid ${s.color}18`, color: 'rgba(28,28,30,0.60)', lineHeight: 1.65 }}>
                     {s.explanation}
                   </div>
                 )}

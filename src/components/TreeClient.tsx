@@ -63,7 +63,7 @@ const TREE: Node = {
             },
             { id: 'c_renew', label: 'Продление', type: 'condition', detail: 'event: renewed_subscription',
               children: [
-                { id: 'l_renewmsg', label: 'Подписка продлена', type: 'message', detail: '+100 фантиков за верность' },
+                { id: 'l_renewmsg', label: 'Продление + новый титул', type: 'message', detail: 'Благодарим, объявляем новый титул и его бонусы, +10 фантиков и новый спин' },
               ],
             },
             { id: 'c_cancel', label: 'Отписка', type: 'condition', detail: 'event: cancelled_subscription',
@@ -81,16 +81,10 @@ const TREE: Node = {
       children: [
         { id: 't_activity', label: 'Активность → Фантики', type: 'trigger',
           children: [
-            { id: 'l_msgpts',    label: 'Сообщение в чате',  type: 'points', detail: 'Отслеживается для еженедельного бонуса (фантики не начисляются)' },
-            { id: 'l_reactgive', label: 'Поставить реакцию', type: 'points', detail: '+1 фантик тому, кто поставил' },
+            { id: 'l_msgpts',    label: 'Сообщение в чате',  type: 'points', detail: 'Учитывается в статистике активности (фантики не начисляются)' },
+            { id: 'l_reactgive', label: 'Поставить реакцию', type: 'points', detail: 'Фантики не начисляются' },
             { id: 'l_reactrecv', label: 'Получить реакцию',  type: 'points', detail: '+3 фантика автору сообщения' },
-            { id: 'l_poll',      label: 'Голосование',       type: 'points', detail: '+5 фантиков проголосовавшему' },
-            { id: 'c_rankup', label: 'Новый титул', type: 'condition', detail: 'Порог фантиков пересечён',
-              children: [
-                { id: 'l_title',     label: 'Обновление титула', type: 'action',  detail: 'promoteChatMember + setChatAdministratorCustomTitle' },
-                { id: 'l_ranknotif', label: 'Уведомление в DM',  type: 'message', detail: 'Поздравляю! Ты достиг титула [Титул]!' },
-              ],
-            },
+            { id: 'l_poll',      label: 'Голосование',       type: 'points', detail: '+5 фантиков проголосовавшему (работает только в публичных опросах, не в анонимных)' },
           ],
         },
       ],

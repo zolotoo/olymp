@@ -159,7 +159,8 @@ async function onRenewed(payload: TributePayload) {
 
   // Бонусы за переход титула берём из БД.
   const titles = await loadTitles()
-  const titleBonus = newRank !== prevRank ? (titles[newRank]?.bonus_points ?? 0) : 0
+  const title = titles[newRank]
+  const titleBonus = newRank !== prevRank ? (title?.bonus_points ?? 0) : 0
   const newPoints = member.points + RENEWAL_BONUS_POINTS + titleBonus
 
   await supabaseAdmin
@@ -205,21 +206,21 @@ async function onRenewed(payload: TributePayload) {
     },
   ])
 
-  const titleMsg = newRank !== prevRank
-    ? `\n\n🎖 Новый титул: <b>${titles[newRank].label}</b>${titleBonus > 0 ? ` (+${titleBonus} фантиков)` : ''}`
-    : ''
+  const perksLine = (title?.perks ?? []).map(p => `• ${p}`).join('\n') || '—'
 
   try {
     const renewText = await getBotText(
       'l_renewmsg',
-      `✅ <b>Подписка продлена!</b>\n\n` +
-      `Спасибо что остаёшься в AI Олимп.\n` +
-      `Активна до {expires_at}\n\n` +
-      `+{renewal_bonus} фантиков за верность и открылась ещё одна попытка в колесе 🎡{title_msg}`,
+      `Спасибо за доверие и за то, что выбираешь нас.\n\n` +
+      `Теперь твой титул — <b>{rank_label}</b>\n` +
+      `Подписка активна до {expires_at}\n\n` +
+      `В честь благодарности начислили +{renewal_bonus} фантиков и открыли ещё один спин в Колесе удачи 🎡\n\n` +
+      `<b>Бонусы твоего титула:</b>\n{perks}`,
       {
         expires_at: formatDate(payload.expires_at),
         renewal_bonus: RENEWAL_BONUS_POINTS,
-        title_msg: titleMsg,
+        rank_label: title?.label ?? '',
+        perks: perksLine,
       },
     )
     await sendMessage(tgId, renewText)
