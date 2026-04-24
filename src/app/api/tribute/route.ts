@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendMessage, sendVideoNote } from '@/lib/telegram'
+import { sendTracked } from '@/lib/send-tracked'
 import { addMemory } from '@/lib/mem0'
 import { getRankByMonth } from '@/lib/ranks'
 import { loadTitles } from '@/lib/ranks-server'
@@ -125,7 +126,7 @@ async function onNewSubscription(payload: TributePayload) {
       `За активность ты будешь получать фантики и расти в титуле. Вперёд! 🔥`,
       { expires_at: formatDate(payload.expires_at) },
     )
-    await sendMessage(tgId, congratsText)
+    await sendTracked(tgId, congratsText, { campaign: 'sub_congrats', templateKey: 'l_subcongrats' })
 
     await supabaseAdmin
       .from('members')
@@ -223,7 +224,7 @@ async function onRenewed(payload: TributePayload) {
         perks: perksLine,
       },
     )
-    await sendMessage(tgId, renewText)
+    await sendTracked(tgId, renewText, { campaign: 'sub_renewed', templateKey: 'l_renewmsg' })
   } catch { /* DM blocked */ }
 }
 
@@ -275,7 +276,7 @@ async function onCancelled(payload: TributePayload) {
       `Если что-то пошло не так или есть обратная связь — напиши, всегда слушаю.`,
       {},
     )
-    await sendMessage(tgId, farewellText)
+    await sendTracked(tgId, farewellText, { campaign: 'sub_farewell', templateKey: 'l_farewell' })
   } catch { /* DM blocked */ }
 }
 

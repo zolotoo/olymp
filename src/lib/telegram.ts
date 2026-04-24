@@ -20,7 +20,17 @@ export async function sendVideoNote(chatId: number | string, fileId: string) {
 export async function setWebhook(url: string) {
   return call('setWebhook', {
     url,
-    allowed_updates: ['message', 'chat_member', 'chat_join_request', 'message_reaction', 'poll_answer'],
+    allowed_updates: [
+      'message',
+      'edited_message',
+      'channel_post',
+      'edited_channel_post',
+      'chat_member',
+      'chat_join_request',
+      'message_reaction',
+      'poll_answer',
+      'callback_query',
+    ],
     drop_pending_updates: true,
   })
 }

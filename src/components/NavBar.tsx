@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { logoutAction } from '@/app/login/actions'
 
 const LINKS = [
   { href: '/',        label: 'Участники' },
@@ -12,6 +13,7 @@ const LINKS = [
   { href: '/texts',   label: 'Тексты' },
   { href: '/feed',    label: 'Лента' },
   { href: '/audience', label: 'Аудитория' },
+  { href: '/broadcasts', label: 'Рассылки' },
 ]
 
 export default function NavBar() {
@@ -34,6 +36,16 @@ export default function NavBar() {
             {l.label}
           </Link>
         ))}
+        <form action={logoutAction} className="ml-1">
+          <button
+            type="submit"
+            className="nav-link"
+            style={{ color: '#FF3B30', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            title="Выйти"
+          >
+            Выйти
+          </button>
+        </form>
       </div>
     </nav>
   )

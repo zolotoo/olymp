@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedUser } from '@/lib/telegram-auth'
 import { sendMessage } from '@/lib/telegram'
+import { sendTracked } from '@/lib/send-tracked'
 
 // POST /api/shop/buy — списывает фантики, выдаёт предмет.
 // Для promo_code клеймит код из пула; для wheel_spin начисляет +1 попытку.
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
     payload,
   })
 
-  try { await sendMessage(user.id, dmText) } catch { /* DM blocked */ }
+  try { await sendTracked(user.id, dmText, { campaign: `shop_purchase:${itemKey}` }) } catch { /* DM blocked */ }
 
   // Для «ручных» товаров (info) — уведомить админа, чтобы он знал кого обработать.
   if (item.kind === 'info') {

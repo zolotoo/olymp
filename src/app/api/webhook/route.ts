@@ -4,6 +4,7 @@ import {
   sendMessage, sendVideoNote, getChatMember, approveChatJoinRequest,
   promoteChatMember, setChatAdministratorCustomTitle, addChatMember, deleteMessage,
 } from '@/lib/telegram'
+import { sendTracked } from '@/lib/send-tracked'
 import { addMemory } from '@/lib/mem0'
 import { POINTS, RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
@@ -572,7 +573,7 @@ async function sendWelcome(user: TgUser): Promise<boolean> {
         `Пиши в чат, задавай вопросы, это самый важный шаг.\n\n` +
         `За активность ты получаешь фантики и растёшь в титуле. Удачи!`
 
-    const result = await sendMessage(user.id, text)
+    const result = await sendTracked(user.id, text, { campaign: 'welcome', templateKey: 'rank_newcomer_welcome' })
     if (!result?.ok) return false
     await supabaseAdmin.from('members').update({ welcome_sent: true }).eq('tg_id', user.id)
     return true
@@ -595,7 +596,7 @@ async function sendSalesPitch(user: TgUser) {
     `<b>Оформить подписку:</b>\n{tribute_link}`,
     { name: user.first_name || 'друг', tribute_link: tributeLink },
   )
-  await sendMessage(user.id, text)
+  await sendTracked(user.id, text, { campaign: 'sales_pitch', templateKey: 'l_sales' })
 }
 
 // ─── Set Telegram rank title (no-rights admin) ────────────────────────────────
