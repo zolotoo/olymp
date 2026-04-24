@@ -156,9 +156,35 @@ async function handleChatMember(update: TgChatMemberUpdate) {
   const user = new_chat_member.user
   if (user.is_bot) return
 
-  // On leave from the channel: strip the personal Mini App button.
-  if (isChannel && ['left', 'kicked', 'banned'].includes(status)) {
-    await disableMiniAppButton(user.id)
+  // On leave (channel или group): помечаем участника churned, логируем событие.
+  // Фантики/титул/историю НЕ трогаем — только статус. Для админа это видно
+  // в /members (серая строчка) и в events_log.
+  if (['left', 'kicked', 'banned'].includes(status)) {
+    if (isChannel) await disableMiniAppButton(user.id)
+
+    const { data: existing } = await supabaseAdmin
+      .from('members')
+      .select('id, status')
+      .eq('tg_id', user.id)
+      .maybeSingle()
+
+    if (existing && existing.status !== 'churned') {
+      await supabaseAdmin
+        .from('members')
+        .update({ status: 'churned' })
+        .eq('id', existing.id)
+
+      await supabaseAdmin.from('events_log').insert({
+        member_id: existing.id,
+        tg_id: user.id,
+        event_type: isChannel ? 'left_channel' : 'left_group',
+        metadata: {
+          chat_id: chat.id,
+          status,
+          source: 'chat_member_update',
+        },
+      })
+    }
     return
   }
 
