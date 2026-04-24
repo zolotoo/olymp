@@ -14,7 +14,7 @@ WITH latest_expires AS (
   WHERE event_type IN ('tribute_new_subscription', 'tribute_renewed')
     AND metadata ? 'expires_at'
     AND metadata->>'expires_at' <> ''
-  ORDER BY tg_id, created_at DESC
+  ORDER BY tg_id, triggered_at DESC
 )
 UPDATE public.members m
 SET expires_at = le.expires_at
