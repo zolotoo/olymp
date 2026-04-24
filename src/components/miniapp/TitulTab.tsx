@@ -62,11 +62,17 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
   const next = RANK_ORDER[currentIdx + 1] ? byRank[RANK_ORDER[currentIdx + 1]] : null
   const laterTitles = RANK_ORDER.slice(currentIdx + 2).map(r => byRank[r]).filter(Boolean)
 
-  // Время до следующего титула отсчитывается от joined_at + subscription_count * 30 дней
-  // (очередное продление Tribute → +1 к subscription_count → новый титул).
-  const nextRenewal = joinedAt ? new Date(joinedAt.getTime() + subCount * 30 * 86400000) : null
-  const daysLeft = nextRenewal
-    ? Math.max(0, Math.ceil((nextRenewal.getTime() - Date.now()) / 86400000))
+  // Время до следующего титула = дни до ближайшей 30-дневной отсечки от joined_at.
+  // Считаем по модулю 30, чтобы корректно работать и когда subscription_count был
+  // забэкфилен (миграция 005 выставила =1 всем активным — и joined_at может быть
+  // уже старше, чем subCount × 30 дней).
+  const daysLeft = joinedAt
+    ? (() => {
+        const daysSince = (Date.now() - joinedAt.getTime()) / 86400000
+        const pos = ((daysSince % 30) + 30) % 30
+        const left = Math.ceil(30 - pos)
+        return left === 0 ? 30 : left
+      })()
     : null
   const timeUntilNext = next
     ? daysLeft != null
