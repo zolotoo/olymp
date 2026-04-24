@@ -264,9 +264,7 @@ export default function RanksPage() {
                     className="text-sm"
                     style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '-0.2px' }}
                   >
-                    {rank.minPoints.toLocaleString()}
-                    {rank.maxPoints ? `–${rank.maxPoints.toLocaleString()}` : '+'} фантиков
-                    {rank.minMonths > 0 ? ` · ${rank.minMonths}+ мес.` : ''}
+                    {i + 1}-й месяц подписки
                   </span>
                 </div>
                 <p

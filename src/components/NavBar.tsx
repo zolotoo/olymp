@@ -8,6 +8,8 @@ const LINKS = [
   { href: '/ranks',   label: 'Титулы' },
   { href: '/bonuses', label: 'Бонусы' },
   { href: '/wheel',   label: 'Колесо' },
+  { href: '/kiosk',   label: 'Киоск' },
+  { href: '/texts',   label: 'Тексты' },
   { href: '/feed',    label: 'Лента' },
   { href: '/audience', label: 'Аудитория' },
 ]

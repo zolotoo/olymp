@@ -5,8 +5,9 @@ import WheelTab from '@/components/miniapp/WheelTab'
 import ProfileTab from '@/components/miniapp/ProfileTab'
 import TitulTab from '@/components/miniapp/TitulTab'
 import LeaderboardTab from '@/components/miniapp/LeaderboardTab'
+import KioskTab from '@/components/miniapp/KioskTab'
 
-type Tab = 'wheel' | 'titul' | 'leaderboard' | 'profile'
+type Tab = 'wheel' | 'titul' | 'leaderboard' | 'profile' | 'kiosk'
 
 function Shell() {
   const { ready, isTelegram, initData } = useTelegram()
@@ -70,6 +71,7 @@ function Shell() {
       {tab === 'wheel' && <WheelTab onSpinComplete={() => setProfileReload(k => k + 1)} />}
       {tab === 'titul' && <TitulTab reloadKey={profileReload} />}
       {tab === 'leaderboard' && <LeaderboardTab reloadKey={profileReload} />}
+      {tab === 'kiosk' && <KioskTab reloadKey={profileReload} onPurchase={() => setProfileReload(k => k + 1)} />}
       {tab === 'profile' && <ProfileTab reloadKey={profileReload} />}
 
       <nav
@@ -85,10 +87,10 @@ function Shell() {
           zIndex: 30,
         }}
       >
-        {(['titul', 'leaderboard', 'profile', 'wheel'] as Tab[]).map(t => {
+        {(['titul', 'leaderboard', 'kiosk', 'wheel', 'profile'] as Tab[]).map(t => {
           const active = tab === t
-          const label = t === 'wheel' ? 'Колесо' : t === 'titul' ? 'Титул' : t === 'leaderboard' ? 'Топ' : 'Профиль'
-          const emoji = t === 'wheel' ? '🎁' : t === 'titul' ? '🏔' : t === 'leaderboard' ? '🏆' : '👤'
+          const label = t === 'wheel' ? 'Колесо' : t === 'titul' ? 'Титул' : t === 'leaderboard' ? 'Топ' : t === 'kiosk' ? 'Киоск' : 'Профиль'
+          const emoji = t === 'wheel' ? '🎡' : t === 'titul' ? '🏔' : t === 'leaderboard' ? '🏆' : t === 'kiosk' ? '🛍' : '👤'
           return (
             <button
               key={t}

@@ -1,15 +1,27 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useTelegram, tgFetch } from './TelegramProvider'
-import { RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
 
 const RANK_ORDER: MemberRank[] = ['newcomer', 'member', 'active', 'champion', 'legend']
 
+interface TitleInfo {
+  rank: MemberRank
+  label: string
+  color: string
+  month: number
+  bonusPoints: number
+  perks: string[]
+}
+
 interface ProfileResponse {
   isMember?: boolean
-  points?: number
-  rank?: MemberRank
+  member?: {
+    rank: MemberRank
+    points: number
+    subscriptionCount: number
+  }
+  titles?: TitleInfo[]
 }
 
 export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
@@ -27,24 +39,25 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
     return () => { cancelled = true }
   }, [ready, isTelegram, initData, reloadKey])
 
-  const points = data?.points ?? 0
-  const currentRank = data?.rank ?? 'newcomer'
+  const points = data?.member?.points ?? 0
+  const months = data?.member?.subscriptionCount ?? 1
+  const currentRank: MemberRank = data?.member?.rank ?? 'newcomer'
   const currentIdx = RANK_ORDER.indexOf(currentRank)
+  const titles = data?.titles ?? []
+  const byRank: Record<string, TitleInfo> = {}
+  for (const t of titles) byRank[t.rank] = t
 
-  const nextRank = RANK_ORDER[currentIdx + 1]
-  const nextCfg = nextRank ? RANK_CONFIG[nextRank] : null
-  const pointsToNext = nextCfg ? Math.max(0, nextCfg.minPoints - points) : 0
+  const cur = byRank[currentRank]
+  const next = RANK_ORDER[currentIdx + 1] ? byRank[RANK_ORDER[currentIdx + 1]] : null
+  const monthsLeft = next ? Math.max(0, next.month - months) : 0
 
-  // Layout: zig-zag path with one milestone per rank, bottom (Адепт) → top (Бог).
-  // SVG viewBox 360×640. Milestones placed along a gentle S-curve.
   const MILESTONES = RANK_ORDER.map((rank, i) => {
-    const cfg = RANK_CONFIG[rank]
+    const cfg = byRank[rank] ?? { label: rank, color: '#8E8E93', month: i + 1, bonusPoints: 0, perks: [], rank }
     const y = 580 - i * 130
     const x = i % 2 === 0 ? 100 : 260
     return { rank, cfg, x, y, reached: i <= currentIdx, isCurrent: i === currentIdx }
   })
 
-  // Build a smooth path through all milestones for the tropa.
   const pathD = MILESTONES.map((m, i) => {
     if (i === 0) return `M ${m.x} ${m.y}`
     const prev = MILESTONES[i - 1]
@@ -56,26 +69,28 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
     ? MILESTONES.find(m => m.rank === selected)!
     : MILESTONES[currentIdx]
 
+  const activeCfg = activeMilestone.cfg
+
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
       <div className="text-center mb-4">
         <div
           className="text-xs font-semibold uppercase mb-2 inline-block rounded-full px-3 py-1"
           style={{
-            color: RANK_CONFIG[currentRank].color,
+            color: cur?.color ?? '#8E8E93',
             letterSpacing: '0.8px',
-            background: `${RANK_CONFIG[currentRank].color}14`,
-            border: `1px solid ${RANK_CONFIG[currentRank].color}28`,
+            background: `${cur?.color ?? '#8E8E93'}14`,
+            border: `1px solid ${cur?.color ?? '#8E8E93'}28`,
           }}
         >
-          твой титул · {RANK_CONFIG[currentRank].label}
+          твой титул · {cur?.label ?? 'Адепт'}
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold mb-1 mt-3" style={{ color: '#1C1C1E', letterSpacing: '-1.2px', lineHeight: 1 }}>
           Путь на Олимп
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
-          {nextCfg
-            ? `До титула ${nextCfg.label} осталось ${pointsToNext} фантиков`
+          {next
+            ? `Следующий титул — ${next.label}, через ${monthsLeft} ${monthsLeft === 1 ? 'месяц' : monthsLeft < 5 ? 'месяца' : 'месяцев'}`
             : 'Ты достиг высшего титула'}
         </p>
       </div>
@@ -92,12 +107,11 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
               <stop offset="100%" stopColor="#E8F4FF" stopOpacity="0.2" />
             </linearGradient>
             <linearGradient id="pathGrad" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0%" stopColor={RANK_CONFIG[currentRank].color} />
+              <stop offset="0%" stopColor={cur?.color ?? '#8E8E93'} />
               <stop offset="100%" stopColor="#C7C7CC" />
             </linearGradient>
           </defs>
 
-          {/* Mountain silhouette */}
           <path
             d="M 0 640 L 0 400 L 60 320 L 120 380 L 180 240 L 240 340 L 300 280 L 360 360 L 360 640 Z"
             fill="url(#mtn)"
@@ -109,17 +123,8 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
             opacity="0.75"
           />
 
-          {/* Path (tropa) */}
-          <path
-            d={pathD}
-            fill="none"
-            stroke="rgba(28,28,30,0.25)"
-            strokeWidth="3"
-            strokeDasharray="6 6"
-            strokeLinecap="round"
-          />
+          <path d={pathD} fill="none" stroke="rgba(28,28,30,0.25)" strokeWidth="3" strokeDasharray="6 6" strokeLinecap="round" />
 
-          {/* Reached portion overlay */}
           {currentIdx > 0 && (
             <path
               d={MILESTONES.slice(0, currentIdx + 1).map((m, i) => {
@@ -135,16 +140,11 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
             />
           )}
 
-          {/* Milestones */}
           {MILESTONES.map((m) => {
             const isActive = m.rank === activeMilestone.rank
             const r = m.isCurrent ? 18 : 13
             return (
-              <g
-                key={m.rank}
-                onClick={() => setSelected(m.rank)}
-                style={{ cursor: 'pointer' }}
-              >
+              <g key={m.rank} onClick={() => setSelected(m.rank)} style={{ cursor: 'pointer' }}>
                 {m.isCurrent && (
                   <circle cx={m.x} cy={m.y} r={r + 8} fill={m.cfg.color} opacity="0.18">
                     <animate attributeName="r" values={`${r + 4};${r + 12};${r + 4}`} dur="2.4s" repeatCount="indefinite" />
@@ -152,19 +152,14 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
                   </circle>
                 )}
                 <circle
-                  cx={m.x}
-                  cy={m.y}
-                  r={r}
+                  cx={m.x} cy={m.y} r={r}
                   fill={m.reached ? m.cfg.color : '#FFFFFF'}
                   stroke={isActive ? '#1C1C1E' : m.reached ? m.cfg.color : 'rgba(28,28,30,0.25)'}
                   strokeWidth={isActive ? 3 : 2}
                 />
                 {m.reached && (
-                  <text x={m.x} y={m.y + 4} textAnchor="middle" fontSize="12" fontWeight="800" fill="#FFFFFF">
-                    ✓
-                  </text>
+                  <text x={m.x} y={m.y + 4} textAnchor="middle" fontSize="12" fontWeight="800" fill="#FFFFFF">✓</text>
                 )}
-                {/* Label bubble */}
                 <g transform={`translate(${m.x < 180 ? m.x + 28 : m.x - 28}, ${m.y})`}>
                   <rect
                     x={m.x < 180 ? 0 : -108}
@@ -194,50 +189,76 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
         </svg>
       </div>
 
-      {/* Detail card for selected/current milestone */}
+      {/* Current title card with perks */}
       <div
         className="rounded-2xl p-5 mt-4"
         style={{
-          background: 'rgba(255,255,255,0.72)',
+          background: 'rgba(255,255,255,0.80)',
           backdropFilter: 'blur(24px) saturate(160%)',
           WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-          border: `1px solid ${activeMilestone.cfg.color}28`,
+          border: `1px solid ${activeCfg.color}28`,
           boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
         }}
       >
-        <div className="flex items-baseline justify-between mb-1">
+        <div className="flex items-baseline justify-between mb-2">
           <div className="text-lg font-bold" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
-            {activeMilestone.cfg.label}
+            {activeCfg.label}
           </div>
-          <div className="text-xs font-semibold" style={{ color: activeMilestone.cfg.color }}>
-            {(() => {
-              const i = RANK_ORDER.indexOf(activeMilestone.rank)
-              const nxt = RANK_ORDER[i + 1] ? RANK_CONFIG[RANK_ORDER[i + 1]] : null
-              return nxt
-                ? `${activeMilestone.cfg.minPoints}–${nxt.minPoints - 1} фантиков`
-                : `${activeMilestone.cfg.minPoints}+ фантиков`
-            })()}
+          <div className="text-xs font-semibold" style={{ color: activeCfg.color }}>
+            {activeCfg.month}-й месяц
           </div>
         </div>
-        <div className="text-sm" style={{ color: 'rgba(28,28,30,0.60)', lineHeight: 1.55 }}>
-          {activeMilestone.isCurrent
-            ? `У тебя ${points} фантиков. ${nextCfg ? `Следующий титул — ${nextCfg.label}, до него ${pointsToNext}.` : 'Высший титул достигнут.'}`
-            : activeMilestone.reached
-              ? 'Этот титул уже получен.'
-              : `Нужно набрать ${activeMilestone.cfg.minPoints - points} фантиков, чтобы получить.`}
-        </div>
+        {activeCfg.perks && activeCfg.perks.length > 0 ? (
+          <ul className="text-sm" style={{ color: 'rgba(28,28,30,0.72)', lineHeight: 1.55 }}>
+            {activeCfg.perks.map((perk, i) => (
+              <li key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                <span style={{ color: activeCfg.color, fontWeight: 700 }}>•</span>
+                <span>{perk}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
+            Стартовый титул. Следующий — через месяц подписки.
+          </div>
+        )}
       </div>
+
+      {/* Next title preview */}
+      {next && (
+        <div className="rounded-2xl p-5 mt-3" style={{ background: `linear-gradient(135deg, ${next.color}10 0%, ${next.color}04 100%)`, border: `1px solid ${next.color}28` }}>
+          <div className="text-xs font-semibold uppercase mb-2" style={{ color: next.color, letterSpacing: '0.6px' }}>
+            Следующий титул · через {monthsLeft} {monthsLeft === 1 ? 'месяц' : monthsLeft < 5 ? 'месяца' : 'месяцев'}
+          </div>
+          <div className="text-base font-bold mb-2" style={{ color: '#1C1C1E', letterSpacing: '-0.3px' }}>
+            {next.label}
+          </div>
+          {next.perks.length > 0 && (
+            <ul className="text-sm" style={{ color: 'rgba(28,28,30,0.72)', lineHeight: 1.55 }}>
+              {next.perks.map((perk, i) => (
+                <li key={i} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                  <span style={{ color: next.color, fontWeight: 700 }}>+</span>
+                  <span>{perk}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 rounded-2xl p-4" style={{ background: 'rgba(10,132,255,0.06)', border: '1px solid rgba(10,132,255,0.14)' }}>
         <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#0A84FF', letterSpacing: '0.6px' }}>
           Как получить фантики
         </div>
         <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
-          <li>+1 за реакцию на чужое сообщение</li>
           <li>+3 за реакцию на твоё сообщение</li>
           <li>+5 за участие в опросе</li>
+          <li>+10 за каждое продление подписки</li>
           <li>Колесо — фантики выпадают случайно</li>
         </ul>
+        <div className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.55)' }}>
+          У тебя сейчас <b style={{ color: '#1C1C1E' }}>{points}</b> фантиков.
+        </div>
       </div>
     </div>
   )

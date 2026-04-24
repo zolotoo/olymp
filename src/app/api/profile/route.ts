@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedUser } from '@/lib/telegram-auth'
-import { RANK_CONFIG } from '@/lib/ranks'
+import { RANK_CONFIG, RANK_ORDER, loadTitles } from '@/lib/ranks'
 
 export async function GET(req: NextRequest) {
   const initData = req.headers.get('x-telegram-init-data')
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { data: member } = await supabaseAdmin
     .from('members')
-    .select('id, tg_id, tg_username, tg_first_name, rank, points, joined_at, status, photo_url')
+    .select('id, tg_id, tg_username, tg_first_name, rank, points, joined_at, status, photo_url, subscription_count')
     .eq('tg_id', tgId)
     .maybeSingle()
 
@@ -59,6 +59,17 @@ export async function GET(req: NextRequest) {
 
   const rankInfo = RANK_CONFIG[member.rank as keyof typeof RANK_CONFIG] ?? RANK_CONFIG.newcomer
 
+  // Все титулы с бонусами — для UI «текущий + следующий».
+  const titles = await loadTitles()
+  const titleList = RANK_ORDER.map(r => ({
+    rank: r,
+    label: titles[r].label,
+    color: titles[r].color,
+    month: titles[r].month,
+    bonusPoints: titles[r].bonus_points,
+    perks: titles[r].perks,
+  }))
+
   return NextResponse.json({
     isMember: true,
     user: { id: tgId, first_name: user.first_name, username: user.username, photo_url: user.photo_url },
@@ -69,7 +80,9 @@ export async function GET(req: NextRequest) {
       points: member.points,
       joined_at: member.joined_at,
       status: member.status,
+      subscriptionCount: member.subscription_count ?? 1,
     },
+    titles: titleList,
     leaderboard: { position, total: total ?? 0 },
     spins: spins ?? [],
   })

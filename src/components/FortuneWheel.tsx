@@ -1,26 +1,10 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { SEGMENTS, LEAVES_EXPLANATION, type Segment } from '@/lib/wheel-prizes'
+import { useState, useEffect, useMemo } from 'react'
+import { LEAVES_EXPLANATION_FALLBACK, type Segment } from '@/lib/wheel-prizes'
 
 // Admin preview of the wheel: client-side only (localStorage), no API.
-// The production wheel lives in /app (Mini App) and uses the server.
+// Сегменты загружаем из /api/wheel/segments, чтобы источник правды был в БД.
 
-const ELIGIBLE = SEGMENTS
-  .map((s, i) => ({ s, i }))
-  .filter(({ s }) => !s.neverDrop && s.weight !== undefined)
-
-const ELIGIBLE_TOTAL = ELIGIBLE.reduce((sum, { s }) => sum + (s.weight ?? 0), 0)
-
-function pickEligibleIndex(): number {
-  let rand = Math.random() * ELIGIBLE_TOTAL
-  for (const { s, i } of ELIGIBLE) {
-    rand -= s.weight ?? 0
-    if (rand <= 0) return i
-  }
-  return ELIGIBLE[0].i
-}
-
-// 1 попытка в месяц — localStorage
 function getMonthKey() {
   const d = new Date()
   return `olymp_wheel_${d.getFullYear()}_${d.getMonth()}`
@@ -32,9 +16,6 @@ function recordSpinUsed() {
   try { localStorage.setItem(getMonthKey(), '1') } catch { /* */ }
 }
 
-// SVG helpers
-const SEG_COUNT = SEGMENTS.length
-const SEG_ANGLE = 360 / SEG_COUNT
 const R = 200
 const CX = 210
 const CY = 210
@@ -51,6 +32,8 @@ const arcPath = (start: number, end: number) => {
 }
 
 export default function FortuneWheel() {
+  const [segments, setSegments]       = useState<Segment[]>([])
+  const [loading, setLoading]         = useState(true)
   const [rotation, setRotation]       = useState(0)
   const [spinning, setSpinning]       = useState(false)
   const [result, setResult]           = useState<Segment | null>(null)
@@ -58,27 +41,68 @@ export default function FortuneWheel() {
   const [showExplanation, setShowExp] = useState(false)
   const [expanded, setExpanded]       = useState<number | null>(null)
 
-  useEffect(() => { setCanSpin(checkCanSpin()) }, [])
+  useEffect(() => {
+    setCanSpin(checkCanSpin())
+    fetch('/api/wheel/segments')
+      .then(r => r.json())
+      .then(d => setSegments(d.segments ?? []))
+      .catch(() => setSegments([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const segCount = segments.length
+  const segAngle = segCount > 0 ? 360 / segCount : 0
+
+  const eligible = useMemo(
+    () => segments.map((s, i) => ({ s, i })).filter(({ s }) => !s.neverDrop && s.weight !== undefined && s.weight > 0),
+    [segments]
+  )
+  const eligibleTotal = useMemo(() => eligible.reduce((sum, { s }) => sum + (s.weight ?? 0), 0), [eligible])
+
+  const pickEligibleIndex = (): number => {
+    let rand = Math.random() * eligibleTotal
+    for (const { s, i } of eligible) {
+      rand -= s.weight ?? 0
+      if (rand <= 0) return i
+    }
+    return eligible[0]?.i ?? 0
+  }
 
   const spin = () => {
-    if (spinning || !canSpin) return
+    if (spinning || !canSpin || segCount === 0 || eligible.length === 0) return
     setSpinning(true)
     setResult(null)
     setShowExp(false)
 
     const winIdx = pickEligibleIndex()
-    const midAngle = winIdx * SEG_ANGLE + SEG_ANGLE / 2
+    const midAngle = winIdx * segAngle + segAngle / 2
     const target = (360 - midAngle) % 360
     const turns = 9 + Math.floor(Math.random() * 4)
     const currentBase = rotation - (rotation % 360)
     setRotation(currentBase + turns * 360 + target)
 
     setTimeout(() => {
-      setResult(SEGMENTS[winIdx])
+      setResult(segments[winIdx])
       setSpinning(false)
       setCanSpin(false)
       recordSpinUsed()
     }, 8200)
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-xl mx-auto text-center py-16" style={{ color: 'rgba(28,28,30,0.5)' }}>
+        Загружаем сегменты…
+      </div>
+    )
+  }
+
+  if (segCount === 0) {
+    return (
+      <div className="max-w-xl mx-auto text-center py-16" style={{ color: 'rgba(28,28,30,0.6)' }}>
+        В таблице <code>wheel_prizes</code> нет активных сегментов. Добавьте их ниже.
+      </div>
+    )
   }
 
   return (
@@ -130,7 +154,7 @@ export default function FortuneWheel() {
             }}
           >
             <defs>
-              {SEGMENTS.map((s, i) => (
+              {segments.map((s, i) => (
                 <radialGradient key={i} id={`grad-${i}`} cx="0.5" cy="0.5" r="0.85">
                   <stop offset="0%" stopColor={s.color} />
                   <stop offset="100%" stopColor={s.colorDeep} />
@@ -155,10 +179,10 @@ export default function FortuneWheel() {
             <circle cx={CX} cy={CY} r={R + 12} fill="url(#rimGrad)" />
             <circle cx={CX} cy={CY} r={R + 10} fill="none" stroke="rgba(28,28,30,0.12)" strokeWidth="1" />
 
-            {SEGMENTS.map((s, i) => {
-              const start = i * SEG_ANGLE
-              const end = (i + 1) * SEG_ANGLE
-              const mid = start + SEG_ANGLE / 2
+            {segments.map((s, i) => {
+              const start = i * segAngle
+              const end = (i + 1) * segAngle
+              const mid = start + segAngle / 2
               const textPos = polar(mid, R * 0.62)
               return (
                 <g key={i}>
@@ -211,7 +235,7 @@ export default function FortuneWheel() {
           Возможные призы
         </div>
         <div className="flex flex-col gap-2">
-          {SEGMENTS.map((s, i) => {
+          {segments.map((s, i) => {
             const isOpen = expanded === i
             return (
               <div key={i}>
@@ -257,23 +281,27 @@ export default function FortuneWheel() {
             <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)', letterSpacing: '-0.15px' }}>Ты выиграл приз</p>
 
             <div className="rounded-2xl px-5 py-5 mb-4" style={{ background: `linear-gradient(135deg, ${result.color}1A 0%, ${result.color}0A 100%)`, border: `1px solid ${result.color}33` }}>
-              <div style={{ fontSize: 36, marginBottom: 4 }}></div>
+              <div style={{ fontSize: 36, marginBottom: 4 }}>{result.emoji}</div>
               <div className="text-2xl font-bold" style={{ color: result.color, letterSpacing: '-0.5px' }}>
-                {result.leaves} фантиков
+                {(result.leaves ?? 0) > 0 ? `${result.leaves} фантиков` : result.prize}
               </div>
             </div>
 
-            <button
-              onClick={() => setShowExp(v => !v)}
-              className="w-full rounded-xl py-2.5 text-sm font-medium mb-4 transition-all"
-              style={{ background: showExplanation ? 'rgba(10,132,255,0.08)' : 'transparent', border: '1px solid rgba(10,132,255,0.20)', color: '#0A84FF', cursor: 'pointer', letterSpacing: '-0.15px' }}
-            >
-              {showExplanation ? '▲ Скрыть' : '▼ Что такое фантики?'}
-            </button>
-            {showExplanation && (
-              <div className="rounded-xl px-4 py-3 mb-4 text-left text-xs" style={{ background: 'rgba(10,132,255,0.05)', border: '1px solid rgba(10,132,255,0.12)', color: 'rgba(28,28,30,0.70)', lineHeight: 1.65, letterSpacing: '-0.1px' }}>
-                {LEAVES_EXPLANATION}
-              </div>
+            {(result.leaves ?? 0) > 0 && (
+              <>
+                <button
+                  onClick={() => setShowExp(v => !v)}
+                  className="w-full rounded-xl py-2.5 text-sm font-medium mb-4 transition-all"
+                  style={{ background: showExplanation ? 'rgba(10,132,255,0.08)' : 'transparent', border: '1px solid rgba(10,132,255,0.20)', color: '#0A84FF', cursor: 'pointer', letterSpacing: '-0.15px' }}
+                >
+                  {showExplanation ? '▲ Скрыть' : '▼ Что такое фантики?'}
+                </button>
+                {showExplanation && (
+                  <div className="rounded-xl px-4 py-3 mb-4 text-left text-xs" style={{ background: 'rgba(10,132,255,0.05)', border: '1px solid rgba(10,132,255,0.12)', color: 'rgba(28,28,30,0.70)', lineHeight: 1.65, letterSpacing: '-0.1px' }}>
+                    {LEAVES_EXPLANATION_FALLBACK}
+                  </div>
+                )}
+              </>
             )}
 
             <button onClick={() => setResult(null)} className="w-full rounded-full py-3 text-sm font-semibold" style={{ background: 'rgba(28,28,30,0.08)', color: '#1C1C1E' }}>

@@ -1,6 +1,14 @@
-import { SEGMENTS } from '@/lib/wheel-prizes'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export const metadata = { title: 'Бонусы — AI Олимп' }
+export const dynamic = 'force-dynamic'
+
+type WheelPrizeRow = {
+  key: string
+  prize: string
+  weight: number | null
+  never_drop: boolean
+}
 
 const glass = {
   background: 'rgba(255,255,255,0.66)',
@@ -26,12 +34,20 @@ const TRIGGERS = [
 ]
 
 const EXTRA = [
-  { title: 'Фантики за активность', desc: '+1 за реакцию на чужое сообщение, +3 за реакцию на своё, +5 за голос в опросе.' },
-  { title: 'Таблица лидеров', desc: 'Топ-10 по фантикам показывается в дашборде и еженедельно публикуется в канале.' },
-  { title: 'Пропуск активности', desc: 'Если участник предупредил о паузе заранее — фантики не сгорают, место в таблице сохраняется.' },
+  { title: 'Фантики за активность', desc: '+3 за реакцию на твоё сообщение, +5 за голос в опросе, +10 за каждое продление подписки.' },
+  { title: 'Бонус за новый титул', desc: 'Каждый новый месяц подписки даёт следующий титул и дополнительные фантики (Герой +10, Чемпион +20, Полубог +30, Бог +40).' },
+  { title: 'Таблица лидеров', desc: 'Топ по фантикам показывается в дашборде и мини-аппе, внутри каждого титула свой рейтинг.' },
+  { title: 'Киоск', desc: 'Фантики тратятся на промокоды (скидка 10% на продление, VeoSeeBot), доп. кручения колеса и другие награды.' },
 ]
 
-export default function BonusesPage() {
+export default async function BonusesPage() {
+  const { data } = await supabaseAdmin
+    .from('wheel_prizes')
+    .select('key, prize, weight, never_drop')
+    .eq('active', true)
+    .order('sort', { ascending: true })
+  const segments: WheelPrizeRow[] = data ?? []
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="rounded-2xl px-6 py-5 mb-8" style={glass}>
@@ -66,8 +82,8 @@ export default function BonusesPage() {
           В интерфейсе 8 секторов. Выпадают только «фантиковые» — 4 сектора из 8. Остальные показаны для атмосферы и никогда не выпадают.
         </p>
         <div className="grid sm:grid-cols-2 gap-2.5">
-          {SEGMENTS.map((s, i) => {
-            const drops = !s.neverDrop
+          {segments.map((s, i) => {
+            const drops = !s.never_drop
             return (
               <div
                 key={i}

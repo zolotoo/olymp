@@ -57,9 +57,8 @@ function Avatar({ member }: { member: LeaderMember }) {
 
 function formatRange(idx: number) {
   const cur = RANK_CONFIG[RANK_ORDER[idx]]
-  const next = RANK_ORDER[idx + 1] ? RANK_CONFIG[RANK_ORDER[idx + 1]] : null
-  if (!next) return `${cur.minPoints}+ фантиков`
-  return `${cur.minPoints}–${next.minPoints - 1} фантиков`
+  // Титулы теперь не по фантикам, а по месяцу подписки.
+  return `${cur.month}-й месяц в клубе`
 }
 
 function Trophy({ color }: { color: string }) {
@@ -288,9 +287,9 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
         </div>
         <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.75 }}>
           <li>Каждому титулу — свой кубок и своя таблица.</li>
+          <li>Титул повышается каждый месяц подписки: 1-й месяц — Адепт, 2-й — Герой и т.д.</li>
           <li>Внутри титула места распределяются по фантикам: больше — выше.</li>
           <li>Листай стрелками ‹ › — увидишь топ любого титула, от Адепта до Бога.</li>
-          <li>Наберёшь больше фантиков — перейдёшь в следующий титул и начнёшь там с нуля относительно его лидеров.</li>
         </ul>
       </div>
     </div>

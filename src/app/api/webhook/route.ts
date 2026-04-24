@@ -5,10 +5,11 @@ import {
   promoteChatMember, setChatAdministratorCustomTitle, addChatMember, deleteMessage,
 } from '@/lib/telegram'
 import { addMemory } from '@/lib/mem0'
-import { getRank, POINTS, RANK_CONFIG } from '@/lib/ranks'
+import { POINTS, RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
 import { trackBotInteraction } from '@/lib/bot-tracking'
 import { enableMiniAppButton, disableMiniAppButton } from '@/lib/mini-app'
+import { getBotText } from '@/lib/bot-messages'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -250,13 +251,21 @@ async function handleMessage(message: TgMessage) {
       }
       const days = Math.floor((Date.now() - new Date(member.joined_at).getTime()) / (1000 * 60 * 60 * 24))
       const rankConfig = RANK_CONFIG[member.rank as MemberRank]
-      await sendMessage(
-        user.id,
-        `👋 <b>${user.first_name || 'Привет'}!</b>\n\n` +
-        `Ты в AI Олимп уже <b>${days} дней</b>\n` +
-        `Титул: <b>${rankConfig.emoji} ${rankConfig.label}</b> | Фантики: <b>${member.points}</b>\n\n` +
-        `Пиши в клубный чат, там вся жизнь 🔥`
+      const text = await getBotText(
+        'l_profile',
+        `👋 <b>{name}!</b>\n\n` +
+        `Ты в AI Олимп уже <b>{days} дней</b>\n` +
+        `Титул: <b>{rank_emoji} {rank_label}</b> | Фантики: <b>{points}</b>\n\n` +
+        `Пиши в клубный чат, там вся жизнь 🔥`,
+        {
+          name: user.first_name || 'Привет',
+          days,
+          rank_emoji: rankConfig.emoji,
+          rank_label: rankConfig.label,
+          points: member.points,
+        },
       )
+      await sendMessage(user.id, text)
     } else {
       const channelId = process.env.TELEGRAM_CHANNEL_ID
       if (channelId) {
@@ -344,25 +353,10 @@ async function handleReaction(reaction: TgReaction) {
 
   const reactorId = reaction.user.id
 
-  // 1. REACTION_GIVEN фантики to the person who reacted
-  const { data: actor } = await supabaseAdmin
-    .from('members').select('id, points, rank').eq('tg_id', reactorId).maybeSingle()
+  // Фантики за реакцию на чужое сообщение больше не выдаются (POINTS.REACTION_GIVEN = 0).
+  // Титулы теперь по месяцам — rank здесь не пересчитывается.
 
-  if (actor) {
-    const newPoints = actor.points + POINTS.REACTION_GIVEN
-    const newRank = getRank(newPoints)
-    await supabaseAdmin
-      .from('members')
-      .update({ points: newPoints, rank: newRank })
-      .eq('id', actor.id)
-    await supabaseAdmin.from('points_log').insert({
-      member_id: actor.id, tg_id: reactorId,
-      points: POINTS.REACTION_GIVEN, reason: 'reaction_given',
-    })
-    if (newRank !== actor.rank) await applyRankTitle(reactorId, newRank)
-  }
-
-  // 2. REACTION_RECEIVED фантики to the original message author
+  // REACTION_RECEIVED фантики to the original message author
   if (reaction.chat?.id && reaction.message_id) {
     const { data: msg } = await supabaseAdmin
       .from('tg_messages')
@@ -373,20 +367,18 @@ async function handleReaction(reaction: TgReaction) {
 
     if (msg && msg.author_tg_id !== reactorId) {
       const { data: author } = await supabaseAdmin
-        .from('members').select('id, points, rank').eq('tg_id', msg.author_tg_id).maybeSingle()
+        .from('members').select('id, points').eq('tg_id', msg.author_tg_id).maybeSingle()
 
       if (author) {
         const newPoints = author.points + POINTS.REACTION_RECEIVED
-        const newRank = getRank(newPoints)
         await supabaseAdmin
           .from('members')
-          .update({ points: newPoints, rank: newRank })
+          .update({ points: newPoints })
           .eq('id', author.id)
         await supabaseAdmin.from('points_log').insert({
           member_id: author.id, tg_id: msg.author_tg_id,
           points: POINTS.REACTION_RECEIVED, reason: 'reaction_received',
         })
-        if (newRank !== author.rank) await applyRankTitle(msg.author_tg_id, newRank)
       }
     }
   }
@@ -397,24 +389,21 @@ async function handlePollAnswer(update: TgPollAnswer) {
   if (!update.user?.id) return
 
   const { data: member } = await supabaseAdmin
-    .from('members').select('id, points, rank').eq('tg_id', update.user.id).maybeSingle()
+    .from('members').select('id, points').eq('tg_id', update.user.id).maybeSingle()
 
   if (!member) return
 
   const newPoints = member.points + POINTS.POLL_VOTE
-  const newRank = getRank(newPoints)
 
   await supabaseAdmin
     .from('members')
-    .update({ points: newPoints, rank: newRank, last_active: new Date().toISOString() })
+    .update({ points: newPoints, last_active: new Date().toISOString() })
     .eq('id', member.id)
 
   await supabaseAdmin.from('points_log').insert({
     member_id: member.id, tg_id: update.user.id,
     points: POINTS.POLL_VOTE, reason: 'poll_vote',
   })
-
-  if (newRank !== member.rank) await applyRankTitle(update.user.id, newRank)
 }
 
 // ─── New member joined group/forum ────────────────────────────────────────────
@@ -497,16 +486,18 @@ async function sendWelcome(user: TgUser): Promise<boolean> {
 // ─── Sales pitch for non-members ─────────────────────────────────────────────
 async function sendSalesPitch(user: TgUser) {
   const tributeLink = process.env.TRIBUTE_LINK || 'https://tribute.tg'
-  await sendMessage(
-    user.id,
-    `👋 <b>Привет, ${user.first_name || 'друг'}!</b>\n\n` +
+  const text = await getBotText(
+    'l_sales',
+    `👋 <b>Привет, {name}!</b>\n\n` +
     `<b>AI Олимп</b>, закрытый клуб тех, кто строит будущее с AI.\n\n` +
     `🔥 Разборы инструментов и кейсов\n` +
     `📈 Геймификация: фантики, титулы, рейтинги\n` +
     `🤝 Сильное сообщество практиков\n` +
     `🎥 Личное приветствие от основателя\n\n` +
-    `<b>Оформить подписку:</b>\n${tributeLink}`
+    `<b>Оформить подписку:</b>\n{tribute_link}`,
+    { name: user.first_name || 'друг', tribute_link: tributeLink },
   )
+  await sendMessage(user.id, text)
 }
 
 // ─── Set Telegram rank title (no-rights admin) ────────────────────────────────
@@ -516,14 +507,20 @@ async function applyRankTitle(userId: number, rank: MemberRank) {
     console.warn('applyRankTitle: TELEGRAM_GROUP_ID is not set')
     return
   }
-  const rc = RANK_CONFIG[rank]
+  // Тэг титула берём из БД (titles.tag_title), с фолбэком на хардкод.
+  let tagTitle = RANK_CONFIG[rank].tagTitle || RANK_CONFIG[rank].label
+  const { data: titleRow } = await supabaseAdmin
+    .from('titles')
+    .select('tag_title, label')
+    .eq('rank', rank)
+    .maybeSingle()
+  if (titleRow) tagTitle = titleRow.tag_title || titleRow.label || tagTitle
+
   try {
     const prom = await promoteChatMember(groupId, userId)
     if (!prom?.ok) console.error('promoteChatMember failed:', prom)
-    // Telegram запрещает произвольные эмодзи в custom_title (CUSTOM_TITLE_EMOJI_NOT_ALLOWED).
-    // Используем только текст, лимит 16 символов.
-    const title = rc.label.slice(0, 16)
-    const set = await setChatAdministratorCustomTitle(groupId, userId, title)
+    // Telegram запрещает произвольные эмодзи в custom_title. Лимит 16 символов.
+    const set = await setChatAdministratorCustomTitle(groupId, userId, tagTitle.slice(0, 16))
     if (!set?.ok) console.error('setChatAdministratorCustomTitle failed:', set)
   } catch (e) {
     console.error('applyRankTitle exception:', e)

@@ -124,40 +124,51 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'no_credit' }, { status: 409 })
   }
 
-  const { pickWheelPrize } = await import('@/lib/wheel-prizes')
-  const { segmentIndex, leaves } = pickWheelPrize()
+  const { pickWheelPrizeFromDb } = await import('@/lib/wheel-prizes')
+  const pick = await pickWheelPrizeFromDb()
+  if (!pick) return NextResponse.json({ error: 'no_prizes_configured' }, { status: 500 })
 
   const { error: insErr } = await supabaseAdmin.from('wheel_spins').insert({
     tg_id: tgId,
     month: new Date().toISOString().slice(0, 7),
-    prize_leaves: leaves,
+    prize_leaves: pick.leaves,
   })
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
 
-  const { getRank } = await import('@/lib/ranks')
-  const newPoints = memberRaw.points + leaves
-  const newRank = getRank(newPoints)
+  const newPoints = memberRaw.points + pick.leaves
 
   await supabaseAdmin
     .from('members')
     .update({
       points: newPoints,
-      rank: newRank,
       spins_available: member.spins_available - 1,
     })
     .eq('id', memberRaw.id)
 
-  await supabaseAdmin.from('points_log').insert({
-    member_id: memberRaw.id,
-    tg_id: tgId,
-    points: leaves,
-    reason: 'wheel_spin',
-  })
+  if (pick.leaves > 0) {
+    await supabaseAdmin.from('points_log').insert({
+      member_id: memberRaw.id,
+      tg_id: tgId,
+      points: pick.leaves,
+      reason: 'wheel_spin',
+    })
+  }
+
+  if (pick.reward) {
+    await supabaseAdmin.from('events_log').insert({
+      member_id: memberRaw.id,
+      tg_id: tgId,
+      event_type: 'wheel_reward_won',
+      metadata: { key: pick.key, prize: pick.prize },
+    })
+  }
 
   return NextResponse.json({
     ok: true,
-    segmentIndex,
-    leaves,
+    segmentIndex: pick.segmentIndex,
+    leaves: pick.leaves,
+    prize: pick.prize,
+    reward: pick.reward,
     spinsAvailable: member.spins_available - 1,
   })
 }

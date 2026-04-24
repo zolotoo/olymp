@@ -1,10 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTelegram, tgFetch } from './TelegramProvider'
-import { SEGMENTS, LEAVES_EXPLANATION, type Segment } from '@/lib/wheel-prizes'
+import type { Segment } from '@/lib/wheel-prizes'
+import { LEAVES_EXPLANATION_FALLBACK } from '@/lib/wheel-prizes'
 
-const SEG_COUNT = SEGMENTS.length
-const SEG_ANGLE = 360 / SEG_COUNT
 const R = 200
 const CX = 210
 const CY = 210
@@ -22,9 +21,10 @@ const arcPath = (start: number, end: number) => {
 
 export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => void }) {
   const { initData, isTelegram, ready } = useTelegram()
+  const [segments, setSegments] = useState<Segment[] | null>(null)
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
-  const [result, setResult] = useState<Segment | null>(null)
+  const [result, setResult] = useState<(Segment & { leaves: number }) | null>(null)
   const [canSpin, setCanSpin] = useState<boolean | null>(null)
   const [spinsAvailable, setSpinsAvailable] = useState<number>(0)
   const [reason, setReason] = useState<string | null>(null)
@@ -34,6 +34,9 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
   const [showExplanation, setShowExp] = useState(false)
   const [expanded, setExpanded] = useState<number | null>(null)
 
+  const SEG_COUNT = segments?.length ?? 1
+  const SEG_ANGLE = 360 / SEG_COUNT
+
   useEffect(() => {
     if (!ready) return
     if (!isTelegram) {
@@ -42,10 +45,14 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
       return
     }
     let cancelled = false
-    tgFetch('/api/wheel', initData)
-      .then(r => r.json())
-      .then(d => {
+
+    Promise.all([
+      fetch('/api/wheel/segments').then(r => r.json()),
+      tgFetch('/api/wheel', initData).then(r => r.json()),
+    ])
+      .then(([seg, d]) => {
         if (cancelled) return
+        setSegments(seg.segments ?? [])
         if (d.error) {
           setError(d.error === 'unauthorized' ? 'Не удалось авторизоваться' : d.error)
           setCanSpin(false)
@@ -62,7 +69,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
   }, [ready, isTelegram, initData])
 
   const spin = async () => {
-    if (spinning || !canSpin) return
+    if (spinning || !canSpin || !segments) return
     setSpinning(true)
     setResult(null)
     setError(null)
@@ -75,7 +82,9 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
           ? 'Нет доступных попыток'
           : data.error === 'not_member'
             ? 'Ты не в клубе'
-            : (data.error || 'Ошибка')
+            : data.error === 'no_prizes_configured'
+              ? 'Колесо не настроено'
+              : (data.error || 'Ошибка')
         setError(msg)
         setSpinning(false)
         return
@@ -89,7 +98,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
       setRotation(currentBase + turns * 360 + target)
 
       setTimeout(() => {
-        setResult({ ...SEGMENTS[winIdx], leaves })
+        if (segments[winIdx]) setResult({ ...segments[winIdx], leaves })
         setSpinning(false)
         const remaining = typeof data.spinsAvailable === 'number' ? data.spinsAvailable : 0
         setSpinsAvailable(remaining)
@@ -105,21 +114,25 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
     }
   }
 
-  const statusLabel = canSpin === null
-    ? 'загружаем…'
-    : canSpin
-      ? (spinsAvailable > 1 ? `${spinsAvailable} попытки доступно` : 'попытка доступна')
-      : reason === 'first_week_pending'
-        ? 'первый спин через неделю'
-        : reason === 'awaiting_renewal'
-          ? 'продли подписку'
-          : reason === 'not_member'
-            ? 'только для участников'
-            : 'нет попыток'
+  const statusLabel = useMemo(() => {
+    if (canSpin === null) return 'загружаем…'
+    if (canSpin) return spinsAvailable > 1 ? `${spinsAvailable} попытки доступно` : 'попытка доступна'
+    if (reason === 'first_week_pending') return 'первый спин через неделю'
+    if (reason === 'awaiting_renewal') return 'продли подписку'
+    if (reason === 'not_member') return 'только для участников'
+    return 'нет попыток'
+  }, [canSpin, spinsAvailable, reason])
 
   const daysUntilFirstSpin = nextSpinAt
     ? Math.max(0, Math.ceil((new Date(nextSpinAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null
+
+  if (!segments) {
+    return <div className="text-center text-sm p-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Загрузка…</div>
+  }
+  if (segments.length === 0) {
+    return <div className="text-center text-sm p-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Колесо ещё не настроено.</div>
+  }
 
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
@@ -181,7 +194,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
             }}
           >
             <defs>
-              {SEGMENTS.map((s, i) => (
+              {segments.map((s, i) => (
                 <radialGradient key={i} id={`grad-${i}`} cx="0.5" cy="0.5" r="0.85">
                   <stop offset="0%" stopColor={s.color} />
                   <stop offset="100%" stopColor={s.colorDeep} />
@@ -206,7 +219,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
             <circle cx={CX} cy={CY} r={R + 12} fill="url(#rimGrad)" />
             <circle cx={CX} cy={CY} r={R + 10} fill="none" stroke="rgba(28,28,30,0.12)" strokeWidth="1" />
 
-            {SEGMENTS.map((s, i) => {
+            {segments.map((s, i) => {
               const start = i * SEG_ANGLE
               const end = (i + 1) * SEG_ANGLE
               const mid = start + SEG_ANGLE / 2
@@ -274,7 +287,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
           Возможные призы
         </div>
         <div className="flex flex-col gap-2">
-          {SEGMENTS.map((s, i) => {
+          {segments.map((s, i) => {
             const isOpen = expanded === i
             return (
               <div key={i}>
@@ -319,10 +332,15 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
             <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)' }}>Ты выиграл приз</p>
 
             <div className="rounded-2xl px-5 py-5 mb-4" style={{ background: `linear-gradient(135deg, ${result.color}1A 0%, ${result.color}0A 100%)`, border: `1px solid ${result.color}33` }}>
-              <div style={{ fontSize: 36, marginBottom: 4 }}></div>
+              <div style={{ fontSize: 36, marginBottom: 4 }}>{result.emoji || '🎁'}</div>
               <div className="text-2xl font-bold" style={{ color: result.color, letterSpacing: '-0.5px' }}>
-                {result.leaves} фантиков
+                {result.leaves > 0 ? `${result.leaves} фантиков` : result.prize}
               </div>
+              {result.leaves === 0 && (
+                <div className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.55)' }}>
+                  Сергей свяжется с тобой по этому призу.
+                </div>
+              )}
             </div>
 
             <button
@@ -334,7 +352,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
             </button>
             {showExplanation && (
               <div className="rounded-xl px-4 py-3 mb-4 text-left text-xs" style={{ background: 'rgba(10,132,255,0.05)', border: '1px solid rgba(10,132,255,0.12)', color: 'rgba(28,28,30,0.70)', lineHeight: 1.65 }}>
-                {LEAVES_EXPLANATION}
+                {LEAVES_EXPLANATION_FALLBACK}
               </div>
             )}
 

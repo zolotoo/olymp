@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendMessage, sendVideoNote } from '@/lib/telegram'
 import { addMemory } from '@/lib/mem0'
-import { getRank } from '@/lib/ranks'
+import { getRankByMonth, loadTitles } from '@/lib/ranks'
+import { getBotText } from '@/lib/bot-messages'
 
 export async function POST(req: NextRequest) {
   // Verify Tribute signature (HMAC-SHA256)
@@ -112,14 +113,16 @@ async function onNewSubscription(payload: TributePayload) {
       await sendVideoNote(tgId, videoNoteId)
       await delay(1500)
     }
-    await sendMessage(
-      tgId,
+    const congratsText = await getBotText(
+      'l_subcongrats',
       `🎉 <b>Добро пожаловать в AI Олимп!</b>\n\n` +
-      `Рад видеть тебя в клубе. Подписка активна до ${formatDate(payload.expires_at)}.\n\n` +
+      `Рад видеть тебя в клубе. Подписка активна до {expires_at}.\n\n` +
       `Инвайт-ссылка придёт отдельным сообщением от @Tribute — она одноразовая, не пересылай.\n\n` +
       `Как попадёшь в чат — пиши, задавай вопросы. ` +
-      `За активность ты будешь получать фантики и расти в титуле. Вперёд! 🔥`
+      `За активность ты будешь получать фантики и расти в титуле. Вперёд! 🔥`,
+      { expires_at: formatDate(payload.expires_at) },
     )
+    await sendMessage(tgId, congratsText)
 
     await supabaseAdmin
       .from('members')
@@ -140,21 +143,27 @@ async function onRenewed(payload: TributePayload) {
 
   const { data: member } = await supabaseAdmin
     .from('members')
-    .select('id, points, spins_available, subscription_count')
+    .select('id, points, rank, spins_available, subscription_count')
     .eq('tg_id', tgId)
     .maybeSingle()
 
   if (!member) return
 
-  const newPoints = member.points + RENEWAL_BONUS_POINTS
-  const newSpins = (member.spins_available ?? 0) + 1
+  const prevRank = member.rank as import('@/lib/types').MemberRank
   const newCount = (member.subscription_count ?? 0) + 1
+  const newRank = getRankByMonth(newCount)
+  const newSpins = (member.spins_available ?? 0) + 1
+
+  // Бонусы за переход титула берём из БД.
+  const titles = await loadTitles()
+  const titleBonus = newRank !== prevRank ? (titles[newRank]?.bonus_points ?? 0) : 0
+  const newPoints = member.points + RENEWAL_BONUS_POINTS + titleBonus
 
   await supabaseAdmin
     .from('members')
     .update({
       points: newPoints,
-      rank: getRank(newPoints),
+      rank: newRank,
       status: 'active',
       spins_available: newSpins,
       subscription_count: newCount,
@@ -167,6 +176,15 @@ async function onRenewed(payload: TributePayload) {
     points: RENEWAL_BONUS_POINTS,
     reason: 'subscription_renewal',
   })
+
+  if (titleBonus > 0) {
+    await supabaseAdmin.from('points_log').insert({
+      member_id: member.id,
+      tg_id: tgId,
+      points: titleBonus,
+      reason: `title_bonus:${newRank}`,
+    })
+  }
 
   await supabaseAdmin.from('events_log').insert([
     {
@@ -183,14 +201,24 @@ async function onRenewed(payload: TributePayload) {
     },
   ])
 
+  const titleMsg = newRank !== prevRank
+    ? `\n\n🎖 Новый титул: <b>${titles[newRank].label}</b>${titleBonus > 0 ? ` (+${titleBonus} фантиков)` : ''}`
+    : ''
+
   try {
-    await sendMessage(
-      tgId,
+    const renewText = await getBotText(
+      'l_renewmsg',
       `✅ <b>Подписка продлена!</b>\n\n` +
       `Спасибо что остаёшься в AI Олимп.\n` +
-      `Активна до ${formatDate(payload.expires_at)}\n\n` +
-      `+${RENEWAL_BONUS_POINTS} фантиков за верность и открылась ещё одна попытка в колесе 🎡`
+      `Активна до {expires_at}\n\n` +
+      `+{renewal_bonus} фантиков за верность и открылась ещё одна попытка в колесе 🎡{title_msg}`,
+      {
+        expires_at: formatDate(payload.expires_at),
+        renewal_bonus: RENEWAL_BONUS_POINTS,
+        title_msg: titleMsg,
+      },
     )
+    await sendMessage(tgId, renewText)
   } catch { /* DM blocked */ }
 }
 
@@ -236,11 +264,13 @@ async function onCancelled(payload: TributePayload) {
   }
 
   try {
-    await sendMessage(
-      tgId,
+    const farewellText = await getBotText(
+      'l_farewell',
       `Жаль видеть тебя уходящим из AI Olymp.\n\n` +
-      `Если что-то пошло не так или есть обратная связь — напиши, всегда слушаю.`
+      `Если что-то пошло не так или есть обратная связь — напиши, всегда слушаю.`,
+      {},
     )
+    await sendMessage(tgId, farewellText)
   } catch { /* DM blocked */ }
 }
 
