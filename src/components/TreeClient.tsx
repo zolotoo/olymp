@@ -57,8 +57,8 @@ const TREE: Node = {
           children: [
             { id: 'c_newsub', label: 'Новая подписка', type: 'condition', detail: 'event: new_subscription',
               children: [
-                { id: 'l_subvideo',    label: 'Кружок от Сергея', type: 'video',   detail: 'Видео при новой подписке' },
                 { id: 'l_subcongrats', label: 'Поздравление',     type: 'message', detail: '[Имя], ты официально в AI Олимп!' },
+                { id: 'l_subvideo',    label: 'Кружок от Сергея', type: 'video',   detail: 'Видео при новой подписке' },
               ],
             },
             { id: 'c_renew', label: 'Продление', type: 'condition', detail: 'event: renewed_subscription',
