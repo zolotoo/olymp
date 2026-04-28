@@ -43,9 +43,6 @@ export async function POST(req: NextRequest) {
 // Classify the update and log it into bot_users / bot_events.
 // Only records interactions we care about (bot audience in private chats + join flow).
 async function trackIncomingUpdate(body: Record<string, unknown>): Promise<void> {
-  const ch = process.env.TELEGRAM_CHANNEL_ID
-  const grp = process.env.TELEGRAM_GROUP_ID
-
   if (body.chat_join_request) {
     const r = body.chat_join_request as { from: TgUser; chat: TgChat }
     if (!r.from?.is_bot) {
@@ -57,16 +54,15 @@ async function trackIncomingUpdate(body: Record<string, unknown>): Promise<void>
   if (body.message) {
     const msg = body.message as TgMessage & { text?: string }
     if (!msg.from || msg.from.is_bot) return
-    // Only track private-chat interactions in the bot audience —
-    // messages in the group/channel are tracked by `activity_log` already.
+    // Bot audience = private DMs with the bot only.
+    // Group/channel messages live in `tg_messages` + `activity_log`, not here.
     const isPrivate = msg.chat.type === 'private' || msg.chat.id === msg.from.id
-    const inTrackedChat = (ch && String(msg.chat.id) === ch) || (grp && String(msg.chat.id) === grp)
-    if (!isPrivate && !inTrackedChat) return
+    if (!isPrivate) return
 
     const text = msg.text ?? ''
     const eventType = text.startsWith('/')
       ? `command:${text.split(/\s+/)[0].toLowerCase()}`
-      : isPrivate ? 'message:private' : 'message:group'
+      : 'message:private'
     await trackBotInteraction({
       user: msg.from,
       eventType,

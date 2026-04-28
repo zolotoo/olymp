@@ -3,6 +3,7 @@ import { RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
 import ActivityChart from '@/components/ActivityChart'
 import SummaryButton from '@/components/SummaryButton'
+import ExpandableText from '@/components/ExpandableText'
 import type { ProfileData, BotEvent, TgMessageRow, DeliveryRow, ReactionRow } from '@/lib/profile-loader'
 
 const card = {
@@ -173,12 +174,12 @@ export default function ProfileCard({ data, backHref, backLabel }: {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Mem0 memory */}
-        <Section title="Память участника (mem0)">
-          {!(memories?.results?.length) ? (
+        <Section title={`Память участника (mem0) · ${memories.results.length}`}>
+          {memories.results.length === 0 ? (
             <p className="text-sm" style={{ color: '#AEAEB2' }}>Память пока пуста, накапливается по мере активности</p>
           ) : (
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-              {memories.results!.map((m) => (
+              {memories.results.map((m) => (
                 <div
                   key={m.id}
                   className="text-sm py-0.5"
@@ -335,28 +336,33 @@ function BotEventRow({ e }: { e: BotEvent }) {
   const label = fmtEventType(e.event_type)
   const payloadText = e.payload
     ? (typeof (e.payload as { text?: unknown }).text === 'string'
-        ? ((e.payload as { text?: string }).text || '').slice(0, 80)
+        ? ((e.payload as { text?: string }).text || '')
         : typeof (e.payload as { data?: unknown }).data === 'string'
-          ? ((e.payload as { data?: string }).data || '').slice(0, 80)
+          ? ((e.payload as { data?: string }).data || '')
           : '')
     : ''
   return (
-    <div className="flex items-start justify-between gap-2 text-sm">
-      <div className="min-w-0 flex-1">
+    <div className="text-sm">
+      <div className="flex items-start justify-between gap-2">
         <span className="font-mono text-xs" style={{ color: '#1D1D1F' }}>{label}</span>
-        {payloadText && (
-          <span className="ml-2 text-xs" style={{ color: '#8E8E93' }}>{payloadText}</span>
-        )}
+        <span className="text-xs whitespace-nowrap" style={{ color: '#AEAEB2' }}>
+          {fmtTime(e.created_at)}
+        </span>
       </div>
-      <span className="text-xs whitespace-nowrap" style={{ color: '#AEAEB2' }}>
-        {fmtTime(e.created_at)}
-      </span>
+      {payloadText && (
+        <ExpandableText
+          text={payloadText}
+          limit={80}
+          className="text-xs mt-0.5"
+          style={{ color: '#8E8E93' }}
+        />
+      )}
     </div>
   )
 }
 
 function MessageRow({ m }: { m: TgMessageRow }) {
-  const preview = (m.text || (m.media_kind ? `[${m.media_kind}]` : '[без текста]')).slice(0, 160)
+  const full = m.text || (m.media_kind ? `[${m.media_kind}]` : '[без текста]')
   const where = m.chat_type === 'private' ? 'DM' : (m.chat_title || m.chat_type || 'chat')
   return (
     <div className="text-sm">
@@ -364,7 +370,7 @@ function MessageRow({ m }: { m: TgMessageRow }) {
         <span className="text-xs" style={{ color: '#8E8E93' }}>{where}{m.edited_at ? ' · (edited)' : ''}</span>
         <span className="text-xs whitespace-nowrap" style={{ color: '#AEAEB2' }}>{fmtTime(m.sent_at)}</span>
       </div>
-      <div style={{ color: '#1D1D1F', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{preview}</div>
+      <ExpandableText text={full} limit={160} style={{ color: '#1D1D1F' }} />
     </div>
   )
 }
@@ -380,9 +386,7 @@ function DeliveryRowView({ d }: { d: DeliveryRow }) {
         </span>
         <span className="text-xs whitespace-nowrap" style={{ color: '#AEAEB2' }}>{fmtTime(d.sent_at)}</span>
       </div>
-      <div style={{ color: '#1D1D1F', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {(d.text || '').slice(0, 200)}
-      </div>
+      <ExpandableText text={d.text || ''} limit={200} style={{ color: '#1D1D1F' }} />
       {d.error_text && <div className="text-xs mt-0.5" style={{ color: '#FF3B30' }}>{d.error_text}</div>}
     </div>
   )

@@ -107,7 +107,7 @@ export type ProfileData = {
   outgoingDeliveries: DeliveryRow[]
   reactionsGiven: ReactionRow[]
   reactionsReceived: ReactionRow[]
-  memories: { results?: Array<{ id: string; memory: string; created_at?: string }> } | null
+  memories: { results: Array<{ id: string; memory: string; created_at?: string }> }
   eventsLog: EventLogRow[]
   pointsLog: PointsLogRow[]
   activity: ActivityRow[]
@@ -218,7 +218,7 @@ export async function loadProfile(tgIdOrMemberUuid: string | number): Promise<Pr
       : Promise.resolve({ data: [] as { message_count: number }[] }),
   ])
 
-  const memories = await getMemories(String(tgId)).catch(() => null)
+  const memories = await getMemories(String(tgId)).catch(() => ({ results: [] }))
   const totalMessages = ((allActivityRes.data as { message_count: number }[] | null) || [])
     .reduce((s, r) => s + (r.message_count || 0), 0)
 
