@@ -47,6 +47,10 @@ export async function approveChatJoinRequest(chatId: string | number, userId: nu
   return call('approveChatJoinRequest', { chat_id: chatId, user_id: userId })
 }
 
+export async function declineChatJoinRequest(chatId: string | number, userId: number) {
+  return call('declineChatJoinRequest', { chat_id: chatId, user_id: userId })
+}
+
 // Promote to admin with minimal rights — only to allow setting a custom title (rank badge).
 // Telegram requires at least ONE permission to be true, otherwise the call demotes the user.
 // can_invite_users is the least intrusive permission that still makes them an admin.

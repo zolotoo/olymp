@@ -5,7 +5,7 @@ import { sendTracked } from '@/lib/send-tracked'
 import { addMemory } from '@/lib/mem0'
 import { getRankByMonth } from '@/lib/ranks'
 import { loadTitles } from '@/lib/ranks-server'
-import { getBotText } from '@/lib/bot-messages'
+import { getBotText, getBotVideo } from '@/lib/bot-messages'
 
 export async function POST(req: NextRequest) {
   // Verify Tribute signature (HMAC-SHA256)
@@ -110,13 +110,8 @@ async function onNewSubscription(payload: TributePayload) {
 
   addMemory(String(tgId), `Оформил подписку AI Olymp. Период: ${payload.period}, до ${payload.expires_at}`)
 
-  // Send welcome
-  const videoNoteId = process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
+  // Per message tree: text first, then video circle.
   try {
-    if (videoNoteId) {
-      await sendVideoNote(tgId, videoNoteId)
-      await delay(1500)
-    }
     const congratsText = await getBotText(
       'l_subcongrats',
       `🎉 <b>Добро пожаловать в AI Олимп!</b>\n\n` +
@@ -128,12 +123,19 @@ async function onNewSubscription(payload: TributePayload) {
     )
     await sendTracked(tgId, congratsText, { campaign: 'sub_congrats', templateKey: 'l_subcongrats' })
 
+    const videoNoteId = (await getBotVideo('l_subvideo')) || process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
+    if (videoNoteId) {
+      await delay(1500)
+      const r = await sendVideoNote(tgId, videoNoteId)
+      if (!r?.ok) console.error('tribute: sendVideoNote (l_subvideo) failed', r)
+    }
+
     await supabaseAdmin
       .from('members')
       .update({ welcome_sent: true })
       .eq('tg_id', tgId)
   } catch {
-    // DM failed — user hasn't started bot yet, will get welcome on /start
+    // DM failed — user hasn't started bot yet
   }
 }
 

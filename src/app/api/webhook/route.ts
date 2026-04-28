@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import {
-  sendMessage, sendVideoNote, getChatMember, approveChatJoinRequest,
-  promoteChatMember, setChatAdministratorCustomTitle, addChatMember, deleteMessage,
+  sendMessage, sendVideoNote, getChatMember, approveChatJoinRequest, declineChatJoinRequest,
+  promoteChatMember, setChatAdministratorCustomTitle, deleteMessage,
 } from '@/lib/telegram'
 import { sendTracked } from '@/lib/send-tracked'
 import { addMemory } from '@/lib/mem0'
@@ -10,7 +10,7 @@ import { POINTS, RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
 import { trackBotInteraction, setBotUserChannelMember, setBotUserGroupMember } from '@/lib/bot-tracking'
 import { enableMiniAppButton, disableMiniAppButton } from '@/lib/mini-app'
-import { getBotText } from '@/lib/bot-messages'
+import { getBotText, getBotVideo } from '@/lib/bot-messages'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -88,14 +88,24 @@ export async function GET() {
   return NextResponse.json({ ok: true, bot: 'AI Олимп' })
 }
 
-// ─── Join request (channel with approval mode) ────────────────────────────────
+// ─── Join request (channel "AI Олимп" or group "AI Олимп / Ветки") ────────────
 async function handleJoinRequest(update: { chat: TgChat; from: TgUser }) {
   const { chat, from: user } = update
   if (user.is_bot) return
 
   const channelId = process.env.TELEGRAM_CHANNEL_ID
-  if (channelId && String(chat.id) !== channelId) return
+  const groupId = process.env.TELEGRAM_GROUP_ID
+  const chatStr = String(chat.id)
+  const isChannel = !!channelId && chatStr === channelId
+  const isGroup = !!groupId && chatStr === groupId
+  if (!isChannel && !isGroup) return
 
+  if (isGroup) {
+    await handleGroupJoinRequest(chat, user)
+    return
+  }
+
+  // Channel join request: same flow as before.
   const { data: existing } = await supabaseAdmin
     .from('members')
     .select('id, welcome_sent')
@@ -128,17 +138,74 @@ async function handleJoinRequest(update: { chat: TgChat; from: TgUser }) {
     })
   }
 
-  await sendWelcome(user)
+  // Per message tree: on channel join request, only auto-approve + DM circle.
+  // Welcome text is sent only on Tribute subscription (see /api/tribute).
   await approveChatJoinRequest(chat.id, user.id)
   await enableMiniAppButton(user.id)
 
-  // Invite to the linked group after approving the channel join
-  const groupId = process.env.TELEGRAM_GROUP_ID
-  if (groupId) {
-    try {
-      await addChatMember(Number(groupId), user.id)
-    } catch { /* user may already be in group or bot lacks rights */ }
+  try {
+    const videoNoteId = (await getBotVideo('l_jrvideo')) || process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
+    if (videoNoteId) {
+      const r = await sendVideoNote(user.id, videoNoteId)
+      if (!r?.ok) console.error('join_request: sendVideoNote (l_jrvideo) failed', r)
+    } else {
+      console.warn('join_request: no video note configured (l_jrvideo / TELEGRAM_WELCOME_VIDEO_NOTE_ID)')
+    }
+  } catch (e) {
+    console.error('join_request: video note exception', e)
   }
+
+  await supabaseAdmin.from('members').update({ welcome_sent: true }).eq('tg_id', user.id)
+}
+
+// Group "AI Олимп / Ветки": approve only if user is subscribed to the channel.
+async function handleGroupJoinRequest(chat: TgChat, user: TgUser) {
+  const channelId = process.env.TELEGRAM_CHANNEL_ID
+  let isChannelMember = false
+  if (channelId) {
+    try {
+      const res = await getChatMember(channelId, user.id) as { ok: boolean; result?: { status: string } }
+      const status = res?.result?.status
+      isChannelMember = !!status && ['member', 'administrator', 'creator'].includes(status)
+    } catch (e) {
+      console.error('group join: getChatMember failed', e)
+    }
+  }
+
+  const { data: member } = await supabaseAdmin
+    .from('members').select('id').eq('tg_id', user.id).maybeSingle()
+
+  if (isChannelMember) {
+    await approveChatJoinRequest(chat.id, user.id)
+    if (member) {
+      await supabaseAdmin.from('events_log').insert({
+        member_id: member.id,
+        tg_id: user.id,
+        event_type: 'group_join_approved',
+        metadata: { chat_id: chat.id },
+      })
+    }
+    return
+  }
+
+  await declineChatJoinRequest(chat.id, user.id)
+  if (member) {
+    await supabaseAdmin.from('events_log').insert({
+      member_id: member.id,
+      tg_id: user.id,
+      event_type: 'group_join_denied',
+      metadata: { chat_id: chat.id, reason: 'no_channel_subscription' },
+    })
+  }
+
+  try {
+    const denyText = await getBotText(
+      'l_groupdeny',
+      `Чтобы попасть в группу <b>AI Олимп / Ветки</b>, сначала оформи подписку на канал AI Олимп.`,
+      {},
+    )
+    await sendTracked(user.id, denyText, { campaign: 'group_join_denied', templateKey: 'l_groupdeny' })
+  } catch { /* DM blocked */ }
 }
 
 // ─── New member joins channel ─────────────────────────────────────────────────

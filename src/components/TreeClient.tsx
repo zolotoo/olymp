@@ -204,6 +204,41 @@ export default function TreeClient() {
     }
   }
 
+  // Collect message/video descendants in tree order — used by "test event" button
+  // on trigger/condition nodes.
+  const collectTestables = useCallback((node: Node): Node[] => {
+    const out: Node[] = []
+    const walk = (n: Node) => {
+      if (n.type === 'message' || n.type === 'video') out.push(n)
+      n.children?.forEach(walk)
+    }
+    node.children?.forEach(walk)
+    return out
+  }, [])
+
+  const handleTestEvent = async () => {
+    if (!selected) return
+    const items = collectTestables(selected).map(n => ({
+      type: n.type as 'message' | 'video',
+      label: n.label,
+      content: getContent(n),
+      video_url: getVideoUrl(n) || null,
+    }))
+    if (!items.length) return
+    setTesting(true)
+    setTestOk(false)
+    try {
+      await fetch('/api/messages/test-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: selected.label, items }),
+      })
+      setTestOk(true)
+    } finally {
+      setTesting(false)
+    }
+  }
+
   const startEdit = () => {
     if (!selected) return
     setDraft(getContent(selected))
@@ -395,6 +430,11 @@ export default function TreeClient() {
                     </button>
                   )}
                 </div>
+              )}
+              {(selected.type === 'trigger' || selected.type === 'condition') && collectTestables(selected).length > 0 && (
+                <button onClick={handleTestEvent} disabled={testing} style={{ padding: '5px 12px', background: testing ? 'rgba(48,209,88,0.08)' : 'rgba(48,209,88,0.10)', border: '1px solid rgba(48,209,88,0.24)', borderRadius: 50, fontSize: 12.5, fontWeight: 600, color: '#1C8A3C', cursor: testing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {testing ? '...' : '▶ Тест события'}
+                </button>
               )}
             </div>
 
