@@ -21,6 +21,7 @@ export type BotUser = {
   tg_last_name: string | null
   language_code: string | null
   is_channel_member: boolean | null
+  is_group_member: boolean | null
   first_seen_at: string
   last_seen_at: string
   last_event_type: string | null

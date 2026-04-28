@@ -77,16 +77,48 @@ export async function trackBotInteraction({ user, eventType, chatId, payload }: 
  * Update the cached channel-member flag for a user.
  * Call this after doing a getChatMember check elsewhere in the flow.
  */
+async function upsertMembershipFlag(
+  tgId: number,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const now = new Date().toISOString()
+  const { data: existing } = await supabaseAdmin
+    .from('bot_users')
+    .select('tg_id')
+    .eq('tg_id', tgId)
+    .maybeSingle()
+
+  if (existing) {
+    await supabaseAdmin.from('bot_users').update(patch).eq('tg_id', tgId)
+  } else {
+    await supabaseAdmin.from('bot_users').insert({
+      tg_id: tgId,
+      first_seen_at: now,
+      last_seen_at: now,
+      events_count: 0,
+      ...patch,
+    })
+  }
+}
+
 export async function setBotUserChannelMember(tgId: number, isMember: boolean): Promise<void> {
   try {
-    await supabaseAdmin
-      .from('bot_users')
-      .update({
-        is_channel_member: isMember,
-        channel_member_checked_at: new Date().toISOString(),
-      })
-      .eq('tg_id', tgId)
+    await upsertMembershipFlag(tgId, {
+      is_channel_member: isMember,
+      channel_member_checked_at: new Date().toISOString(),
+    })
   } catch (e) {
     console.error('setBotUserChannelMember failed:', e)
+  }
+}
+
+export async function setBotUserGroupMember(tgId: number, isMember: boolean): Promise<void> {
+  try {
+    await upsertMembershipFlag(tgId, {
+      is_group_member: isMember,
+      group_member_checked_at: new Date().toISOString(),
+    })
+  } catch (e) {
+    console.error('setBotUserGroupMember failed:', e)
   }
 }

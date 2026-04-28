@@ -8,7 +8,7 @@ import { sendTracked } from '@/lib/send-tracked'
 import { addMemory } from '@/lib/mem0'
 import { POINTS, RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
-import { trackBotInteraction } from '@/lib/bot-tracking'
+import { trackBotInteraction, setBotUserChannelMember, setBotUserGroupMember } from '@/lib/bot-tracking'
 import { enableMiniAppButton, disableMiniAppButton } from '@/lib/mini-app'
 import { getBotText } from '@/lib/bot-messages'
 
@@ -164,7 +164,11 @@ async function handleChatMember(update: TgChatMemberUpdate) {
   // Фантики/титул/историю НЕ трогаем — только статус. Для админа это видно
   // в /members (серая строчка) и в events_log.
   if (['left', 'kicked', 'banned'].includes(status)) {
-    if (isChannel) await disableMiniAppButton(user.id)
+    if (isChannel) {
+      await disableMiniAppButton(user.id)
+      await setBotUserChannelMember(user.id, false)
+    }
+    if (isGroup) await setBotUserGroupMember(user.id, false)
 
     const { data: existing } = await supabaseAdmin
       .from('members')
@@ -192,12 +196,14 @@ async function handleChatMember(update: TgChatMemberUpdate) {
     return
   }
 
-  if (!['member', 'administrator'].includes(status)) return
+  if (!['member', 'administrator', 'creator'].includes(status)) return
 
   // On join to the channel: give the user the personal Mini App button.
   if (isChannel) {
     await enableMiniAppButton(user.id)
+    await setBotUserChannelMember(user.id, true)
   }
+  if (isGroup) await setBotUserGroupMember(user.id, true)
 
   const { data: existing } = await supabaseAdmin
     .from('members').select('id, rank').eq('tg_id', user.id).maybeSingle()

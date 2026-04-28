@@ -145,7 +145,7 @@ export default function ProfileCard({ data, backHref, backLabel }: {
         </div>
 
         {botUser && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(28,28,30,0.06)' }}>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(28,28,30,0.06)' }}>
             <Stat label="Событий в боте" value={botUser.events_count} />
             <Stat label="Входящих" value={incomingMessages.length} />
             <Stat label="Рассылок получил" value={outgoingDeliveries.length} />
@@ -153,6 +153,11 @@ export default function ProfileCard({ data, backHref, backLabel }: {
               label="В канале"
               value={botUser.is_channel_member === true ? 'да' : botUser.is_channel_member === false ? 'нет' : '?'}
               highlight={botUser.is_channel_member === false}
+            />
+            <Stat
+              label="В группе"
+              value={botUser.is_group_member === true ? 'да' : botUser.is_group_member === false ? 'нет' : '?'}
+              highlight={botUser.is_group_member === false}
             />
           </div>
         )}
