@@ -341,6 +341,14 @@ async function handleMessage(message: TgMessage) {
 
   // /start in private chat (with optional deep-link payload: /start <source>)
   if (message.text?.startsWith('/start') && message.chat.id === user.id) {
+    // Dedup: Telegram clients sometimes fire `/start <param>` followed by a
+    // bare `/start` within a few seconds when a deep link is opened. Without
+    // this check, the user would get the variant message AND then the main
+    // sales pitch ~2s later. Skip if we just replied to the same user.
+    if (await hasRecentStartReply(user.id)) {
+      return
+    }
+
     const startParam = parseStartParam(message.text)
     const { source: salesSource, isFirstTouch } = await recordSourceFromStart(user.id, startParam)
 
@@ -659,6 +667,26 @@ async function sendWelcome(user: TgUser): Promise<boolean> {
 // ─── Deep-link source tracking ───────────────────────────────────────────────
 const KNOWN_SOURCES = ['main', 'hochy', 'promts', 'claude'] as const
 type Source = typeof KNOWN_SOURCES[number]
+
+// Telegram clients (esp. on first deep-link click) sometimes fire a follow-up
+// bare `/start` within a couple of seconds of the parameterized one. This
+// guard makes the /start handler idempotent inside a short window.
+async function hasRecentStartReply(tgId: number): Promise<boolean> {
+  try {
+    const since = new Date(Date.now() - 30_000).toISOString()
+    const { data } = await supabaseAdmin
+      .from('message_deliveries')
+      .select('id')
+      .eq('tg_id', tgId)
+      .in('campaign', ['sales_pitch', 'welcome'])
+      .gte('sent_at', since)
+      .limit(1)
+      .maybeSingle()
+    return !!data
+  } catch {
+    return false
+  }
+}
 
 function parseStartParam(text: string): Source | null {
   const parts = text.trim().split(/\s+/)
