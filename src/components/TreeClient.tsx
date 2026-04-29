@@ -23,11 +23,30 @@ const TREE: Node = {
       id: 's1', label: '1-я неделя в клубе', type: 'section',
       children: [
         {
-          id: 't_start', label: '/start', type: 'trigger', detail: 'Первый контакт пользователя с ботом',
+          id: 't_start', label: '/start', type: 'trigger', detail: 'Первый контакт пользователя с ботом. Поддерживаются deep-link источники: ?start=hochy / promts / claude. Чистый /start или ?start=main → ветка MAIN.',
           children: [
-            { id: 'c_notmember', label: 'Не участник', type: 'condition', detail: 'Не найден в базе members',
+            { id: 'c_notmember', label: 'Не участник', type: 'condition', detail: 'Не найден в базе members. Текст подбирается по источнику первого касания (deep-link при первом /start). Возвращающимся юзерам всегда отправляется MAIN.',
               children: [
-                { id: 'l_sales', label: 'Продающее сообщение', type: 'message', detail: 'Привет! Клуб AI Олимп...' },
+                { id: 'c_src_main',   label: 'Источник · MAIN (основа)', type: 'condition', detail: 'Чистый /start или ?start=main. Это дефолтная ветка — что показывалось до введения источников.',
+                  children: [
+                    { id: 'l_sales', label: 'Продающее · MAIN', type: 'message', detail: 'Привет! Клуб AI Олимп...' },
+                  ],
+                },
+                { id: 'c_src_hochy',  label: 'Источник · ХОЧУ', type: 'condition', detail: 'Перешёл по ссылке t.me/<bot>?start=hochy',
+                  children: [
+                    { id: 'l_sales_hochy', label: 'Продающее · ХОЧУ', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию ХОЧУ' },
+                  ],
+                },
+                { id: 'c_src_promts', label: 'Источник · ПРОМТЫ', type: 'condition', detail: 'Перешёл по ссылке t.me/<bot>?start=promts',
+                  children: [
+                    { id: 'l_sales_promts', label: 'Продающее · ПРОМТЫ', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию ПРОМТЫ' },
+                  ],
+                },
+                { id: 'c_src_claude', label: 'Источник · КЛОД', type: 'condition', detail: 'Перешёл по ссылке t.me/<bot>?start=claude',
+                  children: [
+                    { id: 'l_sales_claude', label: 'Продающее · КЛОД', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию КЛОД' },
+                  ],
+                },
               ],
             },
             { id: 'c_active', label: 'Активный участник', type: 'condition', detail: 'welcome_sent = true',
@@ -289,7 +308,7 @@ export default function TreeClient() {
   const byId = new Map(placed.map(p => [p.node.id, p]))
   const totalLeaves = countLeaves(TREE)
   const canvasH = totalLeaves * SLOT + 24
-  const canvasW = 5 * LW + NW + 16
+  const canvasW = Math.max(...placed.map(p => p.x)) + NW + 16
 
   const edges: { x1: number; y1: number; x2: number; y2: number }[] = []
   for (const p of placed) {

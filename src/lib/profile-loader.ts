@@ -14,6 +14,8 @@ export type Member = {
   last_active: string | null
 }
 
+export type SourceHistoryEntry = { source: string; at: string }
+
 export type BotUser = {
   tg_id: number
   tg_username: string | null
@@ -26,6 +28,8 @@ export type BotUser = {
   last_seen_at: string
   last_event_type: string | null
   events_count: number
+  source: string | null
+  source_history: SourceHistoryEntry[] | null
 }
 
 export type BotEvent = {

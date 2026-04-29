@@ -339,8 +339,11 @@ async function handleMessage(message: TgMessage) {
     return
   }
 
-  // /start in private chat
-  if (message.text === '/start' && message.chat.id === user.id) {
+  // /start in private chat (with optional deep-link payload: /start <source>)
+  if (message.text?.startsWith('/start') && message.chat.id === user.id) {
+    const startParam = parseStartParam(message.text)
+    const { source: salesSource, isFirstTouch } = await recordSourceFromStart(user.id, startParam)
+
     const { data: member } = await supabaseAdmin
       .from('members')
       .select('rank, points, joined_at, welcome_sent')
@@ -390,10 +393,12 @@ async function handleMessage(message: TgMessage) {
           await sendWelcome(user)
           await enableMiniAppButton(user.id)
         } else {
-          await sendSalesPitch(user)
+          // First-touch users see the variant matching their source param.
+          // Returning bot-users always see the main pitch.
+          await sendSalesPitch(user, isFirstTouch ? salesSource : 'main')
         }
       } else {
-        await sendSalesPitch(user)
+        await sendSalesPitch(user, isFirstTouch ? salesSource : 'main')
       }
     }
     return
@@ -651,11 +656,76 @@ async function sendWelcome(user: TgUser): Promise<boolean> {
   }
 }
 
+// ─── Deep-link source tracking ───────────────────────────────────────────────
+const KNOWN_SOURCES = ['main', 'hochy', 'promts', 'claude'] as const
+type Source = typeof KNOWN_SOURCES[number]
+
+function parseStartParam(text: string): Source | null {
+  const parts = text.trim().split(/\s+/)
+  const raw = parts[1]
+  if (!raw) return null
+  const candidate = raw.toLowerCase() as Source
+  return KNOWN_SOURCES.includes(candidate) ? candidate : null
+}
+
+interface SourceHistoryEntry { source: Source; at: string }
+
+async function recordSourceFromStart(
+  tgId: number,
+  startParam: Source | null,
+): Promise<{ source: Source; isFirstTouch: boolean }> {
+  const source: Source = startParam ?? 'main'
+  const now = new Date().toISOString()
+
+  try {
+    const { data: bu } = await supabaseAdmin
+      .from('bot_users')
+      .select('source, source_history')
+      .eq('tg_id', tgId)
+      .maybeSingle()
+
+    const history = Array.isArray(bu?.source_history)
+      ? (bu!.source_history as SourceHistoryEntry[])
+      : []
+    const isFirstTouch = history.length === 0
+
+    if (!bu) {
+      // bot_users row should exist by now (trackBotInteraction ran first), but be safe.
+      return { source, isFirstTouch: true }
+    }
+
+    if (isFirstTouch) {
+      await supabaseAdmin
+        .from('bot_users')
+        .update({
+          source,
+          source_history: [{ source, at: now }],
+        })
+        .eq('tg_id', tgId)
+      return { source, isFirstTouch: true }
+    }
+
+    if (startParam) {
+      await supabaseAdmin
+        .from('bot_users')
+        .update({
+          source_history: [...history, { source: startParam, at: now }],
+        })
+        .eq('tg_id', tgId)
+    }
+    return { source: (bu.source as Source) ?? 'main', isFirstTouch: false }
+  } catch (e) {
+    console.error('recordSourceFromStart failed:', e)
+    return { source, isFirstTouch: true }
+  }
+}
+
 // ─── Sales pitch for non-members ─────────────────────────────────────────────
-async function sendSalesPitch(user: TgUser) {
+async function sendSalesPitch(user: TgUser, source: Source = 'main') {
   const tributeLink = process.env.TRIBUTE_LINK || 'https://tribute.tg'
+  const key = source === 'main' ? 'l_sales' : `l_sales_${source}`
   const text = await getBotText(
-    'l_sales',
+    key,
     `👋 <b>Привет, {name}!</b>\n\n` +
     `<b>AI Олимп</b>, закрытый клуб тех, кто строит будущее с AI.\n\n` +
     `🔥 Разборы инструментов и кейсов\n` +
@@ -665,7 +735,7 @@ async function sendSalesPitch(user: TgUser) {
     `<b>Оформить подписку:</b>\n{tribute_link}`,
     { name: user.first_name || 'друг', tribute_link: tributeLink },
   )
-  await sendTracked(user.id, text, { campaign: 'sales_pitch', templateKey: 'l_sales' })
+  await sendTracked(user.id, text, { campaign: 'sales_pitch', templateKey: key })
 }
 
 // ─── Set Telegram rank title (no-rights admin) ────────────────────────────────

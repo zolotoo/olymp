@@ -15,16 +15,46 @@ interface BotUser {
   last_seen_at: string
   last_event_type: string | null
   events_count: number
+  source: string | null
 }
 
-async function loadData() {
-  const [{ data: users }, { count: total }] = await Promise.all([
-    supabaseAdmin
-      .from('bot_users')
-      .select('*')
-      .order('last_seen_at', { ascending: false })
-      .limit(500) as unknown as Promise<{ data: BotUser[] | null }>,
+const SOURCE_LABELS: Record<string, string> = {
+  main: 'MAIN',
+  hochy: 'ХОЧУ',
+  promts: 'ПРОМТЫ',
+  claude: 'КЛОД',
+}
+const SOURCE_COLORS: Record<string, string> = {
+  main: '#8E8E93',
+  hochy: '#FF9500',
+  promts: '#0A84FF',
+  claude: '#BF5AF2',
+}
+
+const SOURCES = ['main', 'hochy', 'promts', 'claude'] as const
+
+async function loadData(sourceFilter: string | null) {
+  let usersQ = supabaseAdmin
+    .from('bot_users')
+    .select('*')
+    .order('last_seen_at', { ascending: false })
+    .limit(500)
+  if (sourceFilter) usersQ = usersQ.eq('source', sourceFilter)
+
+  const sourceCountsQ = Promise.all(
+    SOURCES.map(s =>
+      supabaseAdmin
+        .from('bot_users')
+        .select('tg_id', { count: 'exact', head: true })
+        .eq('source', s)
+        .then(r => [s, r.count ?? 0] as const),
+    ),
+  ).then(pairs => Object.fromEntries(pairs) as Record<string, number>)
+
+  const [{ data: users }, { count: total }, sourceCounts] = await Promise.all([
+    usersQ as unknown as Promise<{ data: BotUser[] | null }>,
     supabaseAdmin.from('bot_users').select('tg_id', { count: 'exact', head: true }),
+    sourceCountsQ,
   ])
 
   const { count: channelMembers } = await supabaseAdmin
@@ -49,6 +79,7 @@ async function loadData() {
     channelMembers: channelMembers ?? 0,
     clubMembers: clubMembers ?? 0,
     active24h: active24h ?? 0,
+    sourceCounts,
   }
 }
 
@@ -63,8 +94,14 @@ function formatRel(iso: string): string {
   return `${d} дн назад`
 }
 
-export default async function AudiencePage() {
-  const data = await loadData()
+export default async function AudiencePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ source?: string }>
+}) {
+  const sp = await searchParams
+  const sourceFilter = sp.source && (SOURCES as readonly string[]).includes(sp.source) ? sp.source : null
+  const data = await loadData(sourceFilter)
 
   return (
     <div className="space-y-6">
@@ -84,11 +121,48 @@ export default async function AudiencePage() {
         <StatCard label="Активны за 24ч" value={data.active24h} />
       </div>
 
+      {/* Источник трафика — фильтр-чипы */}
+      <div className="rounded-2xl p-4" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.06)' }}>
+        <div className="text-xs font-semibold uppercase mb-2" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.6px' }}>
+          Источник трафика (deep-link)
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/audience"
+            className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
+            style={{
+              background: sourceFilter === null ? '#1C1C1E' : 'rgba(28,28,30,0.06)',
+              color: sourceFilter === null ? '#FFFFFF' : 'rgba(28,28,30,0.70)',
+            }}
+          >
+            Все · {data.total}
+          </Link>
+          {SOURCES.map(s => {
+            const active = sourceFilter === s
+            const color = SOURCE_COLORS[s]
+            return (
+              <Link
+                key={s}
+                href={`/audience?source=${s}`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
+                style={{
+                  background: active ? color : `${color}18`,
+                  color: active ? '#FFFFFF' : color,
+                }}
+              >
+                {SOURCE_LABELS[s]} · {data.sourceCounts[s] ?? 0}
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+
       <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.08)' }}>
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: 'rgba(28,28,30,0.03)' }}>
               <Th>Пользователь</Th>
+              <Th>Источник</Th>
               <Th>В канале</Th>
               <Th>Событий</Th>
               <Th>Последнее</Th>
@@ -112,6 +186,13 @@ export default async function AudiencePage() {
                       <div style={{ fontSize: 12, color: 'rgba(28,28,30,0.45)' }}>@{u.tg_username}</div>
                     )}
                   </Link>
+                </Td>
+                <Td>
+                  {(() => {
+                    const src = u.source ?? 'main'
+                    const color = SOURCE_COLORS[src] ?? '#8E8E93'
+                    return <Badge color={color}>{SOURCE_LABELS[src] ?? src}</Badge>
+                  })()}
                 </Td>
                 <Td>
                   {u.is_channel_member === true ? (

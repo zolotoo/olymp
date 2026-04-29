@@ -33,6 +33,24 @@ function fmtTime(iso: string): string {
   return d.toLocaleString('ru', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  main: 'MAIN',
+  hochy: 'ХОЧУ',
+  promts: 'ПРОМТЫ',
+  claude: 'КЛОД',
+}
+const SOURCE_COLOR: Record<string, string> = {
+  main: '#8E8E93',
+  hochy: '#FF9500',
+  promts: '#0A84FF',
+  claude: '#BF5AF2',
+}
+
+function sourceLabel(src: string | null | undefined): string {
+  if (!src) return 'MAIN'
+  return SOURCE_LABELS[src] ?? src
+}
+
 function fmtEventType(t: string): string {
   if (t.startsWith('command:')) return t.replace('command:', '⌨ ')
   if (t === 'message:private') return '💬 DM боту'
@@ -100,6 +118,33 @@ export default function ProfileCard({ data, backHref, backLabel }: {
               </a>
             )}
             <div className="mt-1 text-xs font-mono" style={{ color: '#AEAEB2' }}>tg_id: {tgId}</div>
+            {botUser && (() => {
+              const src = botUser.source ?? 'main'
+              const color = SOURCE_COLOR[src] ?? '#8E8E93'
+              return (
+                <div
+                  className="mt-2 inline-flex items-center gap-1.5"
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 50,
+                    background: `${color}18`,
+                    border: `1px solid ${color}30`,
+                  }}
+                >
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: `${color}AA` }}>
+                    источник
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color, letterSpacing: '-0.2px' }}>
+                    {sourceLabel(src)}
+                  </span>
+                  {Array.isArray(botUser.source_history) && botUser.source_history.length > 1 && (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: `${color}AA`, marginLeft: 2 }}>
+                      · ещё {botUser.source_history.length - 1}
+                    </span>
+                  )}
+                </div>
+              )
+            })()}
             {rank && (
               <div className="mt-2 text-base font-semibold" style={{ color: rank.color }}>
                 {rank.emoji} {rank.label}
@@ -146,21 +191,46 @@ export default function ProfileCard({ data, backHref, backLabel }: {
         </div>
 
         {botUser && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(28,28,30,0.06)' }}>
-            <Stat label="Событий в боте" value={botUser.events_count} />
-            <Stat label="Входящих" value={incomingMessages.length} />
-            <Stat label="Рассылок получил" value={outgoingDeliveries.length} />
-            <Stat
-              label="В канале"
-              value={botUser.is_channel_member === true ? 'да' : botUser.is_channel_member === false ? 'нет' : '?'}
-              highlight={botUser.is_channel_member === false}
-            />
-            <Stat
-              label="В группе"
-              value={botUser.is_group_member === true ? 'да' : botUser.is_group_member === false ? 'нет' : '?'}
-              highlight={botUser.is_group_member === false}
-            />
-          </div>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(28,28,30,0.06)' }}>
+              <Stat label="Событий в боте" value={botUser.events_count} />
+              <Stat label="Входящих" value={incomingMessages.length} />
+              <Stat label="Рассылок получил" value={outgoingDeliveries.length} />
+              <Stat
+                label="В канале"
+                value={botUser.is_channel_member === true ? 'да' : botUser.is_channel_member === false ? 'нет' : '?'}
+                highlight={botUser.is_channel_member === false}
+              />
+              <Stat
+                label="В группе"
+                value={botUser.is_group_member === true ? 'да' : botUser.is_group_member === false ? 'нет' : '?'}
+                highlight={botUser.is_group_member === false}
+              />
+            </div>
+            {Array.isArray(botUser.source_history) && botUser.source_history.length > 1 && (
+              <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(28,28,30,0.04)' }}>
+                <div className="text-xs mb-2" style={{ color: '#AEAEB2' }}>История источников</div>
+                <div className="flex flex-wrap gap-2">
+                  {botUser.source_history.map((h, i) => (
+                    <span
+                      key={i}
+                      className="text-xs"
+                      style={{
+                        padding: '3px 9px',
+                        borderRadius: 8,
+                        background: 'rgba(10,132,255,0.08)',
+                        color: '#0A84FF',
+                        fontWeight: 500,
+                      }}
+                      title={new Date(h.at).toLocaleString('ru')}
+                    >
+                      {sourceLabel(h.source)} · {new Date(h.at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
