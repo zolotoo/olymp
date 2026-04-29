@@ -671,15 +671,26 @@ type Source = typeof KNOWN_SOURCES[number]
 // Telegram clients (esp. on first deep-link click) sometimes fire a follow-up
 // bare `/start` within a couple of seconds of the parameterized one. This
 // guard makes the /start handler idempotent inside a short window.
+//
+// We look at bot_events (not message_deliveries) so the dedup also covers
+// the existing-member path, which sends a profile card via raw sendMessage
+// and therefore leaves no message_deliveries row.
+//
+// trackIncomingUpdate has already inserted THIS /start as a bot_event by
+// the time we get here, so we only care about earlier rows — anything
+// older than ~1s back to 30s ago.
 async function hasRecentStartReply(tgId: number): Promise<boolean> {
   try {
-    const since = new Date(Date.now() - 30_000).toISOString()
+    const now = Date.now()
+    const since = new Date(now - 30_000).toISOString()
+    const before = new Date(now - 1_000).toISOString()
     const { data } = await supabaseAdmin
-      .from('message_deliveries')
+      .from('bot_events')
       .select('id')
       .eq('tg_id', tgId)
-      .in('campaign', ['sales_pitch', 'welcome'])
-      .gte('sent_at', since)
+      .eq('event_type', 'command:/start')
+      .gte('created_at', since)
+      .lte('created_at', before)
       .limit(1)
       .maybeSingle()
     return !!data
