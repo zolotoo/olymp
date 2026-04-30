@@ -22,13 +22,29 @@ async function pgrstReloadSchema() {
   } catch { /* best effort */ }
 }
 
+interface ButtonInput { label?: unknown; url?: unknown }
+
+function sanitizeButtons(input: unknown): { label: string; url: string }[] | null {
+  if (!Array.isArray(input)) return null
+  const out: { label: string; url: string }[] = []
+  for (const raw of input as ButtonInput[]) {
+    if (!raw || typeof raw !== 'object') continue
+    const label = typeof raw.label === 'string' ? raw.label.trim() : ''
+    const url = typeof raw.url === 'string' ? raw.url.trim() : ''
+    if (!label || !url) continue
+    // Telegram ограничение — text кнопки до 64 байт; режем мягче для запаса.
+    out.push({ label: label.slice(0, 60), url: url.slice(0, 2048) })
+  }
+  return out.length ? out : null
+}
+
 export async function GET() {
-  const url = `${SUPA_URL}/rest/v1/bot_messages?select=key,label,type,content,video_url,updated_at`
+  const url = `${SUPA_URL}/rest/v1/bot_messages?select=key,label,type,content,video_url,buttons,updated_at`
 
   let res = await fetch(url, { headers: headers(), cache: 'no-store' })
   if (res.status === 404 || (res.status >= 400 && res.status < 500)) {
     const txt = await res.text()
-    if (txt.includes('schema cache') || txt.includes('PGRST205')) {
+    if (txt.includes('schema cache') || txt.includes('PGRST205') || txt.includes('buttons')) {
       await pgrstReloadSchema()
       res = await fetch(url, { headers: headers(), cache: 'no-store' })
     } else {
@@ -43,20 +59,21 @@ export async function GET() {
     return Response.json({ error: txt }, { status: 500 })
   }
 
-  const data = await res.json() as Array<{ key: string; label: string; type: string; content: string; video_url?: string | null }>
-  const map: Record<string, { label: string; type: string; content: string; video_url?: string }> =
+  const data = await res.json() as Array<{ key: string; label: string; type: string; content: string; video_url?: string | null; buttons?: unknown }>
+  const map: Record<string, { label: string; type: string; content: string; video_url?: string; buttons?: { label: string; url: string }[] }> =
     Object.fromEntries(data.map(r => [r.key, {
       label: r.label,
       type: r.type,
       content: r.content,
       video_url: r.video_url ?? undefined,
+      buttons: sanitizeButtons(r.buttons) ?? undefined,
     }]))
   return Response.json(map)
 }
 
 export async function PATCH(req: Request) {
-  const body = await req.json() as { key: string; content: string; video_url?: string; label?: string; type?: string }
-  const { key, content, video_url, label, type } = body
+  const body = await req.json() as { key: string; content: string; video_url?: string; label?: string; type?: string; buttons?: unknown }
+  const { key, content, video_url, label, type, buttons } = body
   if (!key) return Response.json({ error: 'key required' }, { status: 400 })
 
   const trimmedVideo = typeof video_url === 'string' ? video_url.trim() : video_url
@@ -66,6 +83,7 @@ export async function PATCH(req: Request) {
     video_url: trimmedVideo ? trimmedVideo : null,
     label: label ?? key,
     type: type ?? 'message',
+    buttons: sanitizeButtons(buttons),
     updated_at: new Date().toISOString(),
   }
 

@@ -5,7 +5,7 @@ import { sendTracked } from '@/lib/send-tracked'
 import { addMemory } from '@/lib/mem0'
 import { getRankByMonth } from '@/lib/ranks'
 import { loadTitles } from '@/lib/ranks-server'
-import { getBotText, getBotVideo } from '@/lib/bot-messages'
+import { getBotText, getBotVideo, getBotTemplate } from '@/lib/bot-messages'
 
 export async function POST(req: NextRequest) {
   // Verify Tribute signature (HMAC-SHA256)
@@ -112,7 +112,7 @@ async function onNewSubscription(payload: TributePayload) {
 
   // Per message tree: text first, then video circle.
   try {
-    const congratsText = await getBotText(
+    const congratsTpl = await getBotTemplate(
       'l_subcongrats',
       `🎉 <b>Добро пожаловать в AI Олимп!</b>\n\n` +
       `Рад видеть тебя в клубе. Подписка активна до {expires_at}.\n\n` +
@@ -121,7 +121,11 @@ async function onNewSubscription(payload: TributePayload) {
       `За активность ты будешь получать фантики и расти в титуле. Вперёд! 🔥`,
       { expires_at: formatDate(payload.expires_at) },
     )
-    await sendTracked(tgId, congratsText, { campaign: 'sub_congrats', templateKey: 'l_subcongrats' })
+    await sendTracked(tgId, congratsTpl.text, {
+      campaign: 'sub_congrats',
+      templateKey: 'l_subcongrats',
+      buttons: congratsTpl.buttons,
+    })
 
     const videoNoteId = (await getBotVideo('l_subvideo')) || process.env.TELEGRAM_WELCOME_VIDEO_NOTE_ID
     if (videoNoteId) {
@@ -212,7 +216,7 @@ async function onRenewed(payload: TributePayload) {
   const perksLine = (title?.perks ?? []).map(p => `• ${p}`).join('\n') || '—'
 
   try {
-    const renewText = await getBotText(
+    const renewTpl = await getBotTemplate(
       'l_renewmsg',
       `Спасибо за доверие и за то, что выбираешь нас.\n\n` +
       `Теперь твой титул — <b>{rank_label}</b>\n` +
@@ -226,7 +230,11 @@ async function onRenewed(payload: TributePayload) {
         perks: perksLine,
       },
     )
-    await sendTracked(tgId, renewText, { campaign: 'sub_renewed', templateKey: 'l_renewmsg' })
+    await sendTracked(tgId, renewTpl.text, {
+      campaign: 'sub_renewed',
+      templateKey: 'l_renewmsg',
+      buttons: renewTpl.buttons,
+    })
   } catch { /* DM blocked */ }
 }
 
@@ -272,13 +280,17 @@ async function onCancelled(payload: TributePayload) {
   }
 
   try {
-    const farewellText = await getBotText(
+    const farewellTpl = await getBotTemplate(
       'l_farewell',
       `Жаль видеть тебя уходящим из AI Olymp.\n\n` +
       `Если что-то пошло не так или есть обратная связь — напиши, всегда слушаю.`,
       {},
     )
-    await sendTracked(tgId, farewellText, { campaign: 'sub_farewell', templateKey: 'l_farewell' })
+    await sendTracked(tgId, farewellTpl.text, {
+      campaign: 'sub_farewell',
+      templateKey: 'l_farewell',
+      buttons: farewellTpl.buttons,
+    })
   } catch { /* DM blocked */ }
 }
 

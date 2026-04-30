@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendMessage, sendVideoNote } from '@/lib/telegram'
+import { normalizeButtons } from '@/lib/bot-messages'
 
 // POST /api/messages/test — sends a preview of the message to @sergeyzolotykh
 export async function POST(req: NextRequest) {
-  const { key, label, content, type, video_url } = await req.json() as {
+  const { key, label, content, type, video_url, buttons } = await req.json() as {
     key?: string
     label?: string
     content?: string
     type?: string
     video_url?: string
+    buttons?: unknown
   }
+  const previewButtons = normalizeButtons(buttons)
 
   const adminTgId = process.env.TELEGRAM_ADMIN_TG_ID || process.env.TELEGRAM_ADMIN_CHAT_ID
   if (!adminTgId) return NextResponse.json({ error: 'no admin tg id configured' }, { status: 500 })
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
       await log(`[video_note error] ${errText}`)
       return NextResponse.json({ ok: false, reason: 'telegram error', vn })
     }
-    if (content) await sendMessage(adminTgId, content)
+    if (content) await sendMessage(adminTgId, content, previewButtons)
     await log(`[video_note ${video_url}] ${content || ''}`)
     return NextResponse.json({ ok: true })
   }
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'no content' })
   }
 
-  const result = await sendMessage(adminTgId, content)
+  const result = await sendMessage(adminTgId, content, previewButtons)
   await log(content)
   return NextResponse.json({ ok: result?.ok ?? false })
 }

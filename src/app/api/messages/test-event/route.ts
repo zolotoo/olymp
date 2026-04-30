@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendMessage, sendVideoNote } from '@/lib/telegram'
+import { normalizeButtons } from '@/lib/bot-messages'
 
 // POST /api/messages/test-event — fires all child messages of an event/condition
 // node sequentially (text + video circles in tree order) to the admin user.
 export async function POST(req: NextRequest) {
   const { label, items } = await req.json() as {
     label?: string
-    items?: Array<{ type: 'message' | 'video'; label?: string; content?: string; video_url?: string | null }>
+    items?: Array<{ type: 'message' | 'video'; label?: string; content?: string; video_url?: string | null; buttons?: unknown }>
   }
 
   const adminTgId = process.env.TELEGRAM_ADMIN_TG_ID || process.env.TELEGRAM_ADMIN_CHAT_ID
@@ -38,6 +39,11 @@ export async function POST(req: NextRequest) {
         await sendMessage(adminTgId, `❌ ${it.label || 'видео'}: ${JSON.stringify(vn)}`)
         results.push({ label: it.label, ok: false, reason: 'telegram error' })
       } else {
+        // Если у видео есть кнопки — отправим их подписью отдельным сообщением.
+        const btns = normalizeButtons(it.buttons)
+        if (btns?.length || it.content) {
+          await sendMessage(adminTgId, it.content || ' ', btns)
+        }
         results.push({ label: it.label, ok: true })
       }
       await log(`[video_note ${it.video_url}] ${it.content || ''}`)
@@ -46,7 +52,7 @@ export async function POST(req: NextRequest) {
         results.push({ label: it.label, ok: false, reason: 'no content' })
         continue
       }
-      const r = await sendMessage(adminTgId, it.content)
+      const r = await sendMessage(adminTgId, it.content, normalizeButtons(it.buttons))
       await log(it.content)
       results.push({ label: it.label, ok: !!r?.ok })
     }

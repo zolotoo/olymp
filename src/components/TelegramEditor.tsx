@@ -6,6 +6,7 @@ interface Props {
   onChange: (v: string) => void
   placeholder?: string
   minHeight?: number
+  buttons?: { label: string; url: string }[]
 }
 
 const FORMATS = [
@@ -31,7 +32,8 @@ function toPreview(html: string): string {
     )
 }
 
-export default function TelegramEditor({ value, onChange, placeholder, minHeight = 140 }: Props) {
+export default function TelegramEditor({ value, onChange, placeholder, minHeight = 140, buttons }: Props) {
+  const previewButtons = (buttons || []).filter(b => b.label.trim() && b.url.trim())
   const ref = useRef<HTMLTextAreaElement>(null)
 
   const wrap = (tag: string) => {
@@ -104,7 +106,7 @@ export default function TelegramEditor({ value, onChange, placeholder, minHeight
       />
 
       {/* Telegram preview */}
-      {value.trim() && (
+      {(value.trim() || previewButtons.length > 0) && (
         <div className="mt-3">
           <div
             className="text-xs font-semibold uppercase mb-1.5"
@@ -113,18 +115,36 @@ export default function TelegramEditor({ value, onChange, placeholder, minHeight
             Превью в Telegram
           </div>
           <div
-            className="tg-preview rounded-2xl px-4 py-3 text-sm"
             style={{
               background: 'rgba(255,255,255,0.80)',
               border: '1px solid rgba(10,132,255,0.15)',
-              color: '#1C1C1E',
-              lineHeight: 1.65,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
+              borderRadius: 16,
+              padding: '12px 14px',
               boxShadow: '0 2px 8px rgba(10,132,255,0.06)',
             }}
-            dangerouslySetInnerHTML={{ __html: toPreview(value) }}
-          />
+          >
+            {value.trim() && (
+              <div
+                className="tg-preview text-sm"
+                style={{
+                  color: '#1C1C1E',
+                  lineHeight: 1.65,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+                dangerouslySetInnerHTML={{ __html: toPreview(value) }}
+              />
+            )}
+            {previewButtons.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: value.trim() ? 10 : 0 }}>
+                {previewButtons.map((b, i) => (
+                  <div key={i} style={{ padding: '8px 12px', background: 'rgba(10,132,255,0.10)', border: '1px solid rgba(10,132,255,0.20)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#0A84FF', textAlign: 'center', wordBreak: 'break-word' }}>
+                    {b.label || <span style={{ opacity: 0.45 }}>(без названия)</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

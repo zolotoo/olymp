@@ -12,7 +12,8 @@ interface Node {
   children?: Node[]
 }
 
-type MsgRecord = { label: string; type: string; content: string; video_url?: string }
+interface MsgButton { label: string; url: string }
+type MsgRecord = { label: string; type: string; content: string; video_url?: string; buttons?: MsgButton[] }
 type MsgMap = Record<string, MsgRecord>
 
 // ─── Tree data ────────────────────────────────────────────────────────────────
@@ -172,6 +173,7 @@ export default function TreeClient() {
   const [editing, setEditing]     = useState(false)
   const [draftContent, setDraft]  = useState('')
   const [draftUrl, setDraftUrl]   = useState('')
+  const [draftButtons, setDraftButtons] = useState<MsgButton[]>([])
   const [saving, setSaving]       = useState(false)
   const [saveOk, setSaveOk]       = useState(false)
   const [testing, setTesting]     = useState(false)
@@ -192,6 +194,10 @@ export default function TreeClient() {
 
   const getVideoUrl = useCallback((node: Node): string => {
     return messages[node.id]?.video_url ?? ''
+  }, [messages])
+
+  const getButtons = useCallback((node: Node): MsgButton[] => {
+    return messages[node.id]?.buttons ?? []
   }, [messages])
 
   const openNode = (node: Node) => {
@@ -215,6 +221,7 @@ export default function TreeClient() {
           type: selected.type,
           content: getContent(selected),
           video_url: getVideoUrl(selected) || null,
+          buttons: getButtons(selected),
         }),
       })
       setTestOk(true)
@@ -242,6 +249,7 @@ export default function TreeClient() {
       label: n.label,
       content: getContent(n),
       video_url: getVideoUrl(n) || null,
+      buttons: getButtons(n),
     }))
     if (!items.length) return
     setTesting(true)
@@ -262,12 +270,16 @@ export default function TreeClient() {
     if (!selected) return
     setDraft(getContent(selected))
     setDraftUrl(getVideoUrl(selected))
+    setDraftButtons(getButtons(selected).map(b => ({ ...b })))
     setEditing(true)
     setSaveOk(false)
   }
 
   const handleSave = async () => {
     if (!selected) return
+    const cleanButtons = draftButtons
+      .map(b => ({ label: b.label.trim(), url: b.url.trim() }))
+      .filter(b => b.label && b.url)
     setSaving(true)
     try {
       const res = await fetch('/api/messages', {
@@ -279,6 +291,7 @@ export default function TreeClient() {
           type: selected.type,
           content: draftContent,
           video_url: draftUrl || null,
+          buttons: cleanButtons,
         }),
       })
       if (!res.ok) {
@@ -293,6 +306,7 @@ export default function TreeClient() {
           type: selected.type,
           content: draftContent,
           video_url: draftUrl || undefined,
+          buttons: cleanButtons.length ? cleanButtons : undefined,
         },
       }))
       setEditing(false)
@@ -488,6 +502,22 @@ export default function TreeClient() {
                     />
                   </div>
                 )}
+                {/* Buttons — view mode */}
+                {getButtons(selected).length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.38)', marginBottom: 6 }}>
+                      Кнопки ({getButtons(selected).length}) · клики трекаются
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {getButtons(selected).map((b, i) => (
+                        <a key={i} href={b.url} target="_blank" rel="noopener noreferrer"
+                          style={{ display: 'block', padding: '9px 14px', background: 'rgba(10,132,255,0.10)', border: '1px solid rgba(10,132,255,0.22)', borderRadius: 12, fontSize: 13, fontWeight: 600, color: '#0A84FF', textAlign: 'center', textDecoration: 'none', wordBreak: 'break-all' }}>
+                          {b.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {saveOk && (
                   <div style={{ marginTop: 10, fontSize: 12.5, color: '#1C8A3C', fontWeight: 500 }}>✓ Сохранено</div>
                 )}
@@ -538,10 +568,60 @@ export default function TreeClient() {
                   onChange={setDraft}
                   placeholder={selected.type === 'video' ? 'Подпись к кружку...' : 'Введите текст сообщения...'}
                   minHeight={140}
+                  buttons={draftButtons}
                 />
                 <p style={{ fontSize: 11.5, color: 'rgba(28,28,30,0.42)', marginTop: 6, letterSpacing: '-0.1px' }}>
                   Используй [Имя], [N], [Титул] как плейсхолдеры, бот подставит значения автоматически.
                 </p>
+
+                {/* Buttons editor — только для текстовых сообщений (Telegram не позволяет кнопки на video_note) */}
+                {selected.type === 'message' && (
+                <div style={{ marginTop: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.45)' }}>
+                      Inline-кнопки
+                    </label>
+                    <button type="button"
+                      onClick={() => setDraftButtons(prev => [...prev, { label: '', url: '' }])}
+                      style={{ padding: '4px 10px', background: 'rgba(10,132,255,0.10)', border: '1px solid rgba(10,132,255,0.22)', borderRadius: 50, fontSize: 11.5, fontWeight: 600, color: '#0A84FF', cursor: 'pointer' }}>
+                      + Добавить
+                    </button>
+                  </div>
+                  {draftButtons.length === 0 ? (
+                    <p style={{ fontSize: 11.5, color: 'rgba(28,28,30,0.42)', letterSpacing: '-0.1px', margin: 0 }}>
+                      Нет кнопок. Добавь кнопку с URL — например «Оплатить» с ссылкой на Tribute. Клики автоматически логируются.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {draftButtons.map((b, i) => (
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, background: 'rgba(10,132,255,0.04)', border: '1px solid rgba(10,132,255,0.14)', borderRadius: 12 }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input
+                              value={b.label}
+                              onChange={e => setDraftButtons(prev => prev.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                              placeholder="Текст кнопки (например, Оплатить)"
+                              maxLength={60}
+                              style={{ flex: 1, padding: '8px 12px', background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(10,132,255,0.20)', borderRadius: 10, fontSize: 13, color: '#1C1C1E', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                            <button type="button"
+                              onClick={() => setDraftButtons(prev => prev.filter((_, j) => j !== i))}
+                              title="Удалить кнопку"
+                              style={{ padding: '6px 10px', background: 'rgba(255,69,58,0.10)', border: '1px solid rgba(255,69,58,0.22)', borderRadius: 10, fontSize: 13, color: '#FF453A', cursor: 'pointer' }}>
+                              ✕
+                            </button>
+                          </div>
+                          <input
+                            value={b.url}
+                            onChange={e => setDraftButtons(prev => prev.map((x, j) => j === i ? { ...x, url: e.target.value } : x))}
+                            placeholder="https://tribute.tg/..."
+                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(10,132,255,0.20)', borderRadius: 10, fontSize: 12.5, color: '#1C1C1E', outline: 'none', boxSizing: 'border-box', fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                   <button onClick={handleSave} disabled={saving}
                     style={{ flex: 1, padding: '11px 0', background: saving ? 'rgba(10,132,255,0.25)' : '#0A84FF', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#FFFFFF', cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '-0.2px' }}>

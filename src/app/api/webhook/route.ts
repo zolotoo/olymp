@@ -10,7 +10,7 @@ import { POINTS, RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
 import { trackBotInteraction, setBotUserChannelMember, setBotUserGroupMember } from '@/lib/bot-tracking'
 import { enableMiniAppButton, disableMiniAppButton } from '@/lib/mini-app'
-import { getBotText, getBotVideo } from '@/lib/bot-messages'
+import { getBotText, getBotVideo, getBotTemplate } from '@/lib/bot-messages'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -199,12 +199,16 @@ async function handleGroupJoinRequest(chat: TgChat, user: TgUser) {
   }
 
   try {
-    const denyText = await getBotText(
+    const tpl = await getBotTemplate(
       'l_groupdeny',
       `Чтобы попасть в группу <b>AI Олимп / Ветки</b>, сначала оформи подписку на канал AI Олимп.`,
       {},
     )
-    await sendTracked(user.id, denyText, { campaign: 'group_join_denied', templateKey: 'l_groupdeny' })
+    await sendTracked(user.id, tpl.text, {
+      campaign: 'group_join_denied',
+      templateKey: 'l_groupdeny',
+      buttons: tpl.buttons,
+    })
   } catch { /* DM blocked */ }
 }
 
@@ -365,7 +369,7 @@ async function handleMessage(message: TgMessage) {
       }
       const days = Math.floor((Date.now() - new Date(member.joined_at).getTime()) / (1000 * 60 * 60 * 24))
       const rankConfig = RANK_CONFIG[member.rank as MemberRank]
-      const text = await getBotText(
+      const tpl = await getBotTemplate(
         'l_profile',
         `👋 <b>{name}!</b>\n\n` +
         `Ты в AI Олимп уже <b>{days} дней</b>\n` +
@@ -379,7 +383,7 @@ async function handleMessage(message: TgMessage) {
           points: member.points,
         },
       )
-      await sendMessage(user.id, text)
+      await sendMessage(user.id, tpl.text, tpl.buttons)
     } else {
       const channelId = process.env.TELEGRAM_CHANNEL_ID
       if (channelId) {
@@ -645,17 +649,23 @@ async function sendWelcome(user: TgUser): Promise<boolean> {
       await delay(1500)
     }
 
-    // 2. Welcome text: prefer bot_messages[rank_newcomer_welcome].content
-    const welcomeMsg = await getBotMessage('rank_newcomer_welcome')
-    const text = welcomeMsg.content
-      ? renderTemplate(welcomeMsg.content, user)
-      : `👋 <b>Привет, ${user.first_name || 'участник'}!</b>\n\n` +
+    // 2. Welcome text + buttons: prefer bot_messages[rank_newcomer_welcome]
+    const welcomeTpl = await getBotTemplate(
+      'rank_newcomer_welcome',
+      `👋 <b>Привет, {name}!</b>\n\n` +
         `Добро пожаловать в AI Олимп, рад видеть тебя здесь.\n\n` +
         `Здесь мы разбираем AI инструменты, делимся инсайтами и строим проекты. ` +
         `Пиши в чат, задавай вопросы, это самый важный шаг.\n\n` +
-        `За активность ты получаешь фантики и растёшь в титуле. Удачи!`
-
-    const result = await sendTracked(user.id, text, { campaign: 'welcome', templateKey: 'rank_newcomer_welcome' })
+        `За активность ты получаешь фантики и растёшь в титуле. Удачи!`,
+      { name: user.first_name || 'участник' },
+    )
+    // [Имя]-плейсхолдер исторически поддерживается — если редактор оставил его в тексте.
+    const text = renderTemplate(welcomeTpl.text, user)
+    const result = await sendTracked(user.id, text, {
+      campaign: 'welcome',
+      templateKey: 'rank_newcomer_welcome',
+      buttons: welcomeTpl.buttons,
+    })
     if (!result?.ok) return false
     await supabaseAdmin.from('members').update({ welcome_sent: true }).eq('tg_id', user.id)
     return true
@@ -763,7 +773,7 @@ async function recordSourceFromStart(
 async function sendSalesPitch(user: TgUser, source: Source = 'main') {
   const tributeLink = process.env.TRIBUTE_LINK || 'https://tribute.tg'
   const key = source === 'main' ? 'l_sales' : `l_sales_${source}`
-  const text = await getBotText(
+  const tpl = await getBotTemplate(
     key,
     `👋 <b>Привет, {name}!</b>\n\n` +
     `<b>AI Олимп</b>, закрытый клуб тех, кто строит будущее с AI.\n\n` +
@@ -774,7 +784,11 @@ async function sendSalesPitch(user: TgUser, source: Source = 'main') {
     `<b>Оформить подписку:</b>\n{tribute_link}`,
     { name: user.first_name || 'друг', tribute_link: tributeLink },
   )
-  await sendTracked(user.id, text, { campaign: 'sales_pitch', templateKey: key })
+  await sendTracked(user.id, tpl.text, {
+    campaign: 'sales_pitch',
+    templateKey: key,
+    buttons: tpl.buttons,
+  })
 }
 
 // ─── Set Telegram rank title (no-rights admin) ────────────────────────────────

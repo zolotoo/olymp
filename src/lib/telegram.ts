@@ -9,8 +9,26 @@ async function call(method: string, body: object) {
   return res.json()
 }
 
-export async function sendMessage(chatId: number | string, text: string) {
-  return call('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML' })
+export interface InlineUrlButton {
+  label: string
+  url: string
+}
+
+function buildInlineKeyboard(buttons?: InlineUrlButton[] | null) {
+  if (!buttons?.length) return undefined
+  // Каждая кнопка на своей строке — Telegram сам сожмёт по ширине, и так читается лучше.
+  return { inline_keyboard: buttons.map(b => [{ text: b.label, url: b.url }]) }
+}
+
+export async function sendMessage(
+  chatId: number | string,
+  text: string,
+  buttons?: InlineUrlButton[] | null,
+) {
+  const payload: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML' }
+  const reply_markup = buildInlineKeyboard(buttons)
+  if (reply_markup) payload.reply_markup = reply_markup
+  return call('sendMessage', payload)
 }
 
 export async function sendVideoNote(chatId: number | string, fileId: string) {
