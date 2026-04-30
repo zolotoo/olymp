@@ -2,19 +2,48 @@
 import { useState, useEffect, useCallback } from 'react'
 import TelegramEditor from './TelegramEditor'
 
-type NodeType = 'root' | 'section' | 'trigger' | 'condition' | 'message' | 'video' | 'action' | 'points'
+type NodeType = 'root' | 'section' | 'trigger' | 'condition' | 'message' | 'video' | 'action' | 'points' | 'followup'
+
+// Метаданные для узлов-догонов. Хардкод тут — ровно то, что читает
+// Edge Function (followup-messages). Менять имена/задержки только парой.
+type FollowupTrigger = 'clicked' | 'no_click'  // 'clicked' — нажал кнопку но не оплатил; 'no_click' — не нажал
+interface FollowupMeta {
+  parent_key: string
+  trigger: FollowupTrigger
+  delay_minutes: number
+}
 
 interface Node {
   id: string
   label: string
   type: NodeType
   detail?: string       // default text shown if DB has no record
+  followup?: FollowupMeta
   children?: Node[]
 }
 
 interface MsgButton { label: string; url: string }
 type MsgRecord = { label: string; type: string; content: string; video_url?: string; buttons?: MsgButton[] }
 type MsgMap = Record<string, MsgRecord>
+
+// ─── Followup builder ─────────────────────────────────────────────────────────
+// Под каждым продающим сообщением вешаем 4 догона: 15 мин и 24 часа,
+// для двух триггеров (нажал кнопку но не оплатил / не нажал вовсе).
+function buildFollowups(parentKey: string, parentLabel: string): Node[] {
+  const variants: Array<{ suffix: string; trigger: FollowupTrigger; delay: number; label: string }> = [
+    { suffix: 'fu_click_15m',   trigger: 'clicked',  delay: 15,        label: 'Догон · нажал, +15 мин' },
+    { suffix: 'fu_click_24h',   trigger: 'clicked',  delay: 24 * 60,   label: 'Догон · нажал, +24 ч' },
+    { suffix: 'fu_noclick_15m', trigger: 'no_click', delay: 15,        label: 'Догон · не нажал, +15 мин' },
+    { suffix: 'fu_noclick_24h', trigger: 'no_click', delay: 24 * 60,   label: 'Догон · не нажал, +24 ч' },
+  ]
+  return variants.map(v => ({
+    id: `${parentKey}_${v.suffix}`,
+    label: v.label,
+    type: 'followup',
+    detail: `Если за указанное время от «${parentLabel}» условие выполнено — отправляется этот текст. Один раз на юзера.`,
+    followup: { parent_key: parentKey, trigger: v.trigger, delay_minutes: v.delay },
+  }))
+}
 
 // ─── Tree data ────────────────────────────────────────────────────────────────
 const TREE: Node = {
@@ -30,22 +59,30 @@ const TREE: Node = {
               children: [
                 { id: 'c_src_main',   label: 'Источник · MAIN (основа)', type: 'condition', detail: 'Чистый /start или ?start=main. Это дефолтная ветка — что показывалось до введения источников.',
                   children: [
-                    { id: 'l_sales', label: 'Продающее · MAIN', type: 'message', detail: 'Привет! Клуб AI Олимп...' },
+                    { id: 'l_sales', label: 'Продающее · MAIN', type: 'message', detail: 'Привет! Клуб AI Олимп...',
+                      children: buildFollowups('l_sales', 'Продающее · MAIN'),
+                    },
                   ],
                 },
                 { id: 'c_src_hochy',  label: 'Источник · ХОЧУ', type: 'condition', detail: 'Перешёл по ссылке t.me/<bot>?start=hochy',
                   children: [
-                    { id: 'l_sales_hochy', label: 'Продающее · ХОЧУ', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию ХОЧУ' },
+                    { id: 'l_sales_hochy', label: 'Продающее · ХОЧУ', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию ХОЧУ',
+                      children: buildFollowups('l_sales_hochy', 'Продающее · ХОЧУ'),
+                    },
                   ],
                 },
                 { id: 'c_src_promts', label: 'Источник · ПРОМТЫ', type: 'condition', detail: 'Перешёл по ссылке t.me/<bot>?start=promts',
                   children: [
-                    { id: 'l_sales_promts', label: 'Продающее · ПРОМТЫ', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию ПРОМТЫ' },
+                    { id: 'l_sales_promts', label: 'Продающее · ПРОМТЫ', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию ПРОМТЫ',
+                      children: buildFollowups('l_sales_promts', 'Продающее · ПРОМТЫ'),
+                    },
                   ],
                 },
                 { id: 'c_src_claude', label: 'Источник · КЛОД', type: 'condition', detail: 'Перешёл по ссылке t.me/<bot>?start=claude',
                   children: [
-                    { id: 'l_sales_claude', label: 'Продающее · КЛОД', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию КЛОД' },
+                    { id: 'l_sales_claude', label: 'Продающее · КЛОД', type: 'message', detail: 'Стартует с тем же текстом, что MAIN — отредактируй под аудиторию КЛОД',
+                      children: buildFollowups('l_sales_claude', 'Продающее · КЛОД'),
+                    },
                   ],
                 },
               ],
@@ -162,9 +199,21 @@ const TYPE_STYLE: Record<NodeType, { bg: string; border: string; textColor: stri
   video:     { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'видео',     badgeBg: 'rgba(191,90,242,0.12)',  badgeColor: '#BF5AF2' },
   action:    { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'действие',  badgeBg: 'rgba(48,209,88,0.12)',   badgeColor: '#1C8A3C' },
   points:    { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'фантики',   badgeBg: 'rgba(48,209,88,0.12)',   badgeColor: '#1C8A3C' },
+  followup:  { bg: 'rgba(255,255,255,0.72)', border: 'rgba(255,255,255,0.55)', textColor: '#1C1C1E',            badge: 'догон',     badgeBg: 'rgba(255,149,0,0.13)',   badgeColor: '#B25E00' },
 }
 
-const EDITABLE_TYPES: NodeType[] = ['message', 'video', 'action']
+const EDITABLE_TYPES: NodeType[] = ['message', 'video', 'action', 'followup']
+
+function formatDelay(min: number): string {
+  if (min < 60) return `+${min} мин`
+  const hours = min / 60
+  return Number.isInteger(hours) ? `+${hours} ч` : `+${hours.toFixed(1)} ч`
+}
+
+const TRIGGER_LABEL: Record<FollowupTrigger, string> = {
+  clicked:  'нажал кнопку, не оплатил',
+  no_click: 'не нажал кнопку',
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function TreeClient() {
@@ -446,6 +495,11 @@ export default function TreeClient() {
             <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase', color: TYPE_STYLE[selected.type].badgeColor, background: TYPE_STYLE[selected.type].badgeBg, padding: '3px 10px', borderRadius: 50, display: 'inline-block', marginBottom: 10 }}>
               {TYPE_STYLE[selected.type].badge}
             </span>
+            {selected.followup && (
+              <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase', color: '#B25E00', background: 'rgba(255,149,0,0.13)', padding: '3px 10px', borderRadius: 50, display: 'inline-block', marginLeft: 6, marginBottom: 10 }}>
+                {formatDelay(selected.followup.delay_minutes)} · {TRIGGER_LABEL[selected.followup.trigger]}
+              </span>
+            )}
 
             {/* Title + edit toggle */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
@@ -488,11 +542,11 @@ export default function TreeClient() {
                 {getContent(selected) && (
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.38)', marginBottom: 6 }}>
-                      {selected.type === 'message' ? 'Текст сообщения' : selected.type === 'video' ? 'Описание' : 'Детали'}
+                      {(selected.type === 'message' || selected.type === 'followup') ? 'Текст сообщения' : selected.type === 'video' ? 'Описание' : 'Детали'}
                     </div>
                     <div
                       className="tg-preview"
-                      style={{ background: selected.type === 'message' ? 'rgba(10,132,255,0.05)' : 'rgba(28,28,30,0.04)', border: `1px solid ${selected.type === 'message' ? 'rgba(10,132,255,0.12)' : 'rgba(28,28,30,0.08)'}`, borderRadius: 14, padding: '14px 16px', fontSize: 13.5, color: 'rgba(28,28,30,0.85)', lineHeight: 1.65, whiteSpace: 'pre-wrap', letterSpacing: '-0.15px', wordBreak: 'break-word' }}
+                      style={{ background: (selected.type === 'message' || selected.type === 'followup') ? 'rgba(10,132,255,0.05)' : 'rgba(28,28,30,0.04)', border: `1px solid ${(selected.type === 'message' || selected.type === 'followup') ? 'rgba(10,132,255,0.12)' : 'rgba(28,28,30,0.08)'}`, borderRadius: 14, padding: '14px 16px', fontSize: 13.5, color: 'rgba(28,28,30,0.85)', lineHeight: 1.65, whiteSpace: 'pre-wrap', letterSpacing: '-0.15px', wordBreak: 'break-word' }}
                       dangerouslySetInnerHTML={{
                         __html: getContent(selected).replace(
                           /<tg-spoiler>([\s\S]*?)<\/tg-spoiler>/g,
@@ -561,7 +615,7 @@ export default function TreeClient() {
                   </div>
                 )}
                 <div style={{ marginBottom: 6, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.45)' }}>
-                  {selected.type === 'message' ? 'Текст сообщения' : 'Описание'}
+                  {(selected.type === 'message' || selected.type === 'followup') ? 'Текст сообщения' : 'Описание'}
                 </div>
                 <TelegramEditor
                   value={draftContent}
@@ -574,8 +628,8 @@ export default function TreeClient() {
                   Используй [Имя], [N], [Титул] как плейсхолдеры, бот подставит значения автоматически.
                 </p>
 
-                {/* Buttons editor — только для текстовых сообщений (Telegram не позволяет кнопки на video_note) */}
-                {selected.type === 'message' && (
+                {/* Buttons editor — для текстовых сообщений и догонов (у video_note Telegram не разрешает кнопки) */}
+                {(selected.type === 'message' || selected.type === 'followup') && (
                 <div style={{ marginTop: 18 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.45)' }}>

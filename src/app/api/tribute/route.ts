@@ -48,11 +48,19 @@ async function onNewSubscription(payload: TributePayload) {
     .eq('tg_id', tgId)
     .maybeSingle()
 
+  // Tribute не передаёт имя/username — берём из bot_users (там данные от Telegram).
+  // Если юзер ни разу не писал боту, в bot_users записи нет — оставим NULL,
+  // /members покажет tg_id. Это редкий кейс (оплатил, не нажав /start).
+  const profile = await getProfileFromBotUsers(tgId)
+
   const nowIso = new Date().toISOString()
 
   if (!existing) {
     await supabaseAdmin.from('members').insert({
       tg_id: tgId,
+      tg_username: profile.username,
+      tg_first_name: profile.first_name,
+      tg_last_name: profile.last_name,
       status: 'active',
       rank: 'newcomer',
       points: 0,
@@ -68,6 +76,10 @@ async function onNewSubscription(payload: TributePayload) {
     await supabaseAdmin
       .from('members')
       .update({
+        // Не затираем существующие имена пустыми (если в bot_users нет — оставим как было).
+        ...(profile.username ? { tg_username: profile.username } : {}),
+        ...(profile.first_name ? { tg_first_name: profile.first_name } : {}),
+        ...(profile.last_name ? { tg_last_name: profile.last_name } : {}),
         status: 'active',
         joined_at: nowIso,
         subscription_count: 1,
@@ -295,6 +307,23 @@ async function onCancelled(payload: TributePayload) {
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
+async function getProfileFromBotUsers(tgId: number): Promise<{
+  username: string | null
+  first_name: string | null
+  last_name: string | null
+}> {
+  const { data } = await supabaseAdmin
+    .from('bot_users')
+    .select('tg_username, tg_first_name, tg_last_name')
+    .eq('tg_id', tgId)
+    .maybeSingle()
+  return {
+    username: data?.tg_username ?? null,
+    first_name: data?.tg_first_name ?? null,
+    last_name: data?.tg_last_name ?? null,
+  }
+}
+
 function formatDate(iso: string): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })
