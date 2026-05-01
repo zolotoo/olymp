@@ -5,6 +5,7 @@ import { logoutAction } from '@/app/login/actions'
 
 const LINKS = [
   { href: '/',        label: 'Участники' },
+  { href: '/stats',   label: 'Статистика' },
   { href: '/flow',    label: 'Дерево сообщений' },
   { href: '/ranks',   label: 'Титулы' },
   { href: '/bonuses', label: 'Бонусы' },
