@@ -1,24 +1,10 @@
 import { supabaseAdmin } from './supabase'
+import type { AudienceKind, AudienceFilter, ResolvedTarget } from './audience-types'
 
-export type AudienceKind =
-  | 'members_active'
-  | 'members_churned'
-  | 'bot_users_all'
-  | 'bot_users_no_member'        // в боте, но не клубный участник
-  | 'bot_users_active_30d'       // взаимодействовали в боте за 30 дней
-  | 'custom_tg_ids'
-
-export interface AudienceFilter {
-  rank?: string                  // только конкретный титул
-  daysSinceSeen?: number         // активность не старше N дней
-  tgIds?: number[]               // для custom_tg_ids
-}
-
-export interface ResolvedTarget {
-  tg_id: number
-  tg_first_name: string | null
-  tg_username: string | null
-}
+// Re-export для обратной совместимости с server-кодом, который раньше брал
+// типы и labels отсюда. Client Components должны импортить из ./audience-types.
+export type { AudienceKind, AudienceFilter, ResolvedTarget } from './audience-types'
+export { AUDIENCE_LABELS } from './audience-types'
 
 export async function resolveAudience(
   kind: AudienceKind,
@@ -67,13 +53,4 @@ export async function resolveAudience(
     list = list.filter((u) => !memberIds.has(u.tg_id))
   }
   return list
-}
-
-export const AUDIENCE_LABELS: Record<AudienceKind, string> = {
-  members_active: 'Активные участники клуба',
-  members_churned: 'Ушедшие участники',
-  bot_users_all: 'Все, кто касался бота',
-  bot_users_no_member: 'Аудитория без подписки (в боте, не в клубе)',
-  bot_users_active_30d: 'Активные в боте за 30 дней',
-  custom_tg_ids: 'Конкретный список tg_id',
 }

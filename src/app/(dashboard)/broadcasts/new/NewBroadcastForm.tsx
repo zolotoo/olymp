@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { previewAudienceAction, createBroadcastAction, type CreateState } from './actions'
-import { AUDIENCE_LABELS, type AudienceKind } from '@/lib/audience-resolver'
+import { AUDIENCE_LABELS, type AudienceKind } from '@/lib/audience-types'
 
 const card = {
   background: 'rgba(255,255,255,0.78)',
