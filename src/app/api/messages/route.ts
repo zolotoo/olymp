@@ -39,12 +39,12 @@ function sanitizeButtons(input: unknown): { label: string; url: string }[] | nul
 }
 
 export async function GET() {
-  const url = `${SUPA_URL}/rest/v1/bot_messages?select=key,label,type,content,video_url,buttons,updated_at`
+  const url = `${SUPA_URL}/rest/v1/bot_messages?select=key,label,type,content,video_url,buttons,enabled,updated_at`
 
   let res = await fetch(url, { headers: headers(), cache: 'no-store' })
   if (res.status === 404 || (res.status >= 400 && res.status < 500)) {
     const txt = await res.text()
-    if (txt.includes('schema cache') || txt.includes('PGRST205') || txt.includes('buttons')) {
+    if (txt.includes('schema cache') || txt.includes('PGRST205') || txt.includes('buttons') || txt.includes('enabled')) {
       await pgrstReloadSchema()
       res = await fetch(url, { headers: headers(), cache: 'no-store' })
     } else {
@@ -59,21 +59,22 @@ export async function GET() {
     return Response.json({ error: txt }, { status: 500 })
   }
 
-  const data = await res.json() as Array<{ key: string; label: string; type: string; content: string; video_url?: string | null; buttons?: unknown }>
-  const map: Record<string, { label: string; type: string; content: string; video_url?: string; buttons?: { label: string; url: string }[] }> =
+  const data = await res.json() as Array<{ key: string; label: string; type: string; content: string; video_url?: string | null; buttons?: unknown; enabled?: boolean | null }>
+  const map: Record<string, { label: string; type: string; content: string; video_url?: string; buttons?: { label: string; url: string }[]; enabled?: boolean }> =
     Object.fromEntries(data.map(r => [r.key, {
       label: r.label,
       type: r.type,
       content: r.content,
       video_url: r.video_url ?? undefined,
       buttons: sanitizeButtons(r.buttons) ?? undefined,
+      enabled: r.enabled ?? true,
     }]))
   return Response.json(map)
 }
 
 export async function PATCH(req: Request) {
-  const body = await req.json() as { key: string; content: string; video_url?: string; label?: string; type?: string; buttons?: unknown }
-  const { key, content, video_url, label, type, buttons } = body
+  const body = await req.json() as { key: string; content: string; video_url?: string; label?: string; type?: string; buttons?: unknown; enabled?: boolean }
+  const { key, content, video_url, label, type, buttons, enabled } = body
   if (!key) return Response.json({ error: 'key required' }, { status: 400 })
 
   const trimmedVideo = typeof video_url === 'string' ? video_url.trim() : video_url
@@ -84,6 +85,7 @@ export async function PATCH(req: Request) {
     label: label ?? key,
     type: type ?? 'message',
     buttons: sanitizeButtons(buttons),
+    enabled: typeof enabled === 'boolean' ? enabled : true,
     updated_at: new Date().toISOString(),
   }
 

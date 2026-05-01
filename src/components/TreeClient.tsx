@@ -23,7 +23,7 @@ interface Node {
 }
 
 interface MsgButton { label: string; url: string }
-type MsgRecord = { label: string; type: string; content: string; video_url?: string; buttons?: MsgButton[] }
+type MsgRecord = { label: string; type: string; content: string; video_url?: string; buttons?: MsgButton[]; enabled?: boolean }
 type MsgMap = Record<string, MsgRecord>
 
 // ─── Followup builder ─────────────────────────────────────────────────────────
@@ -223,10 +223,15 @@ export default function TreeClient() {
   const [draftContent, setDraft]  = useState('')
   const [draftUrl, setDraftUrl]   = useState('')
   const [draftButtons, setDraftButtons] = useState<MsgButton[]>([])
+  const [draftEnabled, setDraftEnabled] = useState(true)
   const [saving, setSaving]       = useState(false)
   const [saveOk, setSaveOk]       = useState(false)
   const [testing, setTesting]     = useState(false)
   const [testOk, setTestOk]       = useState(false)
+
+  // Глобальный тумблер «Догоны вкл/выкл»
+  const [followupsEnabled, setFollowupsEnabled] = useState<boolean | null>(null)
+  const [togglingGlobal, setTogglingGlobal]     = useState(false)
 
   // Fetch all messages from DB on mount
   useEffect(() => {
@@ -234,7 +239,34 @@ export default function TreeClient() {
       .then(r => r.json())
       .then((map: MsgMap) => setMessages(map))
       .catch(() => {})
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then((s: Record<string, unknown>) => {
+        setFollowupsEnabled(s.followups_enabled !== false)
+      })
+      .catch(() => setFollowupsEnabled(true))
   }, [])
+
+  const toggleGlobalFollowups = async () => {
+    if (followupsEnabled === null) return
+    const next = !followupsEnabled
+    setTogglingGlobal(true)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'followups_enabled', value: next }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`Не удалось переключить: ${err.error || res.statusText}`)
+        return
+      }
+      setFollowupsEnabled(next)
+    } finally {
+      setTogglingGlobal(false)
+    }
+  }
 
   // Effective content: DB overrides static default
   const getContent = useCallback((node: Node): string => {
@@ -247,6 +279,10 @@ export default function TreeClient() {
 
   const getButtons = useCallback((node: Node): MsgButton[] => {
     return messages[node.id]?.buttons ?? []
+  }, [messages])
+
+  const getEnabled = useCallback((node: Node): boolean => {
+    return messages[node.id]?.enabled !== false
   }, [messages])
 
   const openNode = (node: Node) => {
@@ -320,6 +356,7 @@ export default function TreeClient() {
     setDraft(getContent(selected))
     setDraftUrl(getVideoUrl(selected))
     setDraftButtons(getButtons(selected).map(b => ({ ...b })))
+    setDraftEnabled(getEnabled(selected))
     setEditing(true)
     setSaveOk(false)
   }
@@ -341,6 +378,7 @@ export default function TreeClient() {
           content: draftContent,
           video_url: draftUrl || null,
           buttons: cleanButtons,
+          enabled: draftEnabled,
         }),
       })
       if (!res.ok) {
@@ -356,6 +394,7 @@ export default function TreeClient() {
           content: draftContent,
           video_url: draftUrl || undefined,
           buttons: cleanButtons.length ? cleanButtons : undefined,
+          enabled: draftEnabled,
         },
       }))
       setEditing(false)
@@ -394,16 +433,61 @@ export default function TreeClient() {
   return (
     <div>
       {/* Header */}
-      <div className="inline-block rounded-3xl px-6 py-5 mb-5" style={glassCard}>
-        <div className="text-xs font-semibold uppercase mb-2" style={{ color: 'rgba(28,28,30,0.42)', letterSpacing: '0.8px' }}>
-          Автоматизация
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div className="inline-block rounded-3xl px-6 py-5" style={glassCard}>
+          <div className="text-xs font-semibold uppercase mb-2" style={{ color: 'rgba(28,28,30,0.42)', letterSpacing: '0.8px' }}>
+            Автоматизация
+          </div>
+          <h1 className="text-3xl font-bold" style={{ color: '#1C1C1E', letterSpacing: '-1px', lineHeight: 1.1 }}>
+            Дерево сообщений
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'rgba(28,28,30,0.50)', letterSpacing: '-0.2px' }}>
+            Нажмите на узел, чтобы посмотреть или отредактировать сообщение
+          </p>
         </div>
-        <h1 className="text-3xl font-bold" style={{ color: '#1C1C1E', letterSpacing: '-1px', lineHeight: 1.1 }}>
-          Дерево сообщений
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'rgba(28,28,30,0.50)', letterSpacing: '-0.2px' }}>
-          Нажмите на узел, чтобы посмотреть или отредактировать сообщение
-        </p>
+
+        {/* Global followups toggle */}
+        <button
+          onClick={toggleGlobalFollowups}
+          disabled={togglingGlobal || followupsEnabled === null}
+          style={{
+            ...glassCard,
+            padding: '14px 18px',
+            borderRadius: 24,
+            cursor: togglingGlobal || followupsEnabled === null ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            border: `1px solid ${followupsEnabled ? 'rgba(48,209,88,0.40)' : 'rgba(255,69,58,0.30)'}`,
+          }}
+          title="Останавливает или возобновляет все 16 догонов сразу"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'rgba(28,28,30,0.50)' }}>
+              Догоны
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: followupsEnabled ? '#1C8A3C' : '#FF453A', letterSpacing: '-0.3px', marginTop: 2 }}>
+              {followupsEnabled === null ? '...' : followupsEnabled ? 'Включены' : 'Выключены'}
+            </span>
+          </div>
+          {/* iOS-style switch */}
+          <div style={{
+            width: 44, height: 26, borderRadius: 50,
+            background: followupsEnabled ? '#34C759' : 'rgba(120,120,128,0.32)',
+            position: 'relative',
+            transition: 'background 0.18s',
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: 2,
+              left: followupsEnabled ? 20 : 2,
+              width: 22, height: 22, borderRadius: '50%',
+              background: '#FFF',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+              transition: 'left 0.18s',
+            }} />
+          </div>
+        </button>
       </div>
 
       {/* Legend */}
@@ -446,6 +530,10 @@ export default function TreeClient() {
             const isDark = node.type === 'root' || node.type === 'section'
             const isEditable = EDITABLE_TYPES.includes(node.type)
             const hasDbContent = !!messages[node.id]?.content
+            const isFollowup = node.type === 'followup'
+            const isDisabledFollowup = isFollowup && (
+              messages[node.id]?.enabled === false || followupsEnabled === false
+            )
             return (
               <div key={node.id} onClick={() => openNode(node)}
                 style={{
@@ -458,6 +546,7 @@ export default function TreeClient() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '0 8px 0 10px', gap: 4,
                   transition: 'transform 0.12s, box-shadow 0.12s',
+                  opacity: isDisabledFollowup ? 0.42 : 1,
                 }}
                 onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'scale(1.04)'; el.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = ''; el.style.boxShadow = isDark ? '0 8px 24px rgba(0,0,0,0.20)' : '0 2px 10px rgba(0,0,0,0.08)' }}
@@ -498,6 +587,16 @@ export default function TreeClient() {
             {selected.followup && (
               <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase', color: '#B25E00', background: 'rgba(255,149,0,0.13)', padding: '3px 10px', borderRadius: 50, display: 'inline-block', marginLeft: 6, marginBottom: 10 }}>
                 {formatDelay(selected.followup.delay_minutes)} · {TRIGGER_LABEL[selected.followup.trigger]}
+              </span>
+            )}
+            {selected.type === 'followup' && !getEnabled(selected) && (
+              <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase', color: '#FF453A', background: 'rgba(255,69,58,0.10)', padding: '3px 10px', borderRadius: 50, display: 'inline-block', marginLeft: 6, marginBottom: 10 }}>
+                выключен
+              </span>
+            )}
+            {selected.type === 'followup' && followupsEnabled === false && (
+              <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase', color: '#FF453A', background: 'rgba(255,69,58,0.10)', padding: '3px 10px', borderRadius: 50, display: 'inline-block', marginLeft: 6, marginBottom: 10 }}>
+                догоны выкл глобально
               </span>
             )}
 
@@ -601,6 +700,41 @@ export default function TreeClient() {
             {/* ── Edit mode ── */}
             {editing && (
               <div>
+                {/* Per-followup toggle */}
+                {selected.type === 'followup' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 14, background: draftEnabled ? 'rgba(48,209,88,0.06)' : 'rgba(255,69,58,0.06)', border: `1px solid ${draftEnabled ? 'rgba(48,209,88,0.22)' : 'rgba(255,69,58,0.22)'}`, borderRadius: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', letterSpacing: '-0.2px' }}>
+                        {draftEnabled ? 'Этот догон активен' : 'Этот догон выключен'}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'rgba(28,28,30,0.50)', marginTop: 2 }}>
+                        Выкл — не отправляется, но остальные 15 продолжают работать
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDraftEnabled(v => !v)}
+                      style={{
+                        width: 44, height: 26, borderRadius: 50,
+                        background: draftEnabled ? '#34C759' : 'rgba(120,120,128,0.32)',
+                        position: 'relative',
+                        border: 'none', padding: 0,
+                        cursor: 'pointer',
+                        transition: 'background 0.18s',
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: 2,
+                        left: draftEnabled ? 20 : 2,
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: '#FFF',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+                        transition: 'left 0.18s',
+                      }} />
+                    </button>
+                  </div>
+                )}
                 {selected.type === 'video' && (
                   <div style={{ marginBottom: 14 }}>
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.45)', marginBottom: 6 }}>

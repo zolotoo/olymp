@@ -52,8 +52,41 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Глобальный killswitch
+  const { data: settingRow } = await supabaseAdmin
+    .from('bot_settings')
+    .select('value')
+    .eq('key', 'followups_enabled')
+    .maybeSingle()
+  const globallyEnabled = settingRow?.value !== false
+  if (!globallyEnabled) {
+    return NextResponse.json({
+      ok: true,
+      ran_at: new Date().toISOString(),
+      skipped: 'globally_disabled',
+    })
+  }
+
+  // Per-followup флаги — одним запросом, чтобы не тыкаться в БД на каждом правиле
+  const { data: msgsRaw } = await supabaseAdmin
+    .from('bot_messages')
+    .select('key, enabled')
+    .in('key', RULES.map(r => r.followup_key))
+  const enabledByKey = new Map<string, boolean>()
+  for (const m of msgsRaw ?? []) enabledByKey.set(m.key, m.enabled !== false)
+
   const reports: RuleReport[] = []
   for (const rule of RULES) {
+    // Если для шаблона запись есть и enabled=false — пропускаем.
+    // Если записи нет (шаблон ещё не настроен) — пусть runRule сам решит skip по no_template.
+    if (enabledByKey.get(rule.followup_key) === false) {
+      reports.push({
+        followup_key: rule.followup_key,
+        candidates: 0, sent: 0, errors: 0,
+        skipped: [{ reason: 'rule_disabled', count: 1 }],
+      })
+      continue
+    }
     try {
       reports.push(await runRule(rule))
     } catch (e) {
