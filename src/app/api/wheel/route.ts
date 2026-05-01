@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedUser } from '@/lib/telegram-auth'
+import { sendMessage } from '@/lib/telegram'
 
 function authed(req: NextRequest): number | null {
   const initData = req.headers.get('x-telegram-init-data')
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
 
   const { data: memberRaw } = await supabaseAdmin
     .from('members')
-    .select('id, tg_id, joined_at, status, points, rank, spins_available, first_week_spin_granted')
+    .select('id, tg_id, tg_first_name, tg_username, joined_at, status, points, rank, spins_available, first_week_spin_granted')
     .eq('tg_id', tgId)
     .maybeSingle()
 
@@ -161,6 +162,29 @@ export async function POST(req: NextRequest) {
       event_type: 'wheel_reward_won',
       metadata: { key: pick.key, prize: pick.prize },
     })
+
+    // Уведомление админу: пользователю в попапе пишется «Сергей свяжется
+    // с тобой по этому призу», но до этого фикса админ не получал DM —
+    // и приз молча зависал. Теперь падает в личку как только выпадает.
+    const adminId = process.env.TELEGRAM_ADMIN_CHAT_ID
+    if (adminId) {
+      const name = memberRaw.tg_first_name || memberRaw.tg_username || String(tgId)
+      const handle = memberRaw.tg_username ? `@${memberRaw.tg_username}` : `tg://user?id=${tgId}`
+      try {
+        await sendMessage(
+          adminId,
+          `🎁 <b>Колесо: выпал нефантик-приз</b>\n\n` +
+          `Игрок: <b>${name}</b> (${handle})\n` +
+          `Приз: <b>${pick.prize}</b>\n` +
+          `Ключ: <code>${pick.key}</code>\n\n` +
+          `Свяжись с участником и выдай приз.`,
+        )
+      } catch (e) {
+        console.error('wheel: admin notify failed', e)
+      }
+    } else {
+      console.warn('wheel: TELEGRAM_ADMIN_CHAT_ID is not set — cannot DM admin about reward')
+    }
   }
 
   return NextResponse.json({
