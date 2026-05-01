@@ -6,8 +6,9 @@ import ProfileTab from '@/components/miniapp/ProfileTab'
 import TitulTab from '@/components/miniapp/TitulTab'
 import LeaderboardTab from '@/components/miniapp/LeaderboardTab'
 import KioskTab from '@/components/miniapp/KioskTab'
+import LibraryTab from '@/components/miniapp/LibraryTab'
 
-type Tab = 'wheel' | 'titul' | 'leaderboard' | 'profile' | 'kiosk'
+type Tab = 'wheel' | 'titul' | 'leaderboard' | 'profile' | 'kiosk' | 'library'
 
 function Shell() {
   const { ready, isTelegram, initData } = useTelegram()
@@ -72,6 +73,7 @@ function Shell() {
       {tab === 'titul' && <TitulTab reloadKey={profileReload} />}
       {tab === 'leaderboard' && <LeaderboardTab reloadKey={profileReload} />}
       {tab === 'kiosk' && <KioskTab reloadKey={profileReload} onPurchase={() => setProfileReload(k => k + 1)} />}
+      {tab === 'library' && <LibraryTab />}
       {tab === 'profile' && <ProfileTab reloadKey={profileReload} />}
 
       <nav
@@ -87,10 +89,20 @@ function Shell() {
           zIndex: 30,
         }}
       >
-        {(['titul', 'leaderboard', 'kiosk', 'wheel', 'profile'] as Tab[]).map(t => {
+        {(['titul', 'library', 'leaderboard', 'kiosk', 'wheel', 'profile'] as Tab[]).map(t => {
           const active = tab === t
-          const label = t === 'wheel' ? 'Колесо' : t === 'titul' ? 'Титул' : t === 'leaderboard' ? 'Топ' : t === 'kiosk' ? 'Киоск' : 'Профиль'
-          const emoji = t === 'wheel' ? '🎁' : t === 'titul' ? '🏔' : t === 'leaderboard' ? '🏆' : t === 'kiosk' ? '🛍' : '👤'
+          const label = t === 'wheel' ? 'Колесо'
+            : t === 'titul' ? 'Титул'
+            : t === 'leaderboard' ? 'Топ'
+            : t === 'kiosk' ? 'Киоск'
+            : t === 'library' ? 'Знания'
+            : 'Профиль'
+          const emoji = t === 'wheel' ? '🎁'
+            : t === 'titul' ? '🏔'
+            : t === 'leaderboard' ? '🏆'
+            : t === 'kiosk' ? '🛍'
+            : t === 'library' ? '📚'
+            : '👤'
           return (
             <button
               key={t}
@@ -102,12 +114,12 @@ function Shell() {
                 border: 'none',
                 cursor: 'pointer',
                 color: active ? '#0A84FF' : 'rgba(28,28,30,0.55)',
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: active ? 700 : 500,
                 letterSpacing: '-0.1px',
               }}
             >
-              <span style={{ fontSize: 22, lineHeight: 1 }}>{emoji}</span>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>{emoji}</span>
               {label}
             </button>
           )
