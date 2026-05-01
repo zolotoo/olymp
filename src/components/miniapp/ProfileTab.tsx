@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useTelegram, tgFetch } from './TelegramProvider'
+import MyPathSection from './MyPathSection'
 
 interface ProfileData {
   isMember: boolean
@@ -122,6 +123,8 @@ export default function ProfileTab({ reloadKey }: { reloadKey?: number }) {
           </div>
         </div>
       </div>
+
+      <MyPathSection />
 
       <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.06)' }}>
         <div className="text-xs font-semibold uppercase mb-3" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.7px' }}>

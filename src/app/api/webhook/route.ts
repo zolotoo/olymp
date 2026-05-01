@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import {
   sendMessage, sendVideoNote, getChatMember, approveChatJoinRequest, declineChatJoinRequest,
   promoteChatMember, setChatAdministratorCustomTitle, deleteMessage,
+  sendMessageWithKeyboard, buildCallbackKeyboard, answerCallbackQuery, editMessageText,
 } from '@/lib/telegram'
 import { sendTracked } from '@/lib/send-tracked'
 import { addMemory } from '@/lib/mem0'
@@ -11,6 +12,10 @@ import type { MemberRank } from '@/lib/types'
 import { trackBotInteraction, setBotUserChannelMember, setBotUserGroupMember } from '@/lib/bot-tracking'
 import { enableMiniAppButton, disableMiniAppButton } from '@/lib/mini-app'
 import { getBotText, getBotVideo, getBotTemplate } from '@/lib/bot-messages'
+import {
+  GOALS, GOAL_LABELS, dmGoalKeyboard, recordDmGoalAnswer,
+  DM_QUESTION_TEXT, DM_AWAITING_CUSTOM_TEXT, type GoalId,
+} from '@/lib/onboarding'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -27,6 +32,7 @@ export async function POST(req: NextRequest) {
     if (body.chat_join_request) await handleJoinRequest(body.chat_join_request)
     if (body.chat_member) await handleChatMember(body.chat_member)
     if (body.message) await handleMessage(body.message)
+    if (body.callback_query) await handleCallbackQuery(body.callback_query as TgCallbackQuery)
     if (body.edited_message) await storeIncomingMessage(body.edited_message as TgMessage, true)
     if (body.channel_post) await storeIncomingMessage(body.channel_post as TgMessage, false)
     if (body.edited_channel_post) await storeIncomingMessage(body.edited_channel_post as TgMessage, true)
@@ -156,6 +162,11 @@ async function handleJoinRequest(update: { chat: TgChat; from: TgUser }) {
   }
 
   await supabaseAdmin.from('members').update({ welcome_sent: true }).eq('tg_id', user.id)
+
+  // DM-онбординг: первый вопрос («какая твоя цель?») с inline-кнопками.
+  // Идёт ОТДЕЛЬНЫМ сообщением после welcome — чтобы не сваливать всё в один
+  // длинный пост и чтобы кнопки точно показались на верхнем экране.
+  await maybeSendDmOnboardingQuestion(user.id)
 }
 
 // Group "AI Олимп / Ветки": approve only if user is subscribed to the channel.
@@ -324,6 +335,14 @@ async function handleMessage(message: TgMessage) {
   // Persist full text + metadata for every incoming message (any chat, any user).
   // Must run before early-returns below so we never lose a record.
   await storeIncomingMessage(message, false)
+
+  // Если человек выбрал «✍️ Написать своё» в DM-онбординге — следующий
+  // приватный текст в личке трактуем как кастомный ответ на вопрос про цель.
+  // Перехватываем ДО /start и других проверок, чтобы не путать с обычным DM.
+  if (message.chat.id === user.id && message.text && !message.text.startsWith('/')) {
+    const captured = await tryCaptureOnboardingCustomGoal(user, message.text)
+    if (captured) return
+  }
 
   // DEBUG: log incoming video notes so we can grab file_id
   if ((message as TgMessage & { video_note?: { file_id: string; duration?: number } }).video_note) {
@@ -818,6 +837,153 @@ async function applyRankTitle(userId: number, rank: MemberRank) {
   }
 }
 
+// ─── DM Onboarding (step 1 of 2) ──────────────────────────────────────────────
+// Шаг 1 — один вопрос в DM с inline-кнопками. Шаг 2 (полная анкета) — в мини-аппе.
+//
+// Идемпотентность: повторно вопрос не отправляем, если у участника уже
+// записан dm_step1_at в onboarding_answers. Это защищает от ситуаций
+// «человек переподавал заявку» / «бот переслал событие повторно».
+
+async function maybeSendDmOnboardingQuestion(tgId: number): Promise<void> {
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from('onboarding_answers')
+      .select('dm_step1_at')
+      .eq('tg_id', tgId)
+      .maybeSingle()
+    if (existing?.dm_step1_at) return
+
+    await sendMessageWithKeyboard(
+      tgId,
+      DM_QUESTION_TEXT,
+      buildCallbackKeyboard(dmGoalKeyboard()),
+    )
+  } catch (e) {
+    console.error('maybeSendDmOnboardingQuestion failed:', e)
+  }
+}
+
+// Колбэки от inline-кнопок DM-онбординга.
+async function handleCallbackQuery(cb: TgCallbackQuery): Promise<void> {
+  if (!cb.from?.id || !cb.data) return
+  const data = cb.data
+
+  // Только онбординг-колбэки сейчас. Остальные дёргают только trackBotInteraction в trackIncomingUpdate.
+  if (!data.startsWith('onb_goal_')) {
+    await answerCallbackQuery(cb.id).catch(() => {})
+    return
+  }
+
+  // Нужен member.id — фантики идут через members table.
+  const { data: member } = await supabaseAdmin
+    .from('members')
+    .select('id, tg_id')
+    .eq('tg_id', cb.from.id)
+    .maybeSingle()
+
+  // chat и message_id для editMessageText (заменяем вопрос на «спасибо»).
+  const chatId = cb.message?.chat?.id ?? cb.from.id
+  const messageId = cb.message?.message_id
+
+  if (!member) {
+    await answerCallbackQuery(cb.id, 'Не нашли тебя в клубе. Напиши /start боту.', true).catch(() => {})
+    return
+  }
+
+  // «✍️ Написать своё» — переводим в режим ожидания свободного текста.
+  if (data === 'onb_goal_custom_init') {
+    await supabaseAdmin
+      .from('members')
+      .update({ onboarding_dm_state: 'awaiting_custom_goal' })
+      .eq('id', member.id)
+
+    if (messageId) {
+      await editMessageText(chatId, messageId, DM_AWAITING_CUSTOM_TEXT, null).catch(() => {})
+    } else {
+      await sendMessage(chatId, DM_AWAITING_CUSTOM_TEXT).catch(() => {})
+    }
+    await answerCallbackQuery(cb.id).catch(() => {})
+    return
+  }
+
+  // Один из предзаданных вариантов цели.
+  const goalId = data.replace(/^onb_goal_/, '') as GoalId
+  const validGoals = new Set<string>(GOALS.map(g => g.id))
+  if (!validGoals.has(goalId)) {
+    await answerCallbackQuery(cb.id).catch(() => {})
+    return
+  }
+
+  const { awarded, alreadyAnswered } = await recordDmGoalAnswer({
+    memberId: member.id,
+    tgId: member.tg_id,
+    goal: goalId,
+  })
+
+  const label = GOAL_LABELS[goalId] ?? 'свой вариант'
+  const ackText = alreadyAnswered
+    ? `✅ Цель обновлена: <b>${label}</b>\n\nФантики за этот шаг уже начислены раньше — переходи в Мини-апп, там добьём анкету и +10.`
+    : `✅ <b>+5 фантиков</b> за первый шаг!\n\nЦель: <b>${label}</b>\n\nТеперь открой Мини-апп — раздел «Профиль» → «Мой путь». Там 3 коротких вопроса, ещё <b>+10 фантиков</b> и сразу откроем Колесо удачи.`
+
+  // Кнопка-CTA в мини-апп. Telegram умеет открывать веб-аппы по url → t.me/<bot>?startapp=...
+  // У нас уже есть кнопка меню (setUserWebAppMenuButton), но в чате тоже даём явную кнопку.
+  const miniAppUrl = process.env.MINI_APP_URL
+    || (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/app` : null)
+  const buttons = miniAppUrl
+    ? [{ label: '🚀 Открыть Мини-апп', url: miniAppUrl }]
+    : null
+
+  if (messageId) {
+    // Перерисовываем исходное сообщение с кнопками — без callback-кнопок,
+    // только с URL-кнопкой в мини-апп. Делаем это через editMessageText
+    // + отдельный sendMessage — потому что reply_markup при editMessageText
+    // принимает inline_keyboard, а у нас helper рассчитан под URL-кнопки.
+    await editMessageText(chatId, messageId, ackText, null).catch(() => {})
+  } else {
+    await sendMessage(chatId, ackText).catch(() => {})
+  }
+  if (buttons) {
+    await sendMessage(chatId, '👇 Жми и забирай ещё +10:', buttons).catch(() => {})
+  }
+  await answerCallbackQuery(cb.id, awarded ? '+5 фантиков' : 'Уже учтено').catch(() => {})
+}
+
+// Если у участника onboarding_dm_state='awaiting_custom_goal', трактуем
+// его следующий приватный текст как кастомный ответ на вопрос про цель.
+// Возвращает true, если сообщение поглощено онбордингом и обычную обработку
+// (фантики за активность, /start, etc.) делать НЕ надо.
+async function tryCaptureOnboardingCustomGoal(user: TgUser, text: string): Promise<boolean> {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+
+  const { data: member } = await supabaseAdmin
+    .from('members')
+    .select('id, tg_id, onboarding_dm_state')
+    .eq('tg_id', user.id)
+    .maybeSingle()
+  if (!member || member.onboarding_dm_state !== 'awaiting_custom_goal') return false
+
+  // Усечём до 500 символов — на всякий случай (1-3 предложения).
+  const customText = trimmed.slice(0, 500)
+  const { awarded, alreadyAnswered } = await recordDmGoalAnswer({
+    memberId: member.id,
+    tgId: member.tg_id,
+    goal: 'custom',
+    customText,
+  })
+
+  const ackText = alreadyAnswered
+    ? `✅ Записал твой вариант: «${customText.slice(0, 80)}${customText.length > 80 ? '…' : ''}»\n\nФантики за этот шаг уже были начислены раньше — открывай Мини-апп, добьём анкету.`
+    : `✅ <b>+5 фантиков</b>! Записал: «${customText.slice(0, 80)}${customText.length > 80 ? '…' : ''}»\n\nТеперь открой Мини-апп → «Профиль» → «Мой путь». Ещё <b>+10 фантиков</b> и Колесо удачи откроем.`
+
+  const miniAppUrl = process.env.MINI_APP_URL
+    || (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/app` : null)
+  const buttons = miniAppUrl ? [{ label: '🚀 Открыть Мини-апп', url: miniAppUrl }] : null
+  await sendMessage(user.id, ackText, buttons).catch(() => {})
+  void awarded
+  return true
+}
+
 // ─── Utils ────────────────────────────────────────────────────────────────────
 function currentWeekStart(): string {
   const now = new Date()
@@ -838,6 +1004,7 @@ interface TgChat { id: number; type?: string; title?: string }
 interface TgChatMemberUpdate { chat: TgChat; new_chat_member: { user: TgUser; status: string } }
 interface TgMessage {
   message_id?: number
+  message_thread_id?: number
   from?: TgUser
   sender_chat?: TgChat
   chat: TgChat
@@ -856,6 +1023,7 @@ interface TgMessage {
   document?: unknown
   sticker?: unknown
   animation?: unknown
+  is_topic_message?: boolean
 }
 interface TgReactionType { type: 'emoji' | 'custom_emoji' | 'paid'; emoji?: string; custom_emoji_id?: string }
 interface TgReaction {
@@ -867,6 +1035,12 @@ interface TgReaction {
   new_reaction?: TgReactionType[]
 }
 interface TgPollAnswer { poll_id: string; user?: TgUser; option_ids: number[] }
+interface TgCallbackQuery {
+  id: string
+  from: TgUser
+  data?: string
+  message?: { message_id: number; chat: TgChat }
+}
 
 // Media classifier for tg_messages.media_kind
 function classifyMedia(m: TgMessage): { has: boolean; kind: string | null } {
@@ -897,6 +1071,11 @@ async function storeIncomingMessage(msg: TgMessage, isEdit: boolean): Promise<vo
     ? (msg.edit_date ? new Date(msg.edit_date * 1000).toISOString() : new Date().toISOString())
     : null
 
+  // message_thread_id: Telegram присылает его в форум-группе для каждого
+  // поста в ветке. Если is_topic_message=false и thread_id отсутствует —
+  // это сообщение в General. Канальные посты thread не имеют.
+  const threadId = msg.is_topic_message && msg.message_thread_id ? msg.message_thread_id : null
+
   try {
     await supabaseAdmin.from('tg_messages').upsert(
       {
@@ -911,6 +1090,7 @@ async function storeIncomingMessage(msg: TgMessage, isEdit: boolean): Promise<vo
         media_kind: media.kind,
         sent_at: sentAt,
         edited_at: editedAt,
+        message_thread_id: threadId,
       },
       { onConflict: 'message_id,chat_id' },
     )

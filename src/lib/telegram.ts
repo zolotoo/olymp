@@ -14,10 +14,26 @@ export interface InlineUrlButton {
   url: string
 }
 
+// Generic inline-кнопка для callback-флоу (онбординг и т.п.).
+// Колбэки идут в webhook → handleCallbackQuery.
+export interface InlineCallbackButton {
+  label: string
+  callback_data: string
+}
+
 function buildInlineKeyboard(buttons?: InlineUrlButton[] | null) {
   if (!buttons?.length) return undefined
   // Каждая кнопка на своей строке — Telegram сам сожмёт по ширине, и так читается лучше.
   return { inline_keyboard: buttons.map(b => [{ text: b.label, url: b.url }]) }
+}
+
+// Грид из callback-кнопок: [[btn, btn], [btn]] — каждый внутренний массив = ряд.
+export function buildCallbackKeyboard(rows: InlineCallbackButton[][]) {
+  return {
+    inline_keyboard: rows.map(row =>
+      row.map(b => ({ text: b.label, callback_data: b.callback_data })),
+    ),
+  }
 }
 
 export async function sendMessage(
@@ -29,6 +45,47 @@ export async function sendMessage(
   const reply_markup = buildInlineKeyboard(buttons)
   if (reply_markup) payload.reply_markup = reply_markup
   return call('sendMessage', payload)
+}
+
+// Отправка с произвольной inline-клавиатурой (callback-кнопки или смесь).
+// Используем для онбординг-вопросов в DM.
+export async function sendMessageWithKeyboard(
+  chatId: number | string,
+  text: string,
+  reply_markup: object,
+) {
+  return call('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', reply_markup })
+}
+
+// Telegram требует ответить на callback_query, иначе у пользователя
+// крутится «часики» на кнопке несколько секунд. Можно отправить тост.
+export async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string,
+  showAlert = false,
+) {
+  const payload: Record<string, unknown> = { callback_query_id: callbackQueryId }
+  if (text) payload.text = text
+  if (showAlert) payload.show_alert = true
+  return call('answerCallbackQuery', payload)
+}
+
+// Редактирование текста сообщения (используется чтобы заменить
+// «вопрос с кнопками» на «спасибо, ответ принят» после ответа).
+export async function editMessageText(
+  chatId: number | string,
+  messageId: number,
+  text: string,
+  reply_markup?: object | null,
+) {
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    message_id: messageId,
+    text,
+    parse_mode: 'HTML',
+  }
+  if (reply_markup) payload.reply_markup = reply_markup
+  return call('editMessageText', payload)
 }
 
 export async function sendVideoNote(chatId: number | string, fileId: string) {
