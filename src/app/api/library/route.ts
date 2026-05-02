@@ -54,7 +54,14 @@ function deriveTitleAndPreview(m: MessageRow): { title: string; preview: string 
   const txt = (m.text ?? '').trim()
   if (!txt) {
     const kind = m.media_kind ?? 'media'
-    return { title: kind === 'video' ? '🎥 Видео' : kind === 'photo' ? '📷 Изображение' : kind === 'document' ? '📎 Файл' : '🎬 Медиа', preview: '' }
+    return {
+      title: kind === 'video' || kind === 'video_note' ? 'Видео'
+           : kind === 'photo' ? 'Изображение'
+           : kind === 'document' ? 'Файл'
+           : kind === 'voice' || kind === 'audio' ? 'Аудио'
+           : 'Медиа',
+      preview: '',
+    }
   }
   const lines = txt.split(/\n+/).map(s => s.trim()).filter(Boolean)
   const first = (lines[0] ?? txt).slice(0, 80)

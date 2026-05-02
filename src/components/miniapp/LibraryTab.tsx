@@ -76,7 +76,7 @@ export default function LibraryTab() {
     <div className="max-w-xl mx-auto px-4 pb-8">
       <div className="text-center mb-5">
         <h1 className="text-3xl font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-1px' }}>
-          📚 Библиотека
+          Библиотека
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
           Уроки, гайды и кейсы из веток клуба
@@ -88,7 +88,7 @@ export default function LibraryTab() {
         <FilterChip active={activeKind === null} onClick={() => setActiveKind(null)}>Все</FilterChip>
         {topics.map(t => (
           <FilterChip key={t.kind} active={activeKind === t.kind} onClick={() => setActiveKind(t.kind)}>
-            <span style={{ marginRight: 4 }}>{t.emoji ?? '📁'}</span>{t.title}
+            {t.emoji ? <span style={{ marginRight: 4 }}>{t.emoji}</span> : null}{t.title}
           </FilterChip>
         ))}
       </div>
@@ -96,7 +96,7 @@ export default function LibraryTab() {
       {visible.map(topic => (
         <section key={topic.thread_id} className="mb-6">
           <div className="flex items-center gap-2 mb-2">
-            <span style={{ fontSize: 22 }}>{topic.emoji ?? '📁'}</span>
+            {topic.emoji && <span style={{ fontSize: 22 }}>{topic.emoji}</span>}
             <h2 className="text-lg font-bold" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
               {topic.title}
             </h2>
@@ -115,7 +115,6 @@ export default function LibraryTab() {
                   style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.06)' }}
                 >
                   <div className="flex items-start gap-2 mb-1">
-                    {item.has_media && <span style={{ fontSize: 14 }}>{mediaIcon(item.media_kind)}</span>}
                     <h3 className="text-sm font-semibold flex-1" style={{ color: '#1C1C1E', letterSpacing: '-0.2px', lineHeight: 1.35 }}>
                       {item.title}
                     </h3>
@@ -163,14 +162,6 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
       {children}
     </button>
   )
-}
-
-function mediaIcon(kind: string | null): string {
-  if (kind === 'video' || kind === 'video_note') return '🎥'
-  if (kind === 'photo') return '📷'
-  if (kind === 'document') return '📎'
-  if (kind === 'voice' || kind === 'audio') return '🎙'
-  return '📌'
 }
 
 function formatDate(iso: string): string {
