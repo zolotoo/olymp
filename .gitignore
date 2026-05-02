@@ -35,3 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude/
+
+# временные HTML-экспорты Telegram — для бэкфилла tg_messages, не коммитим
+messages*.html
