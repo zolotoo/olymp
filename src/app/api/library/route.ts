@@ -102,28 +102,61 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ topics: [] })
   }
 
-  // Один общий запрос на все нужные thread_id, потом раскидаем по топикам.
-  const chatId = topics[0].chat_id // в наших данных все ветки — одной группы
-  const threadIds = topics.map(t => t.thread_id)
-  const { data: msgsRaw } = await supabaseAdmin
-    .from('tg_messages')
-    .select('message_id, chat_id, message_thread_id, text, has_media, media_kind, sent_at')
-    .eq('chat_id', chatId)
-    .in('message_thread_id', threadIds)
-    .order('sent_at', { ascending: false })
-    .limit(POSTS_PER_TOPIC * topics.length)
+  // Соглашение: thread_id = 0 в tg_topics означает «весь чат/канал, без веток».
+  // Для группы с форумом thread_id — реальный id ветки.
+  // Это позволяет одной таблицей tg_topics покрыть и форумы, и плоские каналы.
+  //
+  // Чаты могут быть разные (группа + канал), поэтому ходим в tg_messages
+  // одним запросом по каждому уникальному chat_id отдельно — Supabase не
+  // умеет в OR(eq+in) одной строкой через JS-клиент так, чтобы не плодить
+  // фильтры. Группируем по (chat_id, thread_id).
+  type Bucket = { topic: Topic; key: string; messages: MessageRow[] }
+  const buckets: Bucket[] = topics.map(t => ({ topic: t, key: `${t.chat_id}:${t.thread_id}`, messages: [] }))
 
-  const msgs = (msgsRaw ?? []) as MessageRow[]
-  const byThread = new Map<number, MessageRow[]>()
-  for (const m of msgs) {
-    if (!m.message_thread_id) continue
-    const arr = byThread.get(m.message_thread_id) ?? []
-    if (arr.length < POSTS_PER_TOPIC) arr.push(m)
-    byThread.set(m.message_thread_id, arr)
+  // Объединяем все запросы в Promise.all — параллельно по каждому уникальному chat_id.
+  const byChatId = new Map<number, Topic[]>()
+  for (const t of topics) {
+    const arr = byChatId.get(t.chat_id) ?? []
+    arr.push(t)
+    byChatId.set(t.chat_id, arr)
   }
 
-  const result = topics.map(t => {
-    const items = (byThread.get(t.thread_id) ?? []).map(m => {
+  const fetches = [...byChatId.entries()].map(async ([chatId, ts]) => {
+    const realThreads = ts.filter(t => t.thread_id !== 0).map(t => t.thread_id)
+    const hasFlat = ts.some(t => t.thread_id === 0)
+
+    // Forum-ветки (real thread ids).
+    if (realThreads.length) {
+      const { data } = await supabaseAdmin
+        .from('tg_messages')
+        .select('message_id, chat_id, message_thread_id, text, has_media, media_kind, sent_at')
+        .eq('chat_id', chatId)
+        .in('message_thread_id', realThreads)
+        .order('sent_at', { ascending: false })
+        .limit(POSTS_PER_TOPIC * realThreads.length)
+      for (const m of (data ?? []) as MessageRow[]) {
+        const b = buckets.find(b => b.key === `${chatId}:${m.message_thread_id}`)
+        if (b && b.messages.length < POSTS_PER_TOPIC) b.messages.push(m)
+      }
+    }
+
+    // Плоский канал/чат без веток (thread_id = 0 в tg_topics).
+    if (hasFlat) {
+      const { data } = await supabaseAdmin
+        .from('tg_messages')
+        .select('message_id, chat_id, message_thread_id, text, has_media, media_kind, sent_at')
+        .eq('chat_id', chatId)
+        .is('message_thread_id', null)
+        .order('sent_at', { ascending: false })
+        .limit(POSTS_PER_TOPIC)
+      const b = buckets.find(b => b.key === `${chatId}:0`)
+      if (b) b.messages.push(...((data ?? []) as MessageRow[]))
+    }
+  })
+  await Promise.all(fetches)
+
+  const result = buckets.map(b => {
+    const items = b.messages.map(m => {
       const { title, preview } = deriveTitleAndPreview(m)
       return {
         message_id: m.message_id,
@@ -136,11 +169,11 @@ export async function GET(req: NextRequest) {
       }
     })
     return {
-      kind: t.kind,
-      title: t.title,
-      emoji: t.emoji,
-      thread_id: t.thread_id,
-      chat_id: t.chat_id,
+      kind: b.topic.kind,
+      title: b.topic.title,
+      emoji: b.topic.emoji,
+      thread_id: b.topic.thread_id,
+      chat_id: b.topic.chat_id,
       items,
     }
   })
