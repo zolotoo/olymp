@@ -68,7 +68,7 @@ function Shell() {
   }
 
   return (
-    <div style={{ paddingTop: 12, paddingBottom: 80 }}>
+    <div style={{ paddingTop: 12, paddingBottom: 96 }}>
       {tab === 'wheel' && <WheelTab onSpinComplete={() => setProfileReload(k => k + 1)} />}
       {tab === 'titul' && <TitulTab reloadKey={profileReload} />}
       {tab === 'leaderboard' && <LeaderboardTab reloadKey={profileReload} />}
@@ -76,16 +76,33 @@ function Shell() {
       {tab === 'library' && <LibraryTab />}
       {tab === 'profile' && <ProfileTab reloadKey={profileReload} />}
 
+      {/*
+        Liquid Glass tab bar в духе iOS 26: плавающая «пилюля», оторванная от
+        нижней грани и зажатая по бокам. Полупрозрачный фон + сильный blur +
+        boost saturation создаёт эффект матового стекла. Активная вкладка
+        выделяется лёгким акцентным фоном, без цветного эмодзи — только текст.
+        Без иконок: 6 коротких подписей помещаются в одну линию, а отсутствие
+        пиктограмм снимает «детский» вид и даёт чище акцент.
+      */}
       <nav
         style={{
           position: 'fixed',
-          bottom: 0, left: 0, right: 0,
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(24px) saturate(160%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-          borderTop: '1px solid rgba(28,28,30,0.08)',
+          left: '50%',
+          bottom: 'calc(env(safe-area-inset-bottom) + 12px)',
+          transform: 'translateX(-50%)',
+          width: 'calc(100% - 16px)',
+          maxWidth: 460,
           display: 'flex',
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          padding: 4,
+          background: 'rgba(255,255,255,0.62)',
+          backdropFilter: 'blur(36px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(36px) saturate(180%)',
+          border: '0.5px solid rgba(255,255,255,0.65)',
+          borderRadius: 999,
+          boxShadow:
+            '0 14px 40px rgba(0,0,0,0.14), ' +
+            '0 4px 12px rgba(0,0,0,0.08), ' +
+            'inset 0 1px 0 rgba(255,255,255,0.85)',
           zIndex: 30,
         }}
       >
@@ -97,29 +114,25 @@ function Shell() {
             : t === 'kiosk' ? 'Киоск'
             : t === 'library' ? 'Знания'
             : 'Профиль'
-          const emoji = t === 'wheel' ? '🎁'
-            : t === 'titul' ? '🏔'
-            : t === 'leaderboard' ? '🏆'
-            : t === 'kiosk' ? '🛍'
-            : t === 'library' ? '📚'
-            : '👤'
           return (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className="flex-1 flex flex-col items-center justify-center gap-1"
+              className="flex-1 flex items-center justify-center transition-all active:scale-[0.94]"
               style={{
-                padding: '10px 0 12px',
-                background: 'transparent',
+                padding: '11px 0',
+                background: active ? '#FFFFFF' : 'transparent',
                 border: 'none',
+                borderRadius: 999,
                 cursor: 'pointer',
-                color: active ? '#0A84FF' : 'rgba(28,28,30,0.55)',
-                fontSize: 10,
+                color: active ? '#0A84FF' : 'rgba(28,28,30,0.62)',
+                fontSize: 13,
                 fontWeight: active ? 700 : 500,
-                letterSpacing: '-0.1px',
+                letterSpacing: '-0.2px',
+                boxShadow: active ? '0 2px 8px rgba(10,132,255,0.18), 0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                transition: 'background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease',
               }}
             >
-              <span style={{ fontSize: 20, lineHeight: 1 }}>{emoji}</span>
               {label}
             </button>
           )
