@@ -27,6 +27,7 @@ interface MessageRow {
   message_id: number
   chat_id: number
   message_thread_id: number | null
+  reply_to_message_id: number | null
   text: string | null
   has_media: boolean
   media_kind: string | null
@@ -49,20 +50,10 @@ function deepLink(chatId: number, threadId: number | null, messageId: number): s
 }
 
 // Заголовок карточки = первая «осмысленная» строка текста (≤ 80 симв).
-// Дальше идёт preview из остального. Если текста нет — показываем тип медиа.
+// Текст обязателен — посты без текста (просто медиа-вложения) уже отфильтрованы
+// на уровне SQL-запроса, так что сюда не попадают.
 function deriveTitleAndPreview(m: MessageRow): { title: string; preview: string } {
   const txt = (m.text ?? '').trim()
-  if (!txt) {
-    const kind = m.media_kind ?? 'media'
-    return {
-      title: kind === 'video' || kind === 'video_note' ? 'Видео'
-           : kind === 'photo' ? 'Изображение'
-           : kind === 'document' ? 'Файл'
-           : kind === 'voice' || kind === 'audio' ? 'Аудио'
-           : 'Медиа',
-      preview: '',
-    }
-  }
   const lines = txt.split(/\n+/).map(s => s.trim()).filter(Boolean)
   const first = (lines[0] ?? txt).slice(0, 80)
   const rest = lines.slice(1).join(' ').slice(0, POST_PREVIEW_LEN)
@@ -70,6 +61,17 @@ function deriveTitleAndPreview(m: MessageRow): { title: string; preview: string 
     title: first || 'Пост',
     preview: rest || (lines.length === 1 && txt.length > first.length ? txt.slice(first.length, first.length + POST_PREVIEW_LEN) : ''),
   }
+}
+
+// Top-level vs reply: пост считается «карточкой темы» если он либо вообще
+// без reply_to (новый пост в топике), либо отвечает на корневое сообщение
+// топика (id == thread_id — система ставит этот reply автоматически на
+// первый пост в новой ветке). Реплаи на другие посты — это болтовня
+// в ветке, не контент, такие не показываем.
+function isTopLevelInTopic(m: MessageRow): boolean {
+  if (m.reply_to_message_id == null) return true
+  if (m.message_thread_id != null && m.reply_to_message_id === m.message_thread_id) return true
+  return false
 }
 
 export async function GET(req: NextRequest) {
@@ -125,28 +127,42 @@ export async function GET(req: NextRequest) {
     const realThreads = ts.filter(t => t.thread_id !== 0).map(t => t.thread_id)
     const hasFlat = ts.some(t => t.thread_id === 0)
 
+    // Общие фильтры на стороне SQL для всех веток/каналов:
+    // 1) is_hidden=false — админский флаг для шапок/закрепов и оффтопа.
+    // 2) text NOT NULL — посты без текста (просто файл/фото без подписи)
+    //    бесполезны в Библиотеке, отсекаем на уровне БД.
+    // Лимит увеличен в 3 раза от целевого, потому что часть может
+    // отвалиться client-side фильтром isTopLevelInTopic.
+    const SELECT = 'message_id, chat_id, message_thread_id, reply_to_message_id, text, has_media, media_kind, sent_at'
+
     // Forum-ветки (real thread ids).
     if (realThreads.length) {
       const { data } = await supabaseAdmin
         .from('tg_messages')
-        .select('message_id, chat_id, message_thread_id, text, has_media, media_kind, sent_at')
+        .select(SELECT)
         .eq('chat_id', chatId)
+        .eq('is_hidden', false)
         .in('message_thread_id', realThreads)
+        .not('text', 'is', null)
         .order('sent_at', { ascending: false })
-        .limit(POSTS_PER_TOPIC * realThreads.length)
+        .limit(POSTS_PER_TOPIC * realThreads.length * 3)
       for (const m of (data ?? []) as MessageRow[]) {
+        if (!isTopLevelInTopic(m)) continue
         const b = buckets.find(b => b.key === `${chatId}:${m.message_thread_id}`)
         if (b && b.messages.length < POSTS_PER_TOPIC) b.messages.push(m)
       }
     }
 
     // Плоский канал/чат без веток (thread_id = 0 в tg_topics).
+    // У канала reply_to_message_id почти всегда null → top-level фильтр не нужен.
     if (hasFlat) {
       const { data } = await supabaseAdmin
         .from('tg_messages')
-        .select('message_id, chat_id, message_thread_id, text, has_media, media_kind, sent_at')
+        .select(SELECT)
         .eq('chat_id', chatId)
+        .eq('is_hidden', false)
         .is('message_thread_id', null)
+        .not('text', 'is', null)
         .order('sent_at', { ascending: false })
         .limit(POSTS_PER_TOPIC)
       const b = buckets.find(b => b.key === `${chatId}:0`)
