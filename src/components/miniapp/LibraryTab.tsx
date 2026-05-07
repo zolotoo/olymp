@@ -83,12 +83,14 @@ export default function LibraryTab() {
         </p>
       </div>
 
-      {/* Фильтр-чипы по kind */}
+      {/* Фильтр-чипы по kind. Дедуп: несколько топиков могут иметь один kind
+          (например, две ветки гайдов) — чип показываем один на kind, по
+          первому встретившемуся title/emoji. */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         <FilterChip active={activeKind === null} onClick={() => setActiveKind(null)}>Все</FilterChip>
-        {topics.map(t => (
+        {dedupByKind(topics).map(t => (
           <FilterChip key={t.kind} active={activeKind === t.kind} onClick={() => setActiveKind(t.kind)}>
-            {t.emoji ? <span style={{ marginRight: 4 }}>{t.emoji}</span> : null}{t.title}
+            {t.emoji ? <span style={{ marginRight: 4 }}>{t.emoji}</span> : null}{kindChipLabel(t.kind, t.title)}
           </FilterChip>
         ))}
       </div>
@@ -162,6 +164,27 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
       {children}
     </button>
   )
+}
+
+function dedupByKind(topics: LibTopic[]): LibTopic[] {
+  const seen = new Set<string>()
+  const out: LibTopic[] = []
+  for (const t of topics) {
+    if (seen.has(t.kind)) continue
+    seen.add(t.kind)
+    out.push(t)
+  }
+  return out
+}
+
+// Когда под одним kind несколько веток (kind='guides' = «Гайды и промты» +
+// «С нуля для новичков»), title первого топика звучит частно. Показываем
+// общий ярлык kind на чипе, а полный title секций оставляем в заголовках.
+const KIND_CHIP_LABELS: Record<string, string> = {
+  guides: 'Гайды',
+}
+function kindChipLabel(kind: string, fallback: string): string {
+  return KIND_CHIP_LABELS[kind] ?? fallback
 }
 
 function formatDate(iso: string): string {

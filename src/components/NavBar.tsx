@@ -15,6 +15,8 @@ const LINKS = [
   { href: '/feed',    label: 'Лента' },
   { href: '/audience', label: 'Аудитория' },
   { href: '/broadcasts', label: 'Рассылки' },
+  { href: '/library', label: 'Библиотека' },
+  { href: '/digest',  label: 'Дайджест' },
 ]
 
 export default function NavBar() {

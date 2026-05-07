@@ -10,6 +10,21 @@
 -- ───────────────────────────────────────────────────────────────────────────
 -- 023: онбординг (анкета «Мой путь») + тематические ветки группы для Библиотеки.
 
+-- ─── 0) Базовые колонки tg_messages из миграции 014 ──────────────────────────
+-- В некоторых средах tg_messages была создана раньше «голой» (только
+-- message_id/chat_id/author_tg_id), а 014 не успела примениться. Делаем
+-- добавление колонок здесь, чтобы SETUP_ALL.sql работал и в чистой БД,
+-- и поверх частично-применённой 014. Если колонки уже есть — no-op.
+ALTER TABLE public.tg_messages
+  ADD COLUMN IF NOT EXISTS text                TEXT,
+  ADD COLUMN IF NOT EXISTS chat_type           TEXT,
+  ADD COLUMN IF NOT EXISTS chat_title          TEXT,
+  ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT,
+  ADD COLUMN IF NOT EXISTS has_media           BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS media_kind          TEXT,
+  ADD COLUMN IF NOT EXISTS sent_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS edited_at           TIMESTAMPTZ;
+
 -- ─── 1) message_thread_id для tg_messages ─────────────────────────────────────
 -- Без этого нельзя понять, в какой ветке форума было сообщение, а значит
 -- нельзя строить «Библиотека = посты из ветки Уроки/Гайды».
@@ -1574,12 +1589,15 @@ WHERE
 
 -- Сид топиков Библиотеки.
 INSERT INTO public.tg_topics (chat_id, thread_id, kind, title, emoji, sort_order, is_visible) VALUES
-  (-1003711772182,  0, 'practice', 'Практикумы',          NULL, 1, true),
-  (-1003828793815, 18, 'guides',   'Гайды и промты',      NULL, 2, true),
-  (-1003828793815, 16, 'streams',  'Эфиры',               NULL, 3, true),
-  (-1003828793815,  8, 'free',     'Бесплатные нейронки', NULL, 4, true),
-  (-1003828793815,  5, 'trends',   'ИИ тренды',           NULL, 5, true),
-  (-1003828793815, 59, 'group_practice_chat', 'Практикумы (обсуждения в группе)', NULL, 99, false)
+  (-1003711772182,  0,  'practice', 'Практикумы',          NULL, 1,  true),
+  (-1003828793815, 18,  'guides',   'Гайды и промты',      NULL, 2,  true),
+  (-1003828793815, 15,  'guides',   'С нуля для новичков', NULL, 3,  true),
+  (-1003828793815, 16,  'streams',  'Эфиры',               NULL, 4,  true),
+  (-1003828793815,  8,  'free',     'Бесплатные нейронки', NULL, 5,  true),
+  (-1003828793815,  5,  'trends',   'ИИ тренды',           NULL, 6,  true),
+  (-1003828793815, 17,  'rules',    'Правила и титулы',    NULL, 7,  true),
+  (-1003828793815, 314, 'results',  'Результаты участников', NULL, 8,  true),
+  (-1003828793815, 59,  'group_practice_chat', 'Практикумы (обсуждения в группе)', NULL, 99, false)
 ON CONFLICT (chat_id, thread_id) DO UPDATE SET
   kind=EXCLUDED.kind, title=EXCLUDED.title, emoji=EXCLUDED.emoji,
   sort_order=EXCLUDED.sort_order, is_visible=EXCLUDED.is_visible;

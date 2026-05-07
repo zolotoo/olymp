@@ -1097,4 +1097,61 @@ async function storeIncomingMessage(msg: TgMessage, isEdit: boolean): Promise<vo
   } catch (e) {
     console.error('storeIncomingMessage failed:', e)
   }
+
+  // Кандидат в Библиотеку: пост из трекаемой ветки с текстом, top-level
+  // (либо без reply, либо reply на корневое сообщение топика). Создаём
+  // library_items.status='pending' — админ одобрит через /library.
+  // Edits не создают новых записей (ON CONFLICT DO NOTHING). Если запись уже
+  // есть — оставляем её статус как был.
+  if (!isEdit && text && text.trim()) {
+    await maybeEnqueueLibraryItem({
+      chatId: msg.chat.id,
+      messageId: msg.message_id,
+      threadId,
+      replyTo: msg.reply_to_message?.message_id ?? null,
+    })
+  }
+}
+
+// Проверяем: это сообщение в трекаемом топике + top-level (новый пост в ветке,
+// а не реплай на чужой). Если да — создаём pending-черновик в library_items.
+async function maybeEnqueueLibraryItem(args: {
+  chatId: number
+  messageId: number
+  threadId: number | null
+  replyTo: number | null
+}): Promise<void> {
+  const { chatId, messageId, threadId, replyTo } = args
+
+  // Ищем топик: либо ветка форума с конкретным thread_id, либо плоский канал
+  // (thread_id = 0 в tg_topics).
+  const { data: topic } = await supabaseAdmin
+    .from('tg_topics')
+    .select('kind, is_visible, thread_id')
+    .eq('chat_id', chatId)
+    .eq('thread_id', threadId ?? 0)
+    .maybeSingle()
+  if (!topic || !topic.is_visible) return
+
+  // Top-level: либо вообще без reply, либо reply на корневое сообщение топика
+  // (Telegram автоматически ставит этот reply на первый пост в новой ветке).
+  // В плоском канале reply почти всегда null.
+  const isTopLevel =
+    replyTo == null ||
+    (topic.thread_id !== 0 && replyTo === topic.thread_id)
+  if (!isTopLevel) return
+
+  try {
+    await supabaseAdmin.from('library_items').insert({
+      chat_id: chatId,
+      message_id: messageId,
+      thread_id: threadId,
+      kind: topic.kind,
+      status: 'pending',
+    })
+  } catch (e) {
+    // Конфликт по UNIQUE(chat_id, message_id) — это норма (повторный webhook).
+    const code = (e as { code?: string }).code
+    if (code !== '23505') console.error('enqueue library_item failed:', e)
+  }
 }
