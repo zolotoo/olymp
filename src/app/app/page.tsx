@@ -10,9 +10,27 @@ import LibraryTab from '@/components/miniapp/LibraryTab'
 
 type Tab = 'wheel' | 'titul' | 'leaderboard' | 'profile' | 'kiosk' | 'library'
 
+// Читаем deeplink-параметры из window.location.search:
+//   ?tab=library&kind=guides&msg=348
+// Telegram пробрасывает их при открытии CTA-кнопки с url: https://...
+// в свой in-app браузер. Для start_param-режима (когда мини-апп открывается
+// из меню бота) — пока не используем, добавим если будет нужно.
+function readDeeplink(): { tab: Tab | null; kind: string | null; msg: number | null } {
+  if (typeof window === 'undefined') return { tab: null, kind: null, msg: null }
+  const sp = new URLSearchParams(window.location.search)
+  const t = sp.get('tab')
+  const allowed: Tab[] = ['wheel', 'titul', 'leaderboard', 'profile', 'kiosk', 'library']
+  return {
+    tab: allowed.includes(t as Tab) ? (t as Tab) : null,
+    kind: sp.get('kind'),
+    msg: Number(sp.get('msg')) || null,
+  }
+}
+
 function Shell() {
   const { ready, isTelegram, initData } = useTelegram()
-  const [tab, setTab] = useState<Tab>('titul')
+  const initial = readDeeplink()
+  const [tab, setTab] = useState<Tab>(initial.tab ?? 'titul')
   const [profileReload, setProfileReload] = useState(0)
   const [gate, setGate] = useState<{ allowed: boolean; reason?: string } | null>(null)
 
@@ -73,7 +91,7 @@ function Shell() {
       {tab === 'titul' && <TitulTab reloadKey={profileReload} />}
       {tab === 'leaderboard' && <LeaderboardTab reloadKey={profileReload} />}
       {tab === 'kiosk' && <KioskTab reloadKey={profileReload} onPurchase={() => setProfileReload(k => k + 1)} />}
-      {tab === 'library' && <LibraryTab />}
+      {tab === 'library' && <LibraryTab initialKind={initial.kind} initialMsgId={initial.msg} />}
       {tab === 'profile' && <ProfileTab reloadKey={profileReload} />}
 
       {/*

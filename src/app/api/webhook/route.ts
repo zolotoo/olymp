@@ -1142,16 +1142,30 @@ async function maybeEnqueueLibraryItem(args: {
   if (!isTopLevel) return
 
   try {
-    await supabaseAdmin.from('library_items').insert({
-      chat_id: chatId,
-      message_id: messageId,
-      thread_id: threadId,
-      kind: topic.kind,
-      status: 'pending',
-    })
+    const { data: created, error } = await supabaseAdmin
+      .from('library_items')
+      .insert({
+        chat_id: chatId,
+        message_id: messageId,
+        thread_id: threadId,
+        kind: topic.kind,
+        status: 'pending',
+      })
+      .select('id')
+      .single()
+    if (error) {
+      // 23505 = UNIQUE violation. Норма для повторного webhook на тот же
+      // message_id — оставляем существующую запись как есть.
+      if (error.code !== '23505') console.error('enqueue library_item failed:', error)
+      return
+    }
+    if (created?.id) {
+      // Динамический импорт — лишний modul-граф не тащим в hot path обычных
+      // сообщений (не из трекаемых веток).
+      const { notifyAdminNewLibraryItem } = await import('@/lib/library-notify')
+      await notifyAdminNewLibraryItem(created.id)
+    }
   } catch (e) {
-    // Конфликт по UNIQUE(chat_id, message_id) — это норма (повторный webhook).
-    const code = (e as { code?: string }).code
-    if (code !== '23505') console.error('enqueue library_item failed:', e)
+    console.error('enqueue library_item failed:', e)
   }
 }

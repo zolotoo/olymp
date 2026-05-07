@@ -3,6 +3,22 @@
     {
       "path": "/api/cron",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/library?job=backlog",
+      "schedule": "0 7 * * 1"
+    },
+    {
+      "path": "/api/cron/library?job=backlog",
+      "schedule": "0 9 * * 4"
+    },
+    {
+      "path": "/api/cron/library?job=featured",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/library?job=digest_ready",
+      "schedule": "0 9 * * 0"
     }
   ]
 }
