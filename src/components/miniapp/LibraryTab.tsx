@@ -78,38 +78,42 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
     return () => window.clearTimeout(t)
   }, [topics, highlightMsg])
 
+  // Сплющенные элементы тащат с собой chat_id из родительского топика —
+  // иначе клик-трекер записывает события с chat_id=0 и аналитика бесполезна.
+  type FlatItem = LibItem & { kind: string; chat_id: number; topicTitle: string; topicEmoji: string | null }
+
   // Featured: всё что is_featured=true, отсортированное по дате DESC, top 3.
   // Карусель не зависит от выбранного фильтра.
-  const featured = useMemo<Array<LibItem & { kind: string; topicTitle: string }>>(() => {
+  const featured = useMemo<FlatItem[]>(() => {
     if (!topics) return []
-    const all: Array<LibItem & { kind: string; topicTitle: string }> = []
+    const all: FlatItem[] = []
     for (const t of topics) for (const it of t.items) {
-      if (it.is_featured) all.push({ ...it, kind: t.kind, topicTitle: t.title })
+      if (it.is_featured) all.push({ ...it, kind: t.kind, chat_id: t.chat_id, topicTitle: t.title, topicEmoji: t.emoji })
     }
     all.sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
     return all.slice(0, 3)
   }, [topics])
 
   // «Новое 7д» — все посты за последние 7 дней (по sent_at), все kind вместе.
-  const newItems = useMemo<Array<LibItem & { kind: string; topicTitle: string; topicEmoji: string | null }>>(() => {
+  const newItems = useMemo<FlatItem[]>(() => {
     if (!topics) return []
     const cutoff = Date.now() - 7 * 86_400_000
-    const all: Array<LibItem & { kind: string; topicTitle: string; topicEmoji: string | null }> = []
+    const all: FlatItem[] = []
     for (const t of topics) for (const it of t.items) {
       if (new Date(it.sent_at).getTime() >= cutoff) {
-        all.push({ ...it, kind: t.kind, topicTitle: t.title, topicEmoji: t.emoji })
+        all.push({ ...it, kind: t.kind, chat_id: t.chat_id, topicTitle: t.title, topicEmoji: t.emoji })
       }
     }
     all.sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
     return all
   }, [topics])
 
-  const openTg = (item: { link: string; message_id: number; kind: string; chatId: number }) => {
+  const openTg = (item: { link: string; message_id: number; kind: string; chat_id: number }) => {
     // Fire-and-forget трекинг клика. Не ждём ответ — UX важнее.
     void fetch('/api/library/click', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-telegram-init-data': initData || '' },
-      body: JSON.stringify({ chat_id: item.chatId, message_id: item.message_id, kind: item.kind }),
+      body: JSON.stringify({ chat_id: item.chat_id, message_id: item.message_id, kind: item.kind }),
     }).catch(() => {})
     if (window.Telegram?.WebApp?.openTelegramLink) {
       window.Telegram.WebApp.openTelegramLink(item.link)
@@ -164,7 +168,7 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
             <FeaturedCard
               key={f.message_id}
               item={f}
-              onOpen={() => openTg({ link: f.link, message_id: f.message_id, kind: f.kind, chatId: 0 /* заполнится из ссылки */ })}
+              onOpen={() => openTg({ link: f.link, message_id: f.message_id, kind: f.kind, chat_id: f.chat_id })}
             />
           ))}
         </div>
@@ -204,7 +208,7 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
                   topicTitle={it.topicTitle}
                   highlight={highlightMsg === it.message_id}
                   cardRef={el => { if (el) cardRefs.current.set(it.message_id, el) }}
-                  onOpen={() => openTg({ link: it.link, message_id: it.message_id, kind: it.kind, chatId: 0 })}
+                  onOpen={() => openTg({ link: it.link, message_id: it.message_id, kind: it.kind, chat_id: it.chat_id })}
                 />
               ))}
             </div>
@@ -231,7 +235,7 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
                     item={{ ...item, kind: topic.kind }}
                     highlight={highlightMsg === item.message_id}
                     cardRef={el => { if (el) cardRefs.current.set(item.message_id, el) }}
-                    onOpen={() => openTg({ link: item.link, message_id: item.message_id, kind: topic.kind, chatId: topic.chat_id })}
+                    onOpen={() => openTg({ link: item.link, message_id: item.message_id, kind: topic.kind, chat_id: topic.chat_id })}
                   />
                 ))}
               </div>

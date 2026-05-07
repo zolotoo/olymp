@@ -155,13 +155,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Помечаем дайджест отправленным. Если оба канала упали — оставляем draft.
+  // Мерджим со старыми флагами: если ты сначала отправил «только в канал»,
+  // потом «только в DM» — оба должны остаться true. Без мерджа второй POST
+  // затирает первый.
   if (result.channel || result.dm_broadcast_id) {
     await supabaseAdmin.from('weekly_digests').upsert(
       {
         week_start: week,
         status: 'sent',
-        sent_to_channel: result.channel,
-        sent_to_dm: !!result.dm_broadcast_id,
+        sent_to_channel: result.channel || (saved?.sent_to_channel ?? false),
+        sent_to_dm: !!result.dm_broadcast_id || (saved?.sent_to_dm ?? false),
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },

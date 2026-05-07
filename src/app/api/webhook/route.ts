@@ -1160,10 +1160,15 @@ async function maybeEnqueueLibraryItem(args: {
       return
     }
     if (created?.id) {
+      // Fire-and-forget: webhook не должен висеть из-за Telegram API.
       // Динамический импорт — лишний modul-граф не тащим в hot path обычных
       // сообщений (не из трекаемых веток).
-      const { notifyAdminNewLibraryItem } = await import('@/lib/library-notify')
-      await notifyAdminNewLibraryItem(created.id)
+      const itemId = created.id
+      void import('@/lib/library-notify').then(m =>
+        m.notifyAdminNewLibraryItem(itemId).catch(e =>
+          console.error('notifyAdminNewLibraryItem async failed:', e),
+        ),
+      )
     }
   } catch (e) {
     console.error('enqueue library_item failed:', e)

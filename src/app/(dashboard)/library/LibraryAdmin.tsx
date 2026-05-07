@@ -2,6 +2,8 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
+// useEffect импортирован выше — используется в Card для синка title.
+
 type Status = 'pending' | 'published' | 'rejected'
 
 interface Item {
@@ -174,6 +176,12 @@ function Card({ item, status, onAct, onNotify, disabled }: {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(deriveTitle(item))
 
+  // Когда родитель перезагружает данные после PATCH, item меняется,
+  // но React переиспользует Card-инстанс по key=item.id и useState
+  // не реинициализирует state. Без этого синка title в редакторе
+  // оставался бы старым после ручной правки.
+  useEffect(() => { setTitle(deriveTitle(item)) }, [item.title_override, item.text])
+
   const saveTitle = () => {
     onAct(item.id, 'title', title)
     setEditing(false)
@@ -238,7 +246,7 @@ function Card({ item, status, onAct, onNotify, disabled }: {
         {status === 'pending' && (
           <>
             <Btn onClick={() => onAct(item.id, 'approve')} primary disabled={disabled}>✅ Опубликовать</Btn>
-            <Btn onClick={() => { onAct(item.id, 'feature'); onAct(item.id, 'approve') }} disabled={disabled}>🔥 Опубликовать + Featured</Btn>
+            <Btn onClick={() => onAct(item.id, 'approve_featured')} disabled={disabled}>🔥 Опубликовать + Featured</Btn>
             <Btn onClick={() => onAct(item.id, 'reject')} danger disabled={disabled}>❌ Скрыть</Btn>
           </>
         )}

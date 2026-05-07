@@ -170,7 +170,10 @@ function renderDefaultText(args: {
 
   for (const s of args.sections) {
     const head = s.topic_emoji ? `${s.topic_emoji} ${s.topic_title}` : s.topic_title
-    lines.push(`<b>${head}</b> · ${s.total}`)
+    // Plain text заголовок секции без HTML-тегов — чтобы превью в админке
+    // и итоговое DM-сообщение выглядели идентично. Если потом захочется
+    // bold — добавим parse_mode handling и одинаковый рендер в превью.
+    lines.push(`${head} · ${s.total}`)
     for (const it of s.items) {
       lines.push(`• ${deriveTitle(it.text, it.title_override)}`)
     }
@@ -188,14 +191,20 @@ function renderDefaultText(args: {
 }
 
 // Применяем сохранённый intro/outro к шаблонному тексту, если они заданы.
+// Клампим до 4000 символов с запасом — Telegram режет всё, что больше 4096,
+// и при добавлении CTA-ссылки за счёт wrapLink длина растёт ещё. 4000 +
+// «\n\nОткрыть в приложении» влезет всегда.
+const TG_MAX_TEXT = 4000
 export function applyOverrides(textMd: string, intro?: string | null, outro?: string | null): string {
   let out = textMd
   if (intro?.trim()) {
-    // Заменяем первую строку (вступление) кастомной.
     out = intro.trim() + '\n' + out.split('\n').slice(1).join('\n')
   }
   if (outro?.trim()) {
     out = out + '\n\n' + outro.trim()
+  }
+  if (out.length > TG_MAX_TEXT) {
+    out = out.slice(0, TG_MAX_TEXT - 1).trim() + '…'
   }
   return out
 }

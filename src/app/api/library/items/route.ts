@@ -43,13 +43,18 @@ export async function GET(req: NextRequest) {
     topicMap.set(`${t.chat_id}:${t.thread_id}`, { kind: t.kind, title: t.title, emoji: t.emoji })
   }
 
-  // Также возвращаем счётчики по всем статусам — на табах.
-  const { data: counts } = await supabaseAdmin
-    .from('library_items')
-    .select('status', { count: 'exact', head: false })
-  const tally = { pending: 0, published: 0, rejected: 0 }
-  for (const r of (counts ?? []) as Array<{ status: string }>) {
-    if (r.status in tally) tally[r.status as keyof typeof tally] += 1
+  // Счётчики на табах — три отдельных head:true запроса. Это дешевле,
+  // чем грузить все строки и считать в JS, особенно когда published вырастет
+  // до тысячи.
+  const [pendingC, publishedC, rejectedC] = await Promise.all([
+    supabaseAdmin.from('library_items').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabaseAdmin.from('library_items').select('*', { count: 'exact', head: true }).eq('status', 'published'),
+    supabaseAdmin.from('library_items').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
+  ])
+  const tally = {
+    pending: pendingC.count ?? 0,
+    published: publishedC.count ?? 0,
+    rejected: rejectedC.count ?? 0,
   }
 
   return NextResponse.json({
@@ -110,6 +115,11 @@ export async function PATCH(req: NextRequest) {
   switch (action) {
     case 'approve':
       patch = { ...patch, status: 'published', approved_by: adminTgId, approved_at: now }
+      break
+    case 'approve_featured':
+      // Атомарный «Опубликовать + Featured» — одной транзакцией, без гонки
+      // двух последовательных PATCH-ов из UI.
+      patch = { ...patch, status: 'published', approved_by: adminTgId, approved_at: now, is_featured: true }
       break
     case 'reject':
       patch = { ...patch, status: 'rejected' }

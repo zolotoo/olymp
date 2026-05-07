@@ -10,7 +10,12 @@ import { sendMessage } from './telegram'
 // сеть упала, нет токена бота) — молча логируем и не валим вызывающий код.
 
 function getAdminTgId(): number | null {
+  // В коде проекта три исторически разных env-имени для одного значения.
+  // Принимаем любое, чтобы бот не молчал в зависимости от того, какое из
+  // них настроено в Vercel.
   const v = process.env.ADMIN_TG_ID
+    || process.env.TELEGRAM_ADMIN_TG_ID
+    || process.env.TELEGRAM_ADMIN_CHAT_ID
   if (!v) return null
   const n = Number(v)
   return Number.isFinite(n) ? n : null
@@ -21,11 +26,12 @@ function getDashboardBase(): string {
   return base.replace(/\/$/, '')
 }
 
-function adminLibraryUrl(status: 'pending' | 'published' | 'rejected' = 'pending'): string {
-  // Ссылка ведёт прямо на нужный таб через query — состояние читается
-  // в LibraryAdmin.tsx. Сейчас читается только runtime, без URL-биндинга,
-  // но Telegram открывает страницу — этого достаточно, чтобы попасть в админку.
-  return `${getDashboardBase()}/library?tab=${status}`
+function adminLibraryUrl(_status: 'pending' | 'published' | 'rejected' = 'pending'): string {
+  // /library в админке всегда открывается на табе pending по умолчанию;
+  // если когда-нибудь захотим запрашивать конкретный таб — добавим чтение
+  // ?tab= в LibraryAdmin.tsx и пропишем сюда status.
+  void _status
+  return `${getDashboardBase()}/library`
 }
 
 function escapeHtml(s: string): string {
