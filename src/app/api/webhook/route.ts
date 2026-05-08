@@ -344,22 +344,28 @@ async function handleMessage(message: TgMessage) {
     if (captured) return
   }
 
-  // DEBUG: log incoming video notes so we can grab file_id
+  // DEBUG: log incoming video notes so admin can grab file_id.
+  // Реагируем только на сообщения от админа — иначе любой участник,
+  // приславший кружок боту, получит дев-инструкцию с file_id.
   if ((message as TgMessage & { video_note?: { file_id: string; duration?: number } }).video_note) {
-    const vn = (message as TgMessage & { video_note?: { file_id: string; duration?: number } }).video_note!
-    await supabaseAdmin.from('messages_log').insert({
-      tg_id: user.id,
-      chat_id: message.chat.id,
-      tg_username: user.username ?? null,
-      tg_first_name: user.first_name ?? null,
-      message_text: `VIDEO_NOTE file_id=${vn.file_id} duration=${vn.duration ?? '?'}s`,
-      reason: 'debug:video_note',
-    })
-    await sendMessage(
-      user.id,
-      `✅ Кружок получен!\n\n<code>${vn.file_id}</code>\n\nСкопируй этот file_id в env <code>TELEGRAM_WELCOME_VIDEO_NOTE_ID</code>.`
-    )
-    return
+    const adminTgId = Number(process.env.ADMIN_TG_ID || process.env.TELEGRAM_ADMIN_TG_ID || 0)
+    if (adminTgId && user.id === adminTgId && message.chat.id === user.id) {
+      const vn = (message as TgMessage & { video_note?: { file_id: string; duration?: number } }).video_note!
+      await supabaseAdmin.from('messages_log').insert({
+        tg_id: user.id,
+        chat_id: message.chat.id,
+        tg_username: user.username ?? null,
+        tg_first_name: user.first_name ?? null,
+        message_text: `VIDEO_NOTE file_id=${vn.file_id} duration=${vn.duration ?? '?'}s`,
+        reason: 'debug:video_note',
+      })
+      await sendMessage(
+        user.id,
+        `✅ Кружок получен!\n\n<code>${vn.file_id}</code>\n\nСкопируй этот file_id в env <code>TELEGRAM_WELCOME_VIDEO_NOTE_ID</code>.`
+      )
+      return
+    }
+    // не-админ прислал кружок — молча пропускаем (storeIncomingMessage уже отработал)
   }
 
   // /start in private chat (with optional deep-link payload: /start <source>)
