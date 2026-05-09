@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendMessage, sendVideoNote } from '@/lib/telegram'
+import { sendMessage, sendVideoNote, sendMessageWithKeyboard, buildCallbackKeyboard } from '@/lib/telegram'
 import { normalizeButtons } from '@/lib/bot-messages'
+import { dmGoalKeyboard } from '@/lib/onboarding'
+
+// Ключи, к которым реальная отправка прикручивает callback-клавиатуру
+// dmGoalKeyboard() поверх текста из bot_messages. URL-кнопок при этом нет.
+// В превью /flow эти кнопки не сохранены в bot_messages.buttons, поэтому
+// тест-отправка должна сама понимать какую клавиатуру прицеплять.
+const KEYS_WITH_DM_GOAL_KEYBOARD = new Set(['l_dm_q1', 'onb_dm1_24h'])
 
 // POST /api/messages/test — sends a preview of the message to @sergeyzolotykh
 export async function POST(req: NextRequest) {
@@ -61,6 +68,19 @@ export async function POST(req: NextRequest) {
     await sendMessage(adminTgId, '⚠️ Текст сообщения пустой.')
     await log('[empty content]')
     return NextResponse.json({ ok: false, reason: 'no content' })
+  }
+
+  // DM-Q1 / 24h-напоминалка: реальная отправка прикручивает callback-клавиатуру
+  // целей программно. Превью повторяет это поведение, чтобы тест-сообщение
+  // выглядело идентично тому, что увидит новичок.
+  if (key && KEYS_WITH_DM_GOAL_KEYBOARD.has(key)) {
+    const result = await sendMessageWithKeyboard(
+      adminTgId,
+      content,
+      buildCallbackKeyboard(dmGoalKeyboard()),
+    )
+    await log(content)
+    return NextResponse.json({ ok: result?.ok ?? false })
   }
 
   const result = await sendMessage(adminTgId, content, previewButtons)
