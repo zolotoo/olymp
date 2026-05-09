@@ -1,18 +1,21 @@
-// Анкета «Мой путь».
+// Онбординг «Мой путь».
 //
-// Цель: понять, зачем человек пришёл в AI Олимп, и предложить путь развития
-// (контент / вайбкодинг / медиа / продукты / продажи). Анкета двухуровневая:
-//   1) DM-шаг (1 вопрос про цель) сразу после approve заявки → +5 фантиков;
-//   2) полная анкета в мини-аппе (уровень / умения / часы) → +10 фантиков
-//      и расчёт top-3 рекомендованных направлений.
+// Двухуровневый:
+//   1) DM-шаг (1 вопрос про цель) с inline-кнопками. +5 фантиков.
+//   2) Анкета в мини-аппе на одном экране (level / looking_for / motivation /
+//      working_on). +10 фантиков и бонусная крутка Колеса.
 //
-// Здесь — только бизнес-логика и константы. UI-тексты и CTA — в вызывающем
-// коде (webhook + /api/onboarding), чтобы не плодить кросс-зависимости.
+// DM-вопрос отправляется не сразу на approve, а через 1 час: cron-endpoint
+// /api/cron/onboarding-reminders читает onboarding_answers.dm1_due_at.
+//
+// Здесь только бизнес-логика и константы. Тексты вопросов и ack-сообщения
+// хранятся в bot_messages (ключи l_dm_q1 / l_dm_q1_ack / l_dm_q1_custom_ack /
+// l_onb_thanks) и редактируются через /flow.
 
 import { supabaseAdmin } from './supabase'
 import type { InlineCallbackButton } from './telegram'
 
-// ─── Цели ─────────────────────────────────────────────────────────────────────
+// ─── Цели (DM-шаг) ───────────────────────────────────────────────────────────
 export const GOALS = [
   { id: 'sell',     emoji: '💰', label: 'Зарабатывать на AI' },
   { id: 'build',    emoji: '🛠',  label: 'Делать продукты с AI' },
@@ -28,130 +31,37 @@ export const GOAL_LABELS: Record<string, string> = Object.fromEntries(
 )
 GOAL_LABELS.custom = 'Свой вариант'
 
-// ─── Уровни — зависят от цели ────────────────────────────────────────────────
-// Идея: вопрос «уровень» формулируется по-разному в зависимости от цели,
-// иначе newcomer-ы выбирают наугад. У всех 4 точки на шкале — для скоринга это удобно.
+// ─── Уровень в AI (мини-апп шаг) ─────────────────────────────────────────────
 export interface LevelOption {
   id: 'starter' | 'user' | 'maker' | 'pro'
   label: string
 }
 
-export function levelsForGoal(goal: GoalId): LevelOption[] {
-  switch (goal) {
-    case 'sell':
-      return [
-        { id: 'starter', label: 'Только думаю как зарабатывать на AI' },
-        { id: 'user',    label: 'Делал заказ-два, нерегулярно' },
-        { id: 'maker',   label: 'Регулярные клиенты, доход есть' },
-        { id: 'pro',     label: 'Команда / агентство / стабильный поток' },
-      ]
-    case 'build':
-      return [
-        { id: 'starter', label: 'Идея есть, к коду не подходил' },
-        { id: 'user',    label: 'Собирал прототипы в Lovable / v0' },
-        { id: 'maker',   label: 'Запускал MVP, есть пользователи' },
-        { id: 'pro',     label: 'Продукт в проде, выручка/команда' },
-      ]
-    case 'content':
-      return [
-        { id: 'starter', label: 'Хочу начать вести' },
-        { id: 'user',    label: 'Веду нерегулярно, малая аудитория' },
-        { id: 'maker',   label: 'Регулярный контент, охваты растут' },
-        { id: 'pro',     label: 'Монетизирую блог, есть команда' },
-      ]
-    case 'vibecode':
-      return [
-        { id: 'starter', label: 'Никогда не кодил' },
-        { id: 'user',    label: 'Cursor/Claude Code пробовал, страшновато' },
-        { id: 'maker',   label: 'Пилю свои тулзы, выкатываю в прод' },
-        { id: 'pro',     label: 'Шипаю фичи каждый день, помогаю другим' },
-      ]
-    case 'explore':
-    case 'custom':
-    default:
-      return [
-        { id: 'starter', label: 'Только знакомлюсь с AI' },
-        { id: 'user',    label: 'Использую ChatGPT/Claude в работе' },
-        { id: 'maker',   label: 'Кодю и автоматизирую с AI' },
-        { id: 'pro',     label: 'Запускаю AI-продукты или контент' },
-      ]
-  }
-}
-
-// ─── Умения — зависят от цели ────────────────────────────────────────────────
-// Чипы для multi-select в мини-аппе. Для каждой цели — свой набор + базовый.
-export interface SkillOption { id: string; label: string }
-
-const BASE_SKILLS: SkillOption[] = [
-  { id: 'prompts',  label: 'Промпт-инжиниринг' },
-  { id: 'chatgpt',  label: 'ChatGPT/Claude в быту' },
+export const LEVELS: LevelOption[] = [
+  { id: 'starter', label: 'Новичок' },
+  { id: 'user',    label: 'Пользователь' },
+  { id: 'maker',   label: 'Делаю штуки' },
+  { id: 'pro',     label: 'Pro' },
 ]
 
-const SKILLS_BY_GOAL: Record<GoalId, SkillOption[]> = {
-  sell: [
-    { id: 'sales_funnel', label: 'Воронки и продажи' },
-    { id: 'crm_automation', label: 'CRM/автоматизация' },
-    { id: 'sales_scripts', label: 'AI-скрипты продаж' },
-    { id: 'lead_gen',     label: 'Лидогенерация с AI' },
-  ],
-  build: [
-    { id: 'cursor',  label: 'Cursor / Claude Code' },
-    { id: 'lovable', label: 'Lovable / v0' },
-    { id: 'n8n',     label: 'n8n / Make / Zapier' },
-    { id: 'agents',  label: 'AI-агенты' },
-    { id: 'api',     label: 'API LLM (OpenAI/Anthropic)' },
-  ],
-  content: [
-    { id: 'mj',     label: 'Midjourney / Flux' },
-    { id: 'video',  label: 'Sora / Veo / Kling' },
-    { id: 'voice',  label: 'ElevenLabs / голос' },
-    { id: 'edit',   label: 'CapCut / монтаж' },
-    { id: 'writing', label: 'AI-копирайтинг' },
-  ],
-  vibecode: [
-    { id: 'cursor',   label: 'Cursor / Claude Code' },
-    { id: 'lovable',  label: 'Lovable / v0' },
-    { id: 'cli',      label: 'Терминал / git' },
-    { id: 'deploy',   label: 'Деплой (Vercel/Supabase)' },
-  ],
-  explore: [
-    { id: 'cursor',  label: 'Cursor / Claude Code' },
-    { id: 'lovable', label: 'Lovable / v0' },
-    { id: 'mj',      label: 'Midjourney / Flux' },
-    { id: 'n8n',     label: 'n8n / автоматизации' },
-    { id: 'voice',   label: 'ElevenLabs / голос' },
-  ],
-  custom: [
-    { id: 'cursor',  label: 'Cursor / Claude Code' },
-    { id: 'lovable', label: 'Lovable / v0' },
-    { id: 'mj',      label: 'Midjourney / Flux' },
-    { id: 'n8n',     label: 'n8n / автоматизации' },
-    { id: 'voice',   label: 'ElevenLabs / голос' },
-  ],
-}
+// ─── Что хочешь забрать из клуба (мульти-чипы) ───────────────────────────────
+// Action-oriented формулировки: «забрать конкретный исход», не «получить
+// абстрактное». Используются для скоринга направлений и для отображения
+// Сергею в /members и /member-summary.
+export interface LookingForOption { id: string; emoji: string; label: string }
 
-export function skillsForGoal(goal: GoalId): SkillOption[] {
-  return [...BASE_SKILLS, ...(SKILLS_BY_GOAL[goal] ?? SKILLS_BY_GOAL.explore)]
-}
+export const LOOKING_FOR: LookingForOption[] = [
+  { id: 'content_views',  emoji: '🎬', label: 'Делать контент с миллионными охватами' },
+  { id: 'vibe_app',       emoji: '⚡', label: 'Завайбкодить своё приложение или сервис' },
+  { id: 'earn_ai',        emoji: '💰', label: 'Начать зарабатывать на AI' },
+  { id: 'sergey_advice',  emoji: '🧠', label: 'Получить советы и разборы от Сергея' },
+  { id: 'agency_clients', emoji: '🚀', label: 'Запустить AI-агентство и взять клиентов' },
+  { id: 'embed_in_biz',   emoji: '🛠',  label: 'Внедрить AI в свою работу или бизнес' },
+  { id: 'community',      emoji: '🤝', label: 'Найти команду и единомышленников' },
+  { id: 'where_to_start', emoji: '🎯', label: 'Понять с чего вообще начать в AI' },
+]
 
-// ─── Часы в неделю ───────────────────────────────────────────────────────────
-export const HOURS = [
-  { id: '<2',   label: 'Меньше 2 часов' },
-  { id: '2-5',  label: '2–5 часов' },
-  { id: '5-10', label: '5–10 часов' },
-  { id: '10+',  label: 'Больше 10 часов' },
-] as const
-
-export type HoursId = typeof HOURS[number]['id']
-
-// ─── Бизнес/проект ───────────────────────────────────────────────────────────
-export const BIZ = [
-  { id: 'yes',          label: 'Да, есть к чему прикручивать' },
-  { id: 'in_progress',  label: 'Запускаю прямо сейчас' },
-  { id: 'no',           label: 'Пока нет' },
-] as const
-
-// ─── Кнопки первого DM-вопроса ───────────────────────────────────────────────
+// ─── Кнопки DM-вопроса ───────────────────────────────────────────────────────
 export function dmGoalKeyboard(): InlineCallbackButton[][] {
   // 2 в ряд, кроме последнего ряда (custom отдельно).
   const rows: InlineCallbackButton[][] = []
@@ -168,22 +78,13 @@ export function dmGoalKeyboard(): InlineCallbackButton[][] {
   return rows
 }
 
-export const DM_QUESTION_TEXT =
-  '🧭 <b>Первый вопрос для твоей карты пути</b>\n\n' +
-  'Что ты хочешь от <b>AI Олимп</b> в первую очередь?\n\n' +
-  'Выбери вариант — и сразу +5 фантиков. ' +
-  'Дальше в Мини-аппе (раздел «Профиль») разберём подробнее и накинем ещё +10 + откроем Колесо удачи.'
-
-export const DM_AWAITING_CUSTOM_TEXT =
-  '✍️ Окей, расскажи своими словами: что ты хочешь от AI Олимп? ' +
-  'Просто напиши следующим сообщением 1–3 предложения.'
-
 export const POINTS_DM_STEP1 = 5
 export const POINTS_FULL_ONBOARDING = 10
 
 // ─── Запись ответа на DM-шаг ─────────────────────────────────────────────────
 // Идемпотентно: повторный ответ не начисляет фантики второй раз.
-// Возвращает true если фантики были начислены сейчас.
+// Если строка onboarding_answers уже была создана webhook'ом (с dm1_due_at),
+// мы её апдейтим. Если её нет — создаём.
 export async function recordDmGoalAnswer(opts: {
   memberId: string
   tgId: number
@@ -193,7 +94,6 @@ export async function recordDmGoalAnswer(opts: {
   const { memberId, tgId, goal, customText } = opts
   const now = new Date().toISOString()
 
-  // Проверяем существующую запись.
   const { data: existing } = await supabaseAdmin
     .from('onboarding_answers')
     .select('member_id, dm_step1_at')
@@ -201,7 +101,7 @@ export async function recordDmGoalAnswer(opts: {
     .maybeSingle()
 
   if (existing?.dm_step1_at) {
-    // Уже отвечал — обновим goal/custom если человек переотвечал, но фантики не начислим.
+    // Уже отвечал — обновим goal/custom если перетыкивает, фантики не доначисляем.
     await supabaseAdmin
       .from('onboarding_answers')
       .update({
@@ -233,7 +133,7 @@ export async function recordDmGoalAnswer(opts: {
     })
   }
 
-  // Начисление фантиков.
+  // Начисление фантиков за DM-шаг.
   const { data: member } = await supabaseAdmin
     .from('members').select('points').eq('id', memberId).single()
   if (member) {
@@ -253,14 +153,15 @@ export async function recordDmGoalAnswer(opts: {
 }
 
 // ─── Скоринг рекомендаций ────────────────────────────────────────────────────
-// Простое прозрачное правило: один ответ — один вес. Рекомендуем top-3.
+// Прозрачное правило: больше всего вес от цели (DM) + от чипов «что хочешь
+// забрать». Уровень даёт небольшой буст pro-направлениям. Возвращаем top-3.
 export type PathKind = 'content' | 'vibecode' | 'media' | 'product' | 'sales'
 
 export const PATH_META: Record<PathKind, { emoji: string; label: string; description: string }> = {
-  content:  { emoji: '🎨', label: 'AI-контент',          description: 'Картинки, видео, голос — креатив с AI на потоке.' },
-  vibecode: { emoji: '⚡️', label: 'Вайбкодинг',          description: 'Cursor, Claude Code, Lovable — пилишь сам без бэкграунда.' },
-  media:    { emoji: '📈', label: 'Развитие медиа',      description: 'Блог, охваты, монетизация — растишь личный бренд.' },
-  product:  { emoji: '🛠',  label: 'AI-продукты',         description: 'От MVP до выручки — собираешь и шипишь свой продукт.' },
+  content:  { emoji: '🎨', label: 'AI-контент',          description: 'Картинки, видео, голос, креатив с AI на потоке.' },
+  vibecode: { emoji: '⚡️', label: 'Вайбкодинг',          description: 'Cursor, Claude Code, Lovable, пилишь сам без бэкграунда.' },
+  media:    { emoji: '📈', label: 'Развитие медиа',      description: 'Блог, охваты, монетизация, растишь личный бренд.' },
+  product:  { emoji: '🛠',  label: 'AI-продукты',         description: 'От MVP до выручки, собираешь и шипишь свой продукт.' },
   sales:    { emoji: '💰', label: 'Продажи через AI',    description: 'Воронки, скрипты, автоматизация лидов с AI.' },
 }
 
@@ -268,9 +169,9 @@ export interface OnboardingState {
   goal: GoalId | null
   goal_custom: string | null
   level: LevelOption['id'] | null
-  skills: string[]
-  hours: HoursId | null
-  has_business: 'yes' | 'no' | 'in_progress' | null
+  looking_for: string[]
+  motivation: string | null
+  working_on: string | null
 }
 
 export function computeRecommendations(s: OnboardingState): { kind: PathKind; score: number }[] {
@@ -284,39 +185,32 @@ export function computeRecommendations(s: OnboardingState): { kind: PathKind; sc
   if (s.goal === 'content')  { score.content += 50; score.media += 30 }
   if (s.goal === 'vibecode') { score.vibecode += 55; score.product += 20 }
   if (s.goal === 'explore' || s.goal === 'custom' || s.goal === null) {
-    // Разогрев — равномерно понемногу, чтобы не выдавать «пусто».
     score.content += 12; score.vibecode += 12; score.media += 10; score.product += 10; score.sales += 8
   }
 
-  // Умения — даём бонус соответствующим направлениям.
-  const has = (id: string) => s.skills.includes(id)
-  if (has('mj') || has('video') || has('voice') || has('edit')) score.content += 18
-  if (has('writing'))                                            { score.content += 8; score.media += 10 }
-  if (has('cursor') || has('lovable') || has('cli') || has('deploy')) score.vibecode += 18
-  if (has('agents') || has('api') || has('n8n'))                 score.product += 18
-  if (has('sales_funnel') || has('crm_automation') || has('sales_scripts') || has('lead_gen')) score.sales += 18
-
-  // Часы — масштаб готовности к серьёзному пути.
-  if (s.hours === '10+')   { score.product += 8; score.vibecode += 6; score.sales += 6 }
-  if (s.hours === '5-10')  { score.product += 4; score.vibecode += 3; score.media += 3 }
-
-  // Бизнес есть — продажи и продукт получают буст.
-  if (s.has_business === 'yes' || s.has_business === 'in_progress') {
-    score.sales += 12
-    score.product += 10
+  // Чипы «что хочешь забрать» — точечные бусты.
+  const has = (id: string) => s.looking_for.includes(id)
+  if (has('content_views'))  { score.content += 18; score.media += 10 }
+  if (has('vibe_app'))       { score.vibecode += 18; score.product += 10 }
+  if (has('earn_ai'))        { score.sales += 12; score.product += 8 }
+  if (has('sergey_advice'))  { score.media += 5; score.product += 5; score.content += 5 }
+  if (has('agency_clients')) { score.sales += 18; score.product += 10 }
+  if (has('embed_in_biz'))   { score.product += 12; score.sales += 6 }
+  if (has('community'))      { score.media += 4; score.content += 4; score.product += 4 }
+  if (has('where_to_start')) {
+    // Новичкам не закидываем pro-направления, чуть выравниваем
+    score.content += 5; score.vibecode += 5; score.media += 3
   }
 
   // Уровень — экспертам докидываем по pro-направлениям.
   if (s.level === 'pro' || s.level === 'maker') {
-    score.product += 4; score.vibecode += 4; score.sales += 4
+    score.product += 5; score.vibecode += 5; score.sales += 5
   }
 
-  // Нормализация в 0..100, отдаём top-3 (всегда возвращаем что-то).
+  // Нормализация в 0..100, отдаём top-3.
   const max = Math.max(...Object.values(score), 1)
-  const ranked = (Object.keys(score) as PathKind[])
+  return (Object.keys(score) as PathKind[])
     .map(kind => ({ kind, score: Math.round((score[kind] / max) * 100) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
-
-  return ranked
 }

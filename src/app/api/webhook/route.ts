@@ -3,19 +3,16 @@ import { supabaseAdmin } from '@/lib/supabase'
 import {
   sendMessage, sendVideoNote, getChatMember, approveChatJoinRequest, declineChatJoinRequest,
   promoteChatMember, setChatAdministratorCustomTitle, deleteMessage,
-  sendMessageWithKeyboard, buildCallbackKeyboard, answerCallbackQuery, editMessageText,
+  answerCallbackQuery, editMessageText,
 } from '@/lib/telegram'
 import { sendTracked } from '@/lib/send-tracked'
 import { addMemory } from '@/lib/mem0'
 import { POINTS, RANK_CONFIG } from '@/lib/ranks'
 import type { MemberRank } from '@/lib/types'
 import { trackBotInteraction, setBotUserChannelMember, setBotUserGroupMember } from '@/lib/bot-tracking'
-import { enableMiniAppButton, disableMiniAppButton } from '@/lib/mini-app'
+import { enableMiniAppButton, disableMiniAppButton, miniAppUrl } from '@/lib/mini-app'
 import { getBotText, getBotVideo, getBotTemplate } from '@/lib/bot-messages'
-import {
-  GOALS, GOAL_LABELS, dmGoalKeyboard, recordDmGoalAnswer,
-  DM_QUESTION_TEXT, DM_AWAITING_CUSTOM_TEXT, type GoalId,
-} from '@/lib/onboarding'
+import { GOALS, GOAL_LABELS, recordDmGoalAnswer, type GoalId } from '@/lib/onboarding'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -163,10 +160,87 @@ async function handleJoinRequest(update: { chat: TgChat; from: TgUser }) {
 
   await supabaseAdmin.from('members').update({ welcome_sent: true }).eq('tg_id', user.id)
 
-  // DM-онбординг: первый вопрос («какая твоя цель?») с inline-кнопками.
-  // Идёт ОТДЕЛЬНЫМ сообщением после welcome — чтобы не сваливать всё в один
-  // длинный пост и чтобы кнопки точно показались на верхнем экране.
-  await maybeSendDmOnboardingQuestion(user.id)
+  // Welcome-spin сразу на approve. Раньше выдавался лениво при первом GET
+  // /api/wheel через 7 дней — теперь Колесо удачи открыто с первой минуты,
+  // это первая «быстрая победа» и якорь для напоминалки onb_wheel_3h.
+  await grantWelcomeSpin(user.id)
+
+  // DM-вопрос про цель отложен на +1 час, чтобы не сваливать на новичка
+  // три сообщения подряд (видеокружок + welcome + вопрос). Запись о deadline
+  // создаётся в onboarding_answers; реальную отправку делает cron-endpoint.
+  await scheduleDmOnboardingQuestion(user.id)
+}
+
+// Вставка/апдейт строки onboarding_answers для cron-endpoint.
+// dm1_due_at = joined_at + 1 час. Если строка уже есть и dm_step1_at не пуст
+// (юзер уже отвечал) — ничего не делаем.
+async function scheduleDmOnboardingQuestion(tgId: number): Promise<void> {
+  try {
+    const { data: member } = await supabaseAdmin
+      .from('members')
+      .select('id, joined_at')
+      .eq('tg_id', tgId)
+      .maybeSingle()
+    if (!member) return
+
+    const dueAt = new Date(new Date(member.joined_at).getTime() + 60 * 60 * 1000).toISOString()
+
+    const { data: existing } = await supabaseAdmin
+      .from('onboarding_answers')
+      .select('member_id, dm_step1_at, dm1_due_at')
+      .eq('member_id', member.id)
+      .maybeSingle()
+
+    if (existing?.dm_step1_at) return // уже отвечал, спрашивать не надо
+    if (existing?.dm1_due_at) return  // уже запланировано
+
+    if (existing) {
+      await supabaseAdmin
+        .from('onboarding_answers')
+        .update({ dm1_due_at: dueAt, updated_at: new Date().toISOString() })
+        .eq('member_id', member.id)
+    } else {
+      await supabaseAdmin.from('onboarding_answers').insert({
+        member_id: member.id,
+        tg_id: tgId,
+        dm1_due_at: dueAt,
+      })
+    }
+  } catch (e) {
+    console.error('scheduleDmOnboardingQuestion failed:', e)
+  }
+}
+
+// Грантим welcome-spin (одна крутка Колеса удачи) сразу на approve.
+// Идемпотентно: если first_week_spin_granted уже true — не дублируем.
+async function grantWelcomeSpin(tgId: number): Promise<void> {
+  try {
+    const { data: member } = await supabaseAdmin
+      .from('members')
+      .select('id, spins_available, first_week_spin_granted, status')
+      .eq('tg_id', tgId)
+      .maybeSingle()
+    if (!member) return
+    if (member.first_week_spin_granted) return
+    if (member.status !== 'active') return
+
+    await supabaseAdmin
+      .from('members')
+      .update({
+        spins_available: (member.spins_available ?? 0) + 1,
+        first_week_spin_granted: true,
+      })
+      .eq('id', member.id)
+
+    await supabaseAdmin.from('events_log').insert({
+      member_id: member.id,
+      tg_id: tgId,
+      event_type: 'spin_credit_granted',
+      metadata: { reason: 'welcome_on_approve' },
+    })
+  } catch (e) {
+    console.error('grantWelcomeSpin failed:', e)
+  }
 }
 
 // Group "AI Олимп / Ветки": approve only if user is subscribed to the channel.
@@ -844,30 +918,8 @@ async function applyRankTitle(userId: number, rank: MemberRank) {
 }
 
 // ─── DM Onboarding (step 1 of 2) ──────────────────────────────────────────────
-// Шаг 1 — один вопрос в DM с inline-кнопками. Шаг 2 (полная анкета) — в мини-аппе.
-//
-// Идемпотентность: повторно вопрос не отправляем, если у участника уже
-// записан dm_step1_at в onboarding_answers. Это защищает от ситуаций
-// «человек переподавал заявку» / «бот переслал событие повторно».
-
-async function maybeSendDmOnboardingQuestion(tgId: number): Promise<void> {
-  try {
-    const { data: existing } = await supabaseAdmin
-      .from('onboarding_answers')
-      .select('dm_step1_at')
-      .eq('tg_id', tgId)
-      .maybeSingle()
-    if (existing?.dm_step1_at) return
-
-    await sendMessageWithKeyboard(
-      tgId,
-      DM_QUESTION_TEXT,
-      buildCallbackKeyboard(dmGoalKeyboard()),
-    )
-  } catch (e) {
-    console.error('maybeSendDmOnboardingQuestion failed:', e)
-  }
-}
+// Шаг 1 — один вопрос в DM с inline-кнопками (отправляется cron'ом через 1ч
+// после approve, см. /api/cron/onboarding-reminders). Шаг 2 — анкета в мини-аппе.
 
 // Колбэки от inline-кнопок DM-онбординга.
 async function handleCallbackQuery(cb: TgCallbackQuery): Promise<void> {
@@ -903,10 +955,14 @@ async function handleCallbackQuery(cb: TgCallbackQuery): Promise<void> {
       .update({ onboarding_dm_state: 'awaiting_custom_goal' })
       .eq('id', member.id)
 
+    const awaitingText = await getBotText(
+      'l_dm_q1_custom',
+      '✍️ Окей, расскажи своими словами: что ты хочешь от AI Олимп? Просто напиши следующим сообщением 1–3 предложения.',
+    )
     if (messageId) {
-      await editMessageText(chatId, messageId, DM_AWAITING_CUSTOM_TEXT, null).catch(() => {})
+      await editMessageText(chatId, messageId, awaitingText, null).catch(() => {})
     } else {
-      await sendMessage(chatId, DM_AWAITING_CUSTOM_TEXT).catch(() => {})
+      await sendMessage(chatId, awaitingText).catch(() => {})
     }
     await answerCallbackQuery(cb.id).catch(() => {})
     return
@@ -927,29 +983,24 @@ async function handleCallbackQuery(cb: TgCallbackQuery): Promise<void> {
   })
 
   const label = GOAL_LABELS[goalId] ?? 'свой вариант'
+  const ackTpl = await getBotTemplate('l_dm_q1_ack', '', { label })
   const ackText = alreadyAnswered
-    ? `✅ Цель обновлена: <b>${label}</b>\n\nФантики за этот шаг уже начислены раньше — переходи в Мини-апп, там добьём анкету и +10.`
-    : `✅ <b>+5 фантиков</b> за первый шаг!\n\nЦель: <b>${label}</b>\n\nТеперь открой Мини-апп — раздел «Профиль» → «Мой путь». Там 3 коротких вопроса, ещё <b>+10 фантиков</b> и сразу откроем Колесо удачи.`
+    ? `✅ Цель обновлена: <b>${label}</b>\n\nФантики за этот шаг уже начислены раньше. Открывай Мини-апп, добьём анкету.`
+    : (ackTpl.text || `✅ <b>+5 фантиков</b>! Цель: <b>${label}</b>`)
 
-  // Кнопка-CTA в мини-апп. Telegram умеет открывать веб-аппы по url → t.me/<bot>?startapp=...
-  // У нас уже есть кнопка меню (setUserWebAppMenuButton), но в чате тоже даём явную кнопку.
-  const miniAppUrl = process.env.MINI_APP_URL
-    || (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/app` : null)
-  const buttons = miniAppUrl
-    ? [{ label: '🚀 Открыть Мини-апп', url: miniAppUrl }]
-    : null
+  // Кнопки берём из шаблона (если в БД заданы URL-кнопки), иначе fallback
+  // на канонический miniAppUrl() с cache-bust suffix.
+  const buttons = ackTpl.buttons?.length
+    ? ackTpl.buttons
+    : [{ label: '🚀 Открыть AI Олимп', url: miniAppUrl() }]
 
   if (messageId) {
-    // Перерисовываем исходное сообщение с кнопками — без callback-кнопок,
-    // только с URL-кнопкой в мини-апп. Делаем это через editMessageText
-    // + отдельный sendMessage — потому что reply_markup при editMessageText
-    // принимает inline_keyboard, а у нас helper рассчитан под URL-кнопки.
     await editMessageText(chatId, messageId, ackText, null).catch(() => {})
   } else {
     await sendMessage(chatId, ackText).catch(() => {})
   }
   if (buttons) {
-    await sendMessage(chatId, '👇 Жми и забирай ещё +10:', buttons).catch(() => {})
+    await sendMessage(chatId, '👇', buttons).catch(() => {})
   }
   await answerCallbackQuery(cb.id, awarded ? '+5 фантиков' : 'Уже учтено').catch(() => {})
 }
@@ -978,13 +1029,15 @@ async function tryCaptureOnboardingCustomGoal(user: TgUser, text: string): Promi
     customText,
   })
 
+  const customSnippet = `${customText.slice(0, 80)}${customText.length > 80 ? '…' : ''}`
+  const ackTpl = await getBotTemplate('l_dm_q1_custom_ack', '', { custom: customSnippet })
   const ackText = alreadyAnswered
-    ? `✅ Записал твой вариант: «${customText.slice(0, 80)}${customText.length > 80 ? '…' : ''}»\n\nФантики за этот шаг уже были начислены раньше — открывай Мини-апп, добьём анкету.`
-    : `✅ <b>+5 фантиков</b>! Записал: «${customText.slice(0, 80)}${customText.length > 80 ? '…' : ''}»\n\nТеперь открой Мини-апп → «Профиль» → «Мой путь». Ещё <b>+10 фантиков</b> и Колесо удачи откроем.`
+    ? `✅ Записал твой вариант: «${customSnippet}»\n\nФантики за этот шаг уже начислены раньше. Открывай Мини-апп, добьём анкету.`
+    : (ackTpl.text || `✅ <b>+5 фантиков</b>! Записал: «${customSnippet}»`)
 
-  const miniAppUrl = process.env.MINI_APP_URL
-    || (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/app` : null)
-  const buttons = miniAppUrl ? [{ label: '🚀 Открыть Мини-апп', url: miniAppUrl }] : null
+  const buttons = ackTpl.buttons?.length
+    ? ackTpl.buttons
+    : [{ label: '🚀 Открыть AI Олимп', url: miniAppUrl() }]
   await sendMessage(user.id, ackText, buttons).catch(() => {})
   void awarded
   return true

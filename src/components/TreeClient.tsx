@@ -147,6 +147,47 @@ const TREE: Node = {
       ],
     },
     {
+      id: 's_onb', label: 'Онбординг новичка', type: 'section',
+      children: [
+        { id: 't_onb_dm', label: 'Заявка одобрена → DM-флоу', type: 'trigger',
+          detail: 'После approve канала бот отправляет видеокружок и грантит крутку Колеса. Через 1ч приходит DM-вопрос про цель (cron).',
+          children: [
+            { id: 'l_dm_q1', label: 'DM-вопрос про цель',
+              type: 'message',
+              detail: '5 кнопок целей + «свой вариант». Кнопки фиксированные (callback), редактировать только текст.' },
+            { id: 'l_dm_q1_ack', label: 'Ответ на выбор цели', type: 'message',
+              detail: 'Подтверждение, +5 фантиков, упоминание Колеса и мини-аппы.' },
+            { id: 'l_dm_q1_custom_ack', label: 'Ответ на «свой вариант»', type: 'message',
+              detail: 'Подтверждение для свободного текста.' },
+          ],
+        },
+        { id: 't_onb_mini', label: 'Анкета в мини-аппе', type: 'trigger',
+          detail: 'Один экран: уровень, что хочешь забрать, почему вступил, над чем работаешь. +10 фантиков и бонус-крутка.',
+          children: [
+            { id: 'l_onb_thanks', label: 'Поздравление после анкеты', type: 'message',
+              detail: 'Финальный экран, виден внутри мини-аппы.' },
+          ],
+        },
+        { id: 't_onb_rem', label: 'Напоминания (cron)', type: 'trigger',
+          detail: 'Дёргается каждые 15 мин, проверяет состояние. Идемпотентно через onboarding_reminders.',
+          children: [
+            { id: 'onb_wheel_3h', label: '+3ч · не крутил Колесо', type: 'message',
+              detail: 'URL-кнопка в мини-аппу, переменная {name}.' },
+            { id: 'onb_dm1_24h', label: '+24ч · не выбрал цель', type: 'message',
+              detail: 'Тот же набор кнопок что у l_dm_q1, переменная {name}.' },
+            { id: 'onb_full_72h', label: '+72ч · не добил анкету', type: 'message',
+              detail: 'URL-кнопка в мини-аппу, переменная {name}.' },
+          ],
+        },
+        { id: 't_onb_admin', label: 'Сергею в личку', type: 'trigger',
+          children: [
+            { id: 'admin_paid_notify', label: 'Новая оплата · напомнить написать', type: 'message',
+              detail: 'Шлётся в TELEGRAM_ADMIN_CHAT_ID при new_subscription. Переменные: {name}, {handle}, {period}, {user_link}.' },
+          ],
+        },
+      ],
+    },
+    {
       id: 's4', label: 'Еженедельные касания', type: 'section',
       children: [
         { id: 't_weekly', label: 'Рассылка по дням в клубе', type: 'trigger', detail: 'Supabase Edge Function weekly-messages, pg_cron каждый день в 12:00 МСК. Одно сообщение всем — когда с joined_at прошло 7/14/21/28 дней.',

@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedUser } from '@/lib/telegram-auth'
 import {
-  GOALS, levelsForGoal, skillsForGoal, HOURS, BIZ, PATH_META,
+  GOALS, LEVELS, LOOKING_FOR, PATH_META,
   computeRecommendations, POINTS_FULL_ONBOARDING,
-  type GoalId, type HoursId, type LevelOption, type OnboardingState,
+  type GoalId, type LevelOption, type OnboardingState,
 } from '@/lib/onboarding'
 
 function authed(req: NextRequest): number | null {
@@ -12,8 +12,11 @@ function authed(req: NextRequest): number | null {
   return getAuthedUser(initData)?.id ?? null
 }
 
-// GET /api/onboarding — состояние анкеты + опции под выбранную цель.
-// Если goal=null, level/skills отдаём общими (explore).
+const MOTIVATION_MAX = 300
+const WORKING_ON_MAX = 300
+const LOOKING_FOR_TEXT_MAX = 200
+
+// GET /api/onboarding — состояние анкеты + опции.
 // Recommendations считаем только когда mini_app_done_at != null.
 export async function GET(req: NextRequest) {
   const tgId = authed(req)
@@ -32,17 +35,17 @@ export async function GET(req: NextRequest) {
     .eq('member_id', member.id)
     .maybeSingle()
 
-  const goal = (row?.goal ?? null) as GoalId | null
-  const skillsArr = Array.isArray(row?.skills) ? (row!.skills as string[]) : []
+  const lookingForArr = Array.isArray(row?.looking_for) ? (row!.looking_for as string[]) : []
 
   return NextResponse.json({
     state: {
-      goal,
+      goal: (row?.goal ?? null) as GoalId | null,
       goal_custom: row?.goal_custom ?? null,
       level: (row?.level ?? null) as LevelOption['id'] | null,
-      skills: skillsArr,
-      hours: (row?.hours_per_week ?? null) as HoursId | null,
-      has_business: row?.has_business ?? null,
+      looking_for: lookingForArr,
+      looking_for_text: row?.looking_for_text ?? null,
+      motivation: row?.motivation ?? null,
+      working_on: row?.working_on ?? null,
     },
     progress: {
       dm_step1_done: !!row?.dm_step1_at,
@@ -52,10 +55,13 @@ export async function GET(req: NextRequest) {
     },
     options: {
       goals: GOALS.map(g => ({ id: g.id, emoji: g.emoji, label: g.label })),
-      levels: levelsForGoal(goal ?? 'explore'),
-      skills: skillsForGoal(goal ?? 'explore'),
-      hours: HOURS,
-      biz: BIZ,
+      levels: LEVELS,
+      lookingFor: LOOKING_FOR,
+    },
+    limits: {
+      motivation: MOTIVATION_MAX,
+      workingOn: WORKING_ON_MAX,
+      lookingForText: LOOKING_FOR_TEXT_MAX,
     },
     recommendations: row?.recommended_paths ?? null,
     pathMeta: PATH_META,
@@ -63,21 +69,21 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/onboarding — частичное обновление + финализация.
-// body: { goal?, goal_custom?, level?, skills?, hours?, has_business?, finalize?: boolean }
+// body: { level?, looking_for?, looking_for_text?, motivation?, working_on?, finalize?: boolean }
 //
-// Идемпотентный: финализация (начисление +10 фантиков) срабатывает один раз.
-// Каждый раз пересчитываем рекомендации по текущему состоянию.
+// Идемпотентный: финализация (+10 фантиков, бонус-крутка) срабатывает один раз.
+// Финализация требует level + looking_for(>=1) + motivation. Если чего-то нет —
+// 400 с деталями. Раньше была свободная финализация без обязательных полей.
 export async function POST(req: NextRequest) {
   const tgId = authed(req)
   if (!tgId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const body = (await req.json().catch(() => ({}))) as Partial<{
-    goal: GoalId
-    goal_custom: string | null
     level: LevelOption['id']
-    skills: string[]
-    hours: HoursId
-    has_business: 'yes' | 'no' | 'in_progress'
+    looking_for: string[]
+    looking_for_text: string | null
+    motivation: string | null
+    working_on: string | null
     finalize: boolean
   }>
 
@@ -95,27 +101,43 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   // Сшиваем предыдущее состояние с новыми данными (только то, что прислали).
+  const validLookingForIds = new Set(LOOKING_FOR.map(l => l.id))
+  const incomingLookingFor = Array.isArray(body.looking_for)
+    ? body.looking_for.filter(id => validLookingForIds.has(id))
+    : (Array.isArray(existing?.looking_for) ? (existing!.looking_for as string[]) : [])
+
   const merged: OnboardingState = {
-    goal: (body.goal ?? existing?.goal ?? null) as GoalId | null,
-    goal_custom: body.goal_custom !== undefined ? body.goal_custom : (existing?.goal_custom ?? null),
+    goal: (existing?.goal ?? null) as GoalId | null,
+    goal_custom: existing?.goal_custom ?? null,
     level: (body.level ?? existing?.level ?? null) as LevelOption['id'] | null,
-    skills: Array.isArray(body.skills) ? body.skills : (existing?.skills ?? []),
-    hours: (body.hours ?? existing?.hours_per_week ?? null) as HoursId | null,
-    has_business: (body.has_business ?? existing?.has_business ?? null) as OnboardingState['has_business'],
+    looking_for: incomingLookingFor,
+    motivation: trimOrKeep(body.motivation, existing?.motivation, MOTIVATION_MAX),
+    working_on: trimOrKeep(body.working_on, existing?.working_on, WORKING_ON_MAX),
+  }
+  const lookingForText = trimOrKeep(body.looking_for_text, existing?.looking_for_text, LOOKING_FOR_TEXT_MAX)
+
+  const willFinalize = !!body.finalize && !existing?.mini_app_done_at
+  if (willFinalize) {
+    if (!merged.level) {
+      return NextResponse.json({ error: 'level_required' }, { status: 400 })
+    }
+    if (!merged.looking_for.length) {
+      return NextResponse.json({ error: 'looking_for_required' }, { status: 400 })
+    }
+    if (!merged.motivation || !merged.motivation.trim()) {
+      return NextResponse.json({ error: 'motivation_required' }, { status: 400 })
+    }
   }
 
   const recommendations = computeRecommendations(merged)
-
   const now = new Date().toISOString()
-  const willFinalize = !!body.finalize && !existing?.mini_app_done_at
 
   const update: Record<string, unknown> = {
-    goal: merged.goal,
-    goal_custom: merged.goal_custom,
     level: merged.level,
-    skills: merged.skills,
-    hours_per_week: merged.hours,
-    has_business: merged.has_business,
+    looking_for: merged.looking_for,
+    looking_for_text: lookingForText,
+    motivation: merged.motivation,
+    working_on: merged.working_on,
     recommended_paths: recommendations,
     updated_at: now,
   }
@@ -135,7 +157,6 @@ export async function POST(req: NextRequest) {
   let bonusSpinGranted = false
 
   if (willFinalize) {
-    // +10 фантиков — один раз.
     await supabaseAdmin
       .from('members')
       .update({ points: (member.points ?? 0) + POINTS_FULL_ONBOARDING })
@@ -148,8 +169,7 @@ export async function POST(req: NextRequest) {
     })
     pointsAwarded = POINTS_FULL_ONBOARDING
 
-    // Бонусный спин за прохождение анкеты — UX-обещание из текста.
-    // Безопасно: spins_available хранится в членах, здесь просто +1.
+    // Бонусный спин за прохождение анкеты.
     const { data: spinRow } = await supabaseAdmin
       .from('members')
       .select('spins_available')
@@ -172,10 +192,24 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    state: merged,
+    state: { ...merged, looking_for_text: lookingForText },
     recommendations,
     pointsAwarded,
     bonusSpinGranted,
     finalized: willFinalize || !!existing?.mini_app_done_at,
   })
+}
+
+// Валидируем и тримим текстовое поле. Если в body не пришло (undefined) —
+// сохраняем существующее. Если пришло null или пустая строка — сбрасываем.
+function trimOrKeep(
+  incoming: string | null | undefined,
+  existing: string | null | undefined,
+  max: number,
+): string | null {
+  if (incoming === undefined) return existing ?? null
+  if (incoming === null) return null
+  const t = String(incoming).trim()
+  if (!t) return null
+  return t.slice(0, max)
 }

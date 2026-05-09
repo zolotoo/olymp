@@ -120,6 +120,10 @@ async function onNewSubscription(payload: TributePayload) {
     })
   }
 
+  // Уведомление Сергею: первая ценность приходит от живого приветствия в первый
+  // день, не от бота. Шлём в личку с готовым deeplink на DM юзера.
+  await notifyAdminPaid(tgId, profile, payload.period)
+
   addMemory(String(tgId), `Оформил подписку AI Olymp. Период: ${payload.period}, до ${payload.expires_at}`)
 
   // Per message tree: text first, then video circle.
@@ -331,6 +335,35 @@ function formatDate(iso: string): string {
 
 function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+// Личка Сергею при новой оплате. Текст и кнопка редактируются в /flow по
+// ключу admin_paid_notify. Если TELEGRAM_ADMIN_CHAT_ID не задан — лог в
+// консоль, без падения.
+async function notifyAdminPaid(
+  tgId: number,
+  profile: { username: string | null; first_name: string | null; last_name: string | null },
+  period: string,
+): Promise<void> {
+  const adminId = process.env.TELEGRAM_ADMIN_CHAT_ID
+  if (!adminId) {
+    console.warn('tribute: TELEGRAM_ADMIN_CHAT_ID is not set, admin notify skipped')
+    return
+  }
+  const name = profile.first_name || profile.username || `id${tgId}`
+  const handle = profile.username ? `@${profile.username}` : `tg://user?id=${tgId}`
+  const userLink = `tg://user?id=${tgId}`
+  const periodHuman = period === 'monthly' ? 'месяц' : period === 'yearly' ? 'год' : period
+
+  const tpl = await getBotTemplate('admin_paid_notify',
+    `💸 <b>Новая оплата</b>\n\n<b>${name}</b> (${handle}), оформил подписку на ${periodHuman}.\n\n<b>Напиши ему лично сейчас.</b> Личное приветствие в первый день удерживает в 2-3 раза лучше любого бота.`,
+    { name, handle, period: periodHuman, user_link: userLink },
+  )
+  try {
+    await sendMessage(Number(adminId), tpl.text, tpl.buttons)
+  } catch (e) {
+    console.error('tribute: notifyAdminPaid send failed', e)
+  }
 }
 
 interface TributePayload {

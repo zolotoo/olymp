@@ -9,9 +9,10 @@ function authed(req: NextRequest): number | null {
   return user?.id ?? null
 }
 
-const FIRST_SPIN_DELAY_DAYS = 7
-
-// Lazy-grant the 7-day welcome spin if eligible. Returns the possibly-updated member row.
+// Welcome-spin теперь даётся сразу на approve (см. webhook handleJoinRequest).
+// Эта функция остаётся как safety-net для участников, которым по какой-то
+// причине спин не выдался на approve (старые записи, ручные правки): при
+// первом заходе в /api/wheel они получат спин здесь.
 async function maybeGrantFirstWeekSpin(member: {
   id: string
   tg_id: number
@@ -22,9 +23,6 @@ async function maybeGrantFirstWeekSpin(member: {
 }) {
   if (member.first_week_spin_granted) return member
   if (member.status !== 'active') return member
-  const joined = new Date(member.joined_at).getTime()
-  const ageDays = (Date.now() - joined) / (1000 * 60 * 60 * 24)
-  if (ageDays < FIRST_SPIN_DELAY_DAYS) return member
 
   const { data: updated } = await supabaseAdmin
     .from('members')
@@ -41,7 +39,7 @@ async function maybeGrantFirstWeekSpin(member: {
       member_id: member.id,
       tg_id: member.tg_id,
       event_type: 'spin_credit_granted',
-      metadata: { reason: 'first_week' },
+      metadata: { reason: 'welcome_spin_lazy' },
     })
   }
 
@@ -79,15 +77,11 @@ export async function GET(req: NextRequest) {
     .maybeSingle()
 
   let reason: string | null = null
-  let nextSpinAt: string | null = null
+  const nextSpinAt: string | null = null
   if (member.spins_available <= 0) {
-    if (!member.first_week_spin_granted) {
-      reason = 'first_week_pending'
-      const joined = new Date(member.joined_at).getTime()
-      nextSpinAt = new Date(joined + FIRST_SPIN_DELAY_DAYS * 24 * 60 * 60 * 1000).toISOString()
-    } else {
-      reason = 'awaiting_renewal'
-    }
+    // Welcome spin даётся на approve, но если по какой-то причине не выдался
+    // и safety-net выше тоже не отработал — отдаём awaiting_renewal.
+    reason = 'awaiting_renewal'
   }
 
   return NextResponse.json({
