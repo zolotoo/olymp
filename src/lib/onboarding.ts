@@ -63,9 +63,14 @@ export const POINTS_FIRST_OPEN = 5
 export const POINTS_FULL_ONBOARDING = 10
 
 // ─── First mini-app open: грант +5 фантиков, marker dm_step1_at ─────────────
-// Идемпотентно: повторный открытый мини-аппы фантиков не добавит. Если у
-// участника уже есть dm_step1_at (например, из старого DM-флоу) — никаких
-// изменений, фантики не задваиваются.
+// Идемпотентно даже под гонкой (два параллельных открытия / React StrictMode):
+//
+//   1) UPDATE с условием dm_step1_at IS NULL — гарантирует, что только
+//      первый из конкурирующих запросов реально проставит маркер. Остальные
+//      получат пустой returning и не начислят фантики.
+//   2) Если строки нет — INSERT. UNIQUE на onboarding_answers.member_id
+//      защищает от двух параллельных INSERT'ов: один пройдёт, второй
+//      получит ошибку и обработается как «уже есть».
 export async function recordFirstMiniAppOpen(opts: {
   memberId: string
   tgId: number
@@ -73,46 +78,64 @@ export async function recordFirstMiniAppOpen(opts: {
   const { memberId, tgId } = opts
   const now = new Date().toISOString()
 
+  // Условный UPDATE: только если dm_step1_at IS NULL.
+  const { data: updated } = await supabaseAdmin
+    .from('onboarding_answers')
+    .update({ dm_step1_at: now, updated_at: now })
+    .eq('member_id', memberId)
+    .is('dm_step1_at', null)
+    .select('member_id')
+    .maybeSingle()
+
+  if (updated) {
+    // Победили в гонке. Грантим +5.
+    return await grantFirstOpenPoints(memberId, tgId)
+      .then(() => ({ awarded: true, alreadyMarked: false }))
+  }
+
+  // Не было обновления: либо строка существовала с dm_step1_at != null,
+  // либо строки вообще нет. Проверяем какой случай.
   const { data: existing } = await supabaseAdmin
     .from('onboarding_answers')
     .select('member_id, dm_step1_at')
     .eq('member_id', memberId)
     .maybeSingle()
 
-  if (existing?.dm_step1_at) {
+  if (existing) {
+    // Уже промаркировано раньше (или конкурирующий вызов нас опередил).
     return { awarded: false, alreadyMarked: true }
   }
 
-  if (existing) {
-    await supabaseAdmin
-      .from('onboarding_answers')
-      .update({ dm_step1_at: now, updated_at: now })
-      .eq('member_id', memberId)
-  } else {
-    await supabaseAdmin.from('onboarding_answers').insert({
-      member_id: memberId,
-      tg_id: tgId,
-      dm_step1_at: now,
-    })
+  // Строки нет — INSERT. Если двое одновременно сюда добрались, UNIQUE
+  // на member_id разрулит: один пройдёт, второй получит ошибку.
+  const { error: insErr } = await supabaseAdmin.from('onboarding_answers').insert({
+    member_id: memberId,
+    tg_id: tgId,
+    dm_step1_at: now,
+  })
+  if (insErr) {
+    // Вероятнее всего PK violation — нас опередили. Не грантим.
+    return { awarded: false, alreadyMarked: true }
   }
 
-  // +5 фантиков (та же сумма что раньше давалась за DM-ответ).
+  await grantFirstOpenPoints(memberId, tgId)
+  return { awarded: true, alreadyMarked: false }
+}
+
+async function grantFirstOpenPoints(memberId: string, tgId: number): Promise<void> {
   const { data: member } = await supabaseAdmin
     .from('members').select('points').eq('id', memberId).single()
-  if (member) {
-    await supabaseAdmin
-      .from('members')
-      .update({ points: (member.points ?? 0) + POINTS_FIRST_OPEN })
-      .eq('id', memberId)
-    await supabaseAdmin.from('points_log').insert({
-      member_id: memberId,
-      tg_id: tgId,
-      points: POINTS_FIRST_OPEN,
-      reason: 'onboarding_first_open',
-    })
-  }
-
-  return { awarded: true, alreadyMarked: false }
+  if (!member) return
+  await supabaseAdmin
+    .from('members')
+    .update({ points: (member.points ?? 0) + POINTS_FIRST_OPEN })
+    .eq('id', memberId)
+  await supabaseAdmin.from('points_log').insert({
+    member_id: memberId,
+    tg_id: tgId,
+    points: POINTS_FIRST_OPEN,
+    reason: 'onboarding_first_open',
+  })
 }
 
 // ─── Скоринг рекомендаций ────────────────────────────────────────────────────

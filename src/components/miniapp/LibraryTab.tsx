@@ -159,13 +159,17 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
     ? topics.filter(t => t.kind === activeKind)
     : topics
 
-  // Если активен path-фильтр — оставляем только items с этим path_kind.
-  // Топик отображаем только если в нём после фильтра остались items.
+  // Если активен path-фильтр — оставляем только items с этим path_kind,
+  // и схлопываем пустые топики (один баннер ниже понятнее, чем гирлянда
+  // одинаковых «пока нет постов в этой ветке»).
   const visibleTopics = activePathKind
     ? visibleTopicsRaw
         .map(t => ({ ...t, items: t.items.filter(it => (it.path_kinds ?? []).includes(activePathKind)) }))
         .filter(t => t.items.length > 0)
     : visibleTopicsRaw
+
+  // Активен ли path-фильтр и при этом ни одного подходящего поста нет.
+  const pathFilterEmpty = !!activePathKind && visibleTopics.length === 0
 
   // Какие path-tag'и реально присутствуют среди отображаемых сейчас items.
   // Без этой проверки sub-chip'ы рисуются для всех 5 направлений даже когда
@@ -230,6 +234,14 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
               <span style={{ marginRight: 4 }}>{pk.emoji}</span>{pk.label}
             </FilterChip>
           ))}
+        </div>
+      )}
+
+      {pathFilterEmpty && (
+        <div className="rounded-2xl p-5 mb-4 text-sm text-center"
+             style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.06)', color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
+          В этом направлении пока нет постов.
+          <br />Попробуй другое или выбери «Все направления».
         </div>
       )}
 
