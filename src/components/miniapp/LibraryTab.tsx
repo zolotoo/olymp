@@ -120,6 +120,22 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
     return all
   }, [topics])
 
+  // Какие path-tag'и реально присутствуют среди отображаемых сейчас items.
+  // Sub-chip'ы по направлениям рисуем только если есть размеченные посты.
+  // ВАЖНО: useMemo обязательно ДО ранних return'ов ниже, иначе при разных
+  // ветках количество вызванных хуков будет различаться (Rules of Hooks).
+  const availablePathKinds = useMemo(() => {
+    const set = new Set<string>()
+    if (!topics) return set
+    const subset = activeKind && activeKind !== NEW_KIND
+      ? topics.filter(t => t.kind === activeKind)
+      : topics
+    for (const t of subset) for (const it of t.items) {
+      for (const pk of it.path_kinds ?? []) set.add(pk)
+    }
+    return set
+  }, [topics, activeKind])
+
   const openTg = (item: { link: string; message_id: number; kind: string; chat_id: number }) => {
     // Fire-and-forget трекинг клика. Не ждём ответ — UX важнее.
     void fetch('/api/library/click', {
@@ -170,17 +186,6 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
 
   // Активен ли path-фильтр и при этом ни одного подходящего поста нет.
   const pathFilterEmpty = !!activePathKind && visibleTopics.length === 0
-
-  // Какие path-tag'и реально присутствуют среди отображаемых сейчас items.
-  // Без этой проверки sub-chip'ы рисуются для всех 5 направлений даже когда
-  // ни один из них не размечен — путает.
-  const availablePathKinds = useMemo(() => {
-    const set = new Set<string>()
-    for (const t of visibleTopicsRaw) for (const it of t.items) {
-      for (const pk of it.path_kinds ?? []) set.add(pk)
-    }
-    return set
-  }, [visibleTopicsRaw])
 
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
