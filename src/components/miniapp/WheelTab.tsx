@@ -28,7 +28,6 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
   const [canSpin, setCanSpin] = useState<boolean | null>(null)
   const [spinsAvailable, setSpinsAvailable] = useState<number>(0)
   const [reason, setReason] = useState<string | null>(null)
-  const [nextSpinAt, setNextSpinAt] = useState<string | null>(null)
   const [prevPrize, setPrevPrize] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showExplanation, setShowExp] = useState(false)
@@ -61,7 +60,6 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
         setCanSpin(Boolean(d.canSpin))
         setSpinsAvailable(typeof d.spinsAvailable === 'number' ? d.spinsAvailable : 0)
         setReason(d.reason ?? null)
-        setNextSpinAt(d.nextSpinAt ?? null)
         if (d.lastSpin?.prize_leaves != null) setPrevPrize(d.lastSpin.prize_leaves)
       })
       .catch(() => { if (!cancelled) setError('Сеть недоступна') })
@@ -117,15 +115,10 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
   const statusLabel = useMemo(() => {
     if (canSpin === null) return 'загружаем…'
     if (canSpin) return spinsAvailable > 1 ? `${spinsAvailable} попытки доступно` : 'попытка доступна'
-    if (reason === 'first_week_pending') return 'первый спин через неделю'
     if (reason === 'awaiting_renewal') return 'продли подписку'
     if (reason === 'not_member') return 'только для участников'
     return 'нет попыток'
   }, [canSpin, spinsAvailable, reason])
-
-  const daysUntilFirstSpin = nextSpinAt
-    ? Math.max(0, Math.ceil((new Date(nextSpinAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : null
 
   if (!segments) {
     return <div className="text-center text-sm p-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Загрузка…</div>
@@ -152,11 +145,9 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
           Крути колесо!
         </h1>
         <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
-          {reason === 'first_week_pending' && daysUntilFirstSpin != null
-            ? `Первая попытка откроется через ${daysUntilFirstSpin} дн.`
-            : reason === 'awaiting_renewal'
-              ? 'Следующая попытка откроется при продлении подписки'
-              : 'Крути и получай фантики'}
+          {reason === 'awaiting_renewal'
+            ? 'Следующая попытка откроется при продлении подписки'
+            : 'Крути и получай фантики'}
         </p>
         {prevPrize != null && !canSpin && !result && (
           <p className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.45)' }}>
@@ -272,11 +263,9 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
               ? 'Крутить колесо'
               : canSpin === null
                 ? 'Загрузка...'
-                : reason === 'first_week_pending'
-                  ? 'Первая попытка через неделю'
-                  : reason === 'awaiting_renewal'
-                    ? 'Продли подписку'
-                    : 'Попыток нет'}
+                : reason === 'awaiting_renewal'
+                  ? 'Продли подписку'
+                  : 'Попыток нет'}
         </button>
       </div>
 
@@ -289,7 +278,8 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
           Как работает Колесо удачи
         </div>
         <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
-          <li>Первая попытка — через неделю после вступления</li>
+          <li>Первая попытка — сразу при вступлении в клуб</li>
+          <li>Бонус-попытка — за заполнение профиля</li>
           <li>Новая попытка — каждое продление подписки (вместе с новым титулом)</li>
           <li>Призы: фантики, гайды, промокоды, разбор Instagram и созвон с Сергеем</li>
           <li>Доп. попытки можно купить за фантики в Киоске</li>

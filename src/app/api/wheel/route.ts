@@ -76,19 +76,14 @@ export async function GET(req: NextRequest) {
     .limit(1)
     .maybeSingle()
 
-  let reason: string | null = null
-  const nextSpinAt: string | null = null
-  if (member.spins_available <= 0) {
-    // Welcome spin даётся на approve, но если по какой-то причине не выдался
-    // и safety-net выше тоже не отработал — отдаём awaiting_renewal.
-    reason = 'awaiting_renewal'
-  }
+  // Welcome-спин даётся на approve, бонус — за онбординг, +1 — за продление.
+  // Если кредитов нет — ждём продления подписки.
+  const reason: string | null = member.spins_available <= 0 ? 'awaiting_renewal' : null
 
   return NextResponse.json({
     canSpin: member.spins_available > 0,
     spinsAvailable: member.spins_available,
     reason,
-    nextSpinAt,
     lastSpin,
   })
 }
