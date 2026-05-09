@@ -147,13 +147,22 @@ async function runRule(key: RuleKey, cutoffIso: string): Promise<RuleReport> {
     let okFlag = false
 
     if (key === 'onb_dm1_initial' || key === 'onb_dm1_24h') {
-      // DM-Q1 с callback-кнопками целей. Шаблон может быть пустым — тогда fallback.
-      const tpl = await getBotTemplate(key, '', { name })
-      if (!tpl.text.trim()) { bump('no_template'); continue }
+      // DM-Q1 с callback-кнопками целей.
+      // - onb_dm1_initial: первый раз через 1ч после approve, текст из l_dm_q1.
+      // - onb_dm1_24h: напоминалка через 24ч, своя редактируемая копия в
+      //   bot_messages.onb_dm1_24h, с фолбэком на l_dm_q1 если запись пустая.
+      const primaryKey = key === 'onb_dm1_24h' ? 'onb_dm1_24h' : 'l_dm_q1'
+      const tpl = await getBotTemplate(primaryKey, '', { name })
+      const tplText = tpl.text.trim()
+        ? tpl.text
+        : (key === 'onb_dm1_24h'
+            ? (await getBotTemplate('l_dm_q1', '', { name })).text
+            : '')
+      if (!tplText.trim()) { bump('no_template'); continue }
       try {
         const res = await sendMessageWithKeyboard(
           c.tgId,
-          tpl.text,
+          tplText,
           buildCallbackKeyboard(dmGoalKeyboard()),
         ) as { ok: boolean; result?: { message_id: number } }
         okFlag = !!res?.ok
