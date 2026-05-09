@@ -149,34 +149,29 @@ const TREE: Node = {
     {
       id: 's_onb', label: 'Онбординг новичка', type: 'section',
       children: [
-        { id: 't_onb_dm', label: 'Заявка одобрена → DM-флоу', type: 'trigger',
-          detail: 'После approve канала бот отправляет видеокружок и грантит крутку Колеса. Через 1ч приходит DM-вопрос про цель (cron).',
+        { id: 't_onb_welcome', label: 'Заявка одобрена → welcome', type: 'trigger',
+          detail: 'После approve канала бот шлёт видеокружок и грантит первую крутку Колеса. Через 1ч приходит welcome-DM с CTA в мини-аппу.',
           children: [
-            { id: 'l_dm_q1', label: 'DM-вопрос про цель',
-              type: 'message',
-              detail: '5 кнопок целей + «свой вариант». Кнопки фиксированные (callback), редактировать только текст.' },
-            { id: 'l_dm_q1_ack', label: 'Ответ на выбор цели', type: 'message',
-              detail: 'Подтверждение, +5 фантиков, упоминание Колеса и мини-аппы.' },
-            { id: 'l_dm_q1_custom_ack', label: 'Ответ на «свой вариант»', type: 'message',
-              detail: 'Подтверждение для свободного текста.' },
+            { id: 'l_dm_q1', label: 'Welcome-DM в мини-аппу', type: 'message',
+              detail: 'Текст с URL-кнопкой «Открыть AI Олимп». Раньше был вопрос про цель с callback-кнопками, заменён: цель теперь собирается в мини-аппе из chip-набора looking_for.' },
           ],
         },
-        { id: 't_onb_mini', label: 'Анкета в мини-аппе', type: 'trigger',
-          detail: 'Один экран: уровень, что хочешь забрать, почему вступил, над чем работаешь. +10 фантиков и бонус-крутка.',
+        { id: 't_onb_mini', label: 'Мини-апп: анкета «Мой путь»', type: 'trigger',
+          detail: 'Первое открытие мини-аппы → +5 фантиков, dm_step1_at = now. Заполнение анкеты → +10 фантиков и бонус-крутка Колеса.',
           children: [
-            { id: 'l_onb_thanks', label: 'Поздравление после анкеты', type: 'message',
-              detail: 'Финальный экран, виден внутри мини-аппы.' },
+            { id: 'l_onb_thanks', label: 'Поздравление после анкеты (резерв)', type: 'message',
+              detail: 'Не используется в коде сейчас — hero рендерится в JSX. Оставлен для будущих DM-нотификаций.' },
           ],
         },
-        { id: 't_onb_rem', label: 'Напоминания (cron)', type: 'trigger',
-          detail: 'Дёргается каждые 15 мин, проверяет состояние. Идемпотентно через onboarding_reminders.',
+        { id: 't_onb_rem', label: 'Напоминания (cron каждые 15 мин)', type: 'trigger',
+          detail: 'Идемпотентно через onboarding_reminders (PK на tg_id+key).',
           children: [
             { id: 'onb_wheel_3h', label: '+3ч · не крутил Колесо', type: 'message',
               detail: 'URL-кнопка в мини-аппу, переменная {name}.' },
-            { id: 'onb_dm1_24h', label: '+24ч · не выбрал цель', type: 'message',
-              detail: 'Тот же набор кнопок что у l_dm_q1, переменная {name}.' },
+            { id: 'onb_dm1_24h', label: '+24ч · не открыл мини-аппу', type: 'message',
+              detail: 'Гейт: dm_step1_at IS NULL. URL-кнопка, переменная {name}.' },
             { id: 'onb_full_72h', label: '+72ч · не добил анкету', type: 'message',
-              detail: 'URL-кнопка в мини-аппу, переменная {name}.' },
+              detail: 'Гейт: dm_step1_at есть, mini_app_done_at IS NULL. URL-кнопка.' },
           ],
         },
         { id: 't_onb_admin', label: 'Сергею в личку', type: 'trigger',
@@ -709,37 +704,6 @@ export default function TreeClient() {
                           {b.label}
                         </a>
                       ))}
-                    </div>
-                  </div>
-                )}
-                {/* Callback-кнопки целей: прикручиваются программно при отправке
-                    (см. dmGoalKeyboard в lib/onboarding.ts). В bot_messages не
-                    хранятся, тут показываем превью чтобы было понятно что
-                    реальный пользователь увидит под текстом. */}
-                {(selected.id === 'l_dm_q1' || selected.id === 'onb_dm1_24h') && (
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.38)', marginBottom: 6 }}>
-                      Callback-кнопки (6) · прикрепляются автоматически
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                      {[
-                        '💰 Зарабатывать на AI',
-                        '🛠 Делать продукты с AI',
-                        '🎬 Создавать контент с AI',
-                        '⚡️ Вайбкодить',
-                        '🧭 Просто разобраться',
-                      ].map((label, i) => (
-                        <div key={i}
-                          style={{ padding: '9px 14px', background: 'rgba(28,28,30,0.04)', border: '1px solid rgba(28,28,30,0.08)', borderRadius: 12, fontSize: 12.5, fontWeight: 500, color: 'rgba(28,28,30,0.65)', textAlign: 'center' }}>
-                          {label}
-                        </div>
-                      ))}
-                      <div style={{ gridColumn: '1 / span 2', padding: '9px 14px', background: 'rgba(28,28,30,0.04)', border: '1px solid rgba(28,28,30,0.08)', borderRadius: 12, fontSize: 12.5, fontWeight: 500, color: 'rgba(28,28,30,0.65)', textAlign: 'center' }}>
-                        ✍️ Написать своё
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 11, color: 'rgba(28,28,30,0.45)', marginTop: 6, fontStyle: 'italic' }}>
-                      Эти кнопки нельзя редактировать — список целей зашит в коде. Текст сообщения выше редактируется свободно.
                     </div>
                   </div>
                 )}

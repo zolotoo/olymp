@@ -24,6 +24,7 @@ interface LibraryRow {
   kind: string
   is_featured: boolean
   title_override: string | null
+  path_kinds: string[] | null
   tg_messages: {
     text: string | null
     has_media: boolean
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
   let q = supabaseAdmin
     .from('library_items')
     .select(`
-      id, chat_id, message_id, thread_id, kind, is_featured, title_override,
+      id, chat_id, message_id, thread_id, kind, is_featured, title_override, path_kinds,
       tg_messages:tg_messages!inner ( text, has_media, media_kind, sent_at )
     `)
     .eq('status', 'published')
@@ -131,6 +132,7 @@ export async function GET(req: NextRequest) {
         has_media: tg?.has_media ?? false,
         media_kind: tg?.media_kind ?? null,
         is_featured: r.is_featured,
+        path_kinds: Array.isArray(r.path_kinds) ? r.path_kinds : [],
         link: deepLink(r.chat_id, r.thread_id, r.message_id),
       }
     })

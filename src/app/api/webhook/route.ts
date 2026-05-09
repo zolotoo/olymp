@@ -12,7 +12,6 @@ import type { MemberRank } from '@/lib/types'
 import { trackBotInteraction, setBotUserChannelMember, setBotUserGroupMember } from '@/lib/bot-tracking'
 import { enableMiniAppButton, disableMiniAppButton, miniAppUrl } from '@/lib/mini-app'
 import { getBotText, getBotVideo, getBotTemplate } from '@/lib/bot-messages'
-import { GOALS, GOAL_LABELS, recordDmGoalAnswer, type GoalId } from '@/lib/onboarding'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -409,14 +408,6 @@ async function handleMessage(message: TgMessage) {
   // Persist full text + metadata for every incoming message (any chat, any user).
   // Must run before early-returns below so we never lose a record.
   await storeIncomingMessage(message, false)
-
-  // Если человек выбрал «✍️ Написать своё» в DM-онбординге — следующий
-  // приватный текст в личке трактуем как кастомный ответ на вопрос про цель.
-  // Перехватываем ДО /start и других проверок, чтобы не путать с обычным DM.
-  if (message.chat.id === user.id && message.text && !message.text.startsWith('/')) {
-    const captured = await tryCaptureOnboardingCustomGoal(user, message.text)
-    if (captured) return
-  }
 
   // DEBUG: log incoming video notes so admin can grab file_id.
   // Реагируем только на сообщения от админа — иначе любой участник,
@@ -917,130 +908,14 @@ async function applyRankTitle(userId: number, rank: MemberRank) {
   }
 }
 
-// ─── DM Onboarding (step 1 of 2) ──────────────────────────────────────────────
-// Шаг 1 — один вопрос в DM с inline-кнопками (отправляется cron'ом через 1ч
-// после approve, см. /api/cron/onboarding-reminders). Шаг 2 — анкета в мини-аппе.
-
-// Колбэки от inline-кнопок DM-онбординга.
+// ─── Callback queries ───────────────────────────────────────────────────────
+// Раньше тут жил онбординг-флоу (5 кнопок целей). Сейчас цель собираем
+// в мини-аппе из chip'ов looking_for, callback'и онбординга больше не
+// шлются — поэтому handleCallbackQuery просто отвечает на любые callback
+// чтобы у юзера не висели «часики» на кнопках.
 async function handleCallbackQuery(cb: TgCallbackQuery): Promise<void> {
-  if (!cb.from?.id || !cb.data) return
-  const data = cb.data
-
-  // Только онбординг-колбэки сейчас. Остальные дёргают только trackBotInteraction в trackIncomingUpdate.
-  if (!data.startsWith('onb_goal_')) {
-    await answerCallbackQuery(cb.id).catch(() => {})
-    return
-  }
-
-  // Нужен member.id — фантики идут через members table.
-  const { data: member } = await supabaseAdmin
-    .from('members')
-    .select('id, tg_id')
-    .eq('tg_id', cb.from.id)
-    .maybeSingle()
-
-  // chat и message_id для editMessageText (заменяем вопрос на «спасибо»).
-  const chatId = cb.message?.chat?.id ?? cb.from.id
-  const messageId = cb.message?.message_id
-
-  if (!member) {
-    await answerCallbackQuery(cb.id, 'Не нашли тебя в клубе. Напиши /start боту.', true).catch(() => {})
-    return
-  }
-
-  // «✍️ Написать своё» — переводим в режим ожидания свободного текста.
-  if (data === 'onb_goal_custom_init') {
-    await supabaseAdmin
-      .from('members')
-      .update({ onboarding_dm_state: 'awaiting_custom_goal' })
-      .eq('id', member.id)
-
-    const awaitingText = await getBotText(
-      'l_dm_q1_custom',
-      '✍️ Окей, расскажи своими словами: что ты хочешь от AI Олимп? Просто напиши следующим сообщением 1–3 предложения.',
-    )
-    if (messageId) {
-      await editMessageText(chatId, messageId, awaitingText, null).catch(() => {})
-    } else {
-      await sendMessage(chatId, awaitingText).catch(() => {})
-    }
-    await answerCallbackQuery(cb.id).catch(() => {})
-    return
-  }
-
-  // Один из предзаданных вариантов цели.
-  const goalId = data.replace(/^onb_goal_/, '') as GoalId
-  const validGoals = new Set<string>(GOALS.map(g => g.id))
-  if (!validGoals.has(goalId)) {
-    await answerCallbackQuery(cb.id).catch(() => {})
-    return
-  }
-
-  const { awarded, alreadyAnswered } = await recordDmGoalAnswer({
-    memberId: member.id,
-    tgId: member.tg_id,
-    goal: goalId,
-  })
-
-  const label = GOAL_LABELS[goalId] ?? 'свой вариант'
-  const ackTpl = await getBotTemplate('l_dm_q1_ack', '', { label })
-  const ackText = alreadyAnswered
-    ? `✅ Цель обновлена: <b>${label}</b>\n\nФантики за этот шаг уже начислены раньше. Открывай Мини-апп, добьём анкету.`
-    : (ackTpl.text || `✅ <b>+5 фантиков</b>! Цель: <b>${label}</b>`)
-
-  // Кнопки берём из шаблона (если в БД заданы URL-кнопки), иначе fallback
-  // на канонический miniAppUrl() с cache-bust suffix.
-  const buttons = ackTpl.buttons?.length
-    ? ackTpl.buttons
-    : [{ label: '🚀 Открыть AI Олимп', url: miniAppUrl() }]
-
-  if (messageId) {
-    await editMessageText(chatId, messageId, ackText, null).catch(() => {})
-  } else {
-    await sendMessage(chatId, ackText).catch(() => {})
-  }
-  if (buttons) {
-    await sendMessage(chatId, '👇', buttons).catch(() => {})
-  }
-  await answerCallbackQuery(cb.id, awarded ? '+5 фантиков' : 'Уже учтено').catch(() => {})
-}
-
-// Если у участника onboarding_dm_state='awaiting_custom_goal', трактуем
-// его следующий приватный текст как кастомный ответ на вопрос про цель.
-// Возвращает true, если сообщение поглощено онбордингом и обычную обработку
-// (фантики за активность, /start, etc.) делать НЕ надо.
-async function tryCaptureOnboardingCustomGoal(user: TgUser, text: string): Promise<boolean> {
-  const trimmed = text.trim()
-  if (!trimmed) return false
-
-  const { data: member } = await supabaseAdmin
-    .from('members')
-    .select('id, tg_id, onboarding_dm_state')
-    .eq('tg_id', user.id)
-    .maybeSingle()
-  if (!member || member.onboarding_dm_state !== 'awaiting_custom_goal') return false
-
-  // Усечём до 500 символов — на всякий случай (1-3 предложения).
-  const customText = trimmed.slice(0, 500)
-  const { awarded, alreadyAnswered } = await recordDmGoalAnswer({
-    memberId: member.id,
-    tgId: member.tg_id,
-    goal: 'custom',
-    customText,
-  })
-
-  const customSnippet = `${customText.slice(0, 80)}${customText.length > 80 ? '…' : ''}`
-  const ackTpl = await getBotTemplate('l_dm_q1_custom_ack', '', { custom: customSnippet })
-  const ackText = alreadyAnswered
-    ? `✅ Записал твой вариант: «${customSnippet}»\n\nФантики за этот шаг уже начислены раньше. Открывай Мини-апп, добьём анкету.`
-    : (ackTpl.text || `✅ <b>+5 фантиков</b>! Записал: «${customSnippet}»`)
-
-  const buttons = ackTpl.buttons?.length
-    ? ackTpl.buttons
-    : [{ label: '🚀 Открыть AI Олимп', url: miniAppUrl() }]
-  await sendMessage(user.id, ackText, buttons).catch(() => {})
-  void awarded
-  return true
+  if (!cb.from?.id) return
+  await answerCallbackQuery(cb.id).catch(() => {})
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────

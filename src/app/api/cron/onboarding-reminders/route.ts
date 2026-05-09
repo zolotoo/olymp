@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendMessageWithKeyboard, buildCallbackKeyboard } from '@/lib/telegram'
 import { sendTracked } from '@/lib/send-tracked'
 import { getBotTemplate } from '@/lib/bot-messages'
 import { miniAppUrl } from '@/lib/mini-app'
-import { dmGoalKeyboard } from '@/lib/onboarding'
 
 // Дёргается pg_cron'ом каждые 15 минут (см. supabase/migrations/028).
 //
 // Четыре правила, все идемпотентные через onboarding_reminders (PK на tg_id+key):
-//   1) onb_dm1_initial : DM-вопрос про цель, через 1ч после approve
-//      (раньше отправлялся в webhook сразу — теперь отложен)
-//   2) onb_wheel_3h    : напомнить про колесо, если не крутил за 3ч
-//   3) onb_dm1_24h     : напомнить про DM-вопрос, если не ответил за 24ч
-//   4) onb_full_72h    : напомнить добить мини-апп через 72ч после ответа в DM
+//   1) onb_dm1_initial : Welcome-DM с CTA в мини-аппу через 1ч после approve.
+//      Шаблон l_dm_q1, URL-кнопка «Открыть AI Олимп».
+//   2) onb_wheel_3h    : напомнить про Колесо, если не крутил за 3ч
+//   3) onb_dm1_24h     : напомнить открыть мини-аппу, если за 24ч не зашёл
+//      (gate: dm_step1_at IS NULL ставится при первом open в analytics)
+//   4) onb_full_72h    : напомнить добить анкету через 72ч после первого open
+//
+// Раньше initial и 24h были DM-вопросом про цель с callback-кнопками целей.
+// Это дублировало мини-апп вопрос «Что хочешь забрать», поэтому DM-вопрос
+// удалён. Цель собираем из chip'ов looking_for внутри анкеты.
 //
 // Все правила гейтят кандидатов по joined_at > cutoff. Cutoff пишется в
 // bot_settings.onboarding_engagement_cutoff_at в миграции 028 (= now() на
@@ -146,39 +149,22 @@ async function runRule(key: RuleKey, cutoffIso: string): Promise<RuleReport> {
     let messageId: number | null = null
     let okFlag = false
 
-    if (key === 'onb_dm1_initial' || key === 'onb_dm1_24h') {
-      // DM-Q1 с callback-кнопками целей.
-      // - onb_dm1_initial: первый раз через 1ч после approve, текст из l_dm_q1.
-      // - onb_dm1_24h: напоминалка через 24ч, своя редактируемая копия в
-      //   bot_messages.onb_dm1_24h, с фолбэком на l_dm_q1 если запись пустая.
-      const primaryKey = key === 'onb_dm1_24h' ? 'onb_dm1_24h' : 'l_dm_q1'
-      const tpl = await getBotTemplate(primaryKey, '', { name })
-      const tplText = tpl.text.trim()
-        ? tpl.text
-        : (key === 'onb_dm1_24h'
-            ? (await getBotTemplate('l_dm_q1', '', { name })).text
-            : '')
-      if (!tplText.trim()) { bump('no_template'); continue }
-      try {
-        const res = await sendMessageWithKeyboard(
-          c.tgId,
-          tplText,
-          buildCallbackKeyboard(dmGoalKeyboard()),
-        ) as { ok: boolean; result?: { message_id: number } }
-        okFlag = !!res?.ok
-        messageId = res?.ok ? (res.result?.message_id ?? null) : null
-      } catch (e) {
-        console.error('onboarding-reminders: send failed', key, c.tgId, e)
-      }
-    } else {
-      // URL-кнопочные напоминалки. Идут через sendTracked (учёт доставок + click).
-      const tpl = await getBotTemplate(key, '', { name, mini_app_url: miniAppHref })
+    {
+      // Все 4 правила теперь шлют URL-кнопки и идут через sendTracked.
+      // onb_dm1_initial берёт текст из l_dm_q1 (welcome-DM в мини-аппу),
+      // остальные — из своего ключа.
+      const templateKey = key === 'onb_dm1_initial' ? 'l_dm_q1' : key
+      const tpl = await getBotTemplate(templateKey, '', { name, mini_app_url: miniAppHref })
       if (!tpl.text.trim()) { bump('no_template'); continue }
+      // Если в шаблоне кнопок нет — добавим дефолтную в мини-аппу.
+      const buttons = tpl.buttons?.length
+        ? tpl.buttons
+        : [{ label: '🚀 Открыть AI Олимп', url: miniAppHref }]
       try {
         const res = await sendTracked(c.tgId, tpl.text, {
           campaign: 'onboarding_reminder',
           templateKey: key,
-          buttons: tpl.buttons,
+          buttons,
         })
         okFlag = !!res?.ok
         messageId = res?.ok ? (res.result?.message_id ?? null) : null

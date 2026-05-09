@@ -10,8 +10,19 @@ interface LibItem {
   has_media: boolean
   media_kind: string | null
   is_featured: boolean
+  path_kinds: string[]
   link: string
 }
+
+// Совпадает с PATH_KIND_OPTIONS в админ-Library и LEVELS/LOOKING_FOR в lib/onboarding.
+// Используется для sub-chips фильтра внутри топика.
+const PATH_KIND_LABELS: { id: string; emoji: string; label: string }[] = [
+  { id: 'content',  emoji: '🎨', label: 'Контент' },
+  { id: 'vibecode', emoji: '⚡️', label: 'Вайбкодинг' },
+  { id: 'media',    emoji: '📈', label: 'Медиа' },
+  { id: 'product',  emoji: '🛠',  label: 'Продукты' },
+  { id: 'sales',    emoji: '💰', label: 'Продажи' },
+]
 
 interface LibTopic {
   kind: string
@@ -50,6 +61,7 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
   const [topics, setTopics] = useState<LibTopic[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeKind, setActiveKind] = useState<string | null>(initialKind ?? null)
+  const [activePathKind, setActivePathKind] = useState<string | null>(null)
   const [highlightMsg, setHighlightMsg] = useState<number | null>(initialMsgId ?? null)
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
@@ -143,9 +155,28 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
 
   // Видимое содержимое: либо «новое», либо обычная разбивка по топикам с фильтром.
   const showNew = activeKind === NEW_KIND
-  const visibleTopics = activeKind && activeKind !== NEW_KIND
+  const visibleTopicsRaw = activeKind && activeKind !== NEW_KIND
     ? topics.filter(t => t.kind === activeKind)
     : topics
+
+  // Если активен path-фильтр — оставляем только items с этим path_kind.
+  // Топик отображаем только если в нём после фильтра остались items.
+  const visibleTopics = activePathKind
+    ? visibleTopicsRaw
+        .map(t => ({ ...t, items: t.items.filter(it => (it.path_kinds ?? []).includes(activePathKind)) }))
+        .filter(t => t.items.length > 0)
+    : visibleTopicsRaw
+
+  // Какие path-tag'и реально присутствуют среди отображаемых сейчас items.
+  // Без этой проверки sub-chip'ы рисуются для всех 5 направлений даже когда
+  // ни один из них не размечен — путает.
+  const availablePathKinds = useMemo(() => {
+    const set = new Set<string>()
+    for (const t of visibleTopicsRaw) for (const it of t.items) {
+      for (const pk of it.path_kinds ?? []) set.add(pk)
+    }
+    return set
+  }, [visibleTopicsRaw])
 
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
@@ -175,19 +206,32 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
       )}
 
       {/* Чипы фильтра — «Все», «🆕 Новое», далее по kind */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-        <FilterChip active={activeKind === null} onClick={() => setActiveKind(null)}>Все</FilterChip>
+      <div className="flex gap-2 mb-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        <FilterChip active={activeKind === null} onClick={() => { setActiveKind(null); setActivePathKind(null) }}>Все</FilterChip>
         {newItems.length > 0 && (
-          <FilterChip active={activeKind === NEW_KIND} onClick={() => setActiveKind(NEW_KIND)}>
+          <FilterChip active={activeKind === NEW_KIND} onClick={() => { setActiveKind(NEW_KIND); setActivePathKind(null) }}>
             🆕 Новое <span style={{ opacity: 0.7, marginLeft: 4 }}>{newItems.length}</span>
           </FilterChip>
         )}
         {dedupByKind(topics).map(t => (
-          <FilterChip key={t.kind} active={activeKind === t.kind} onClick={() => setActiveKind(t.kind)}>
+          <FilterChip key={t.kind} active={activeKind === t.kind} onClick={() => { setActiveKind(t.kind); setActivePathKind(null) }}>
             {t.emoji ? <span style={{ marginRight: 4 }}>{t.emoji}</span> : null}{kindChipLabel(t.kind, t.title)}
           </FilterChip>
         ))}
       </div>
+
+      {/* Sub-чипы по path_kinds. Появляются если хотя бы один visible item
+          размечен админом. Рендерим только присутствующие направления. */}
+      {!showNew && availablePathKinds.size > 0 && (
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          <FilterChip active={activePathKind === null} onClick={() => setActivePathKind(null)} compact>Все направления</FilterChip>
+          {PATH_KIND_LABELS.filter(pk => availablePathKinds.has(pk.id)).map(pk => (
+            <FilterChip key={pk.id} active={activePathKind === pk.id} onClick={() => setActivePathKind(pk.id)} compact>
+              <span style={{ marginRight: 4 }}>{pk.emoji}</span>{pk.label}
+            </FilterChip>
+          ))}
+        </div>
+      )}
 
       {showNew ? (
         <section className="mb-6">
@@ -333,15 +377,17 @@ function ItemCard({ item, topicEmoji, topicTitle, highlight, cardRef, onOpen }: 
   )
 }
 
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function FilterChip({ active, onClick, children, compact }: { active: boolean; onClick: () => void; children: React.ReactNode; compact?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap"
+      className={`rounded-full ${compact ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'} font-medium whitespace-nowrap`}
       style={{
-        background: active ? ACCENT : '#FFFFFF',
+        background: active ? ACCENT : (compact ? 'rgba(10,132,255,0.08)' : '#FFFFFF'),
         color: active ? '#fff' : '#1C1C1E',
-        border: active ? `1px solid ${ACCENT}` : '1px solid rgba(28,28,30,0.10)',
+        border: active
+          ? `1px solid ${ACCENT}`
+          : (compact ? '1px solid rgba(10,132,255,0.18)' : '1px solid rgba(28,28,30,0.10)'),
         cursor: 'pointer',
         flexShrink: 0,
       }}
