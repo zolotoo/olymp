@@ -17,6 +17,7 @@ interface Item {
   is_featured: boolean
   approved_at: string | null
   created_at: string
+  path_kinds: string[]
   text: string | null
   has_media: boolean
   media_kind: string | null
@@ -24,6 +25,17 @@ interface Item {
   topic_title: string
   topic_emoji: string | null
 }
+
+// Должно совпадать с PathKind в lib/onboarding.ts.
+// Используется для тегирования карточек Библиотеки, чтобы онбординг-hero
+// после анкеты подбирал релевантные практикумы под top-1 направление.
+const PATH_KIND_OPTIONS: { id: string; emoji: string; label: string }[] = [
+  { id: 'content',  emoji: '🎨', label: 'Контент' },
+  { id: 'vibecode', emoji: '⚡️', label: 'Вайбкодинг' },
+  { id: 'media',    emoji: '📈', label: 'Медиа' },
+  { id: 'product',  emoji: '🛠',  label: 'Продукты' },
+  { id: 'sales',    emoji: '💰', label: 'Продажи' },
+]
 
 interface Resp {
   items: Item[]
@@ -79,12 +91,12 @@ export default function LibraryAdmin() {
   }
   useEffect(() => { reload(status) }, [status])
 
-  const act = (id: number, action: string, title?: string) => {
+  const act = (id: number, action: string, extra?: { title?: string; path_kinds?: string[] }) => {
     startTransition(async () => {
       const res = await fetch('/api/library/items', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id, action, title }),
+        body: JSON.stringify({ id, action, ...extra }),
       })
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
@@ -169,7 +181,7 @@ export default function LibraryAdmin() {
 
 function Card({ item, status, onAct, onNotify, disabled }: {
   item: Item; status: Status
-  onAct: (id: number, action: string, title?: string) => void
+  onAct: (id: number, action: string, extra?: { title?: string; path_kinds?: string[] }) => void
   onNotify: (id: number) => void
   disabled: boolean
 }) {
@@ -183,8 +195,19 @@ function Card({ item, status, onAct, onNotify, disabled }: {
   useEffect(() => { setTitle(deriveTitle(item)) }, [item.title_override, item.text])
 
   const saveTitle = () => {
-    onAct(item.id, 'title', title)
+    onAct(item.id, 'title', { title })
     setEditing(false)
+  }
+
+  // Тогл path_kind для онбординг-фильтра. Сохранение оптимистичное на сервер,
+  // UI обновится после reload. Поведение «один тап = одно изменение» —
+  // проще, чем накапливать локальное и иметь кнопку «сохранить».
+  const togglePathKind = (kind: string) => {
+    const has = item.path_kinds.includes(kind)
+    const next = has
+      ? item.path_kinds.filter(k => k !== kind)
+      : [...item.path_kinds, kind]
+    onAct(item.id, 'path_kinds', { path_kinds: next })
   }
 
   return (
@@ -241,6 +264,35 @@ function Card({ item, status, onAct, onNotify, disabled }: {
           {item.text.length > 400 ? item.text.slice(0, 400) + '…' : item.text}
         </p>
       )}
+
+      {/* Path-kinds: тегирование для онбординг-рекомендаций.
+          Не обязательно, но без него этот пост не попадёт в подборку
+          практикумов после анкеты. */}
+      <div className="flex flex-wrap gap-1.5 mb-3 items-center">
+        <span className="text-xs mr-1" style={{ color: 'rgba(28,28,30,0.45)' }}>
+          Под что подходит:
+        </span>
+        {PATH_KIND_OPTIONS.map(opt => {
+          const active = item.path_kinds.includes(opt.id)
+          return (
+            <button
+              key={opt.id}
+              onClick={() => togglePathKind(opt.id)}
+              disabled={disabled}
+              className="px-2.5 py-1 rounded-full text-xs font-medium"
+              style={{
+                background: active ? '#0A84FF' : 'rgba(28,28,30,0.06)',
+                color: active ? '#fff' : 'rgba(28,28,30,0.65)',
+                border: active ? '1px solid #0A84FF' : '1px solid rgba(28,28,30,0.10)',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.5 : 1,
+              }}
+            >
+              {opt.emoji} {opt.label}
+            </button>
+          )
+        })}
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {status === 'pending' && (

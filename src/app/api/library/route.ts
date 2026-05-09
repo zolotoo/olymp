@@ -64,6 +64,11 @@ export async function GET(req: NextRequest) {
   const kind = url.searchParams.get('kind')
   const onlyNew = url.searchParams.get('new') === '1'
   const onlyFeatured = url.searchParams.get('featured') === '1'
+  // path_kind: фильтр для онбординг-рекомендаций. Берём посты, у которых
+  // path_kinds содержит запрошенный ключ. Если path_kinds=[] (нетегированный)
+  // пост в выборку не попадает — это поведение by design: либо тегируем, либо
+  // используем без фильтра.
+  const pathKind = url.searchParams.get('path_kind')
 
   // Загружаем все видимые топики — нужны для заголовков секций и порядка чипов.
   const { data: topicsRaw } = await supabaseAdmin
@@ -93,6 +98,10 @@ export async function GET(req: NextRequest) {
   if (onlyNew) {
     const since = new Date(Date.now() - NEW_WINDOW_DAYS * 86400_000).toISOString()
     q = q.gte('created_at', since)
+  }
+  if (pathKind) {
+    // contains: вернёт строки где path_kinds содержит [pathKind].
+    q = q.contains('path_kinds', [pathKind])
   }
 
   const { data: rowsRaw } = await q

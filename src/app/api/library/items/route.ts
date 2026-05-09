@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     .from('library_items')
     .select(`
       id, chat_id, message_id, thread_id, kind, status,
-      title_override, is_featured, approved_at, created_at,
+      title_override, is_featured, approved_at, created_at, path_kinds,
       tg_messages:tg_messages!inner ( text, has_media, media_kind, sent_at, author_tg_id )
     `)
     .eq('status', status)
@@ -61,6 +61,9 @@ export async function GET(req: NextRequest) {
     items: (rows ?? []).map(r => {
       const tg = (r as { tg_messages?: { text?: string | null; sent_at?: string | null; has_media?: boolean; media_kind?: string | null; author_tg_id?: number | null } }).tg_messages
       const topic = topicMap.get(`${r.chat_id}:${r.thread_id ?? 0}`)
+      const pathKinds = Array.isArray((r as { path_kinds?: unknown }).path_kinds)
+        ? (r as { path_kinds: string[] }).path_kinds
+        : []
       return {
         id: r.id,
         chat_id: r.chat_id,
@@ -72,6 +75,7 @@ export async function GET(req: NextRequest) {
         is_featured: r.is_featured,
         approved_at: r.approved_at,
         created_at: r.created_at,
+        path_kinds: pathKinds,
         text: tg?.text ?? null,
         has_media: tg?.has_media ?? false,
         media_kind: tg?.media_kind ?? null,
@@ -103,6 +107,7 @@ export async function PATCH(req: NextRequest) {
     id?: number
     action?: string
     title?: string
+    path_kinds?: string[]
   }
   const id = Number(body.id)
   const action = String(body.action ?? '')
@@ -136,6 +141,15 @@ export async function PATCH(req: NextRequest) {
     case 'title': {
       const t = (body.title ?? '').trim()
       patch = { ...patch, title_override: t.length ? t.slice(0, 120) : null }
+      break
+    }
+    case 'path_kinds': {
+      // Дозволенные значения совпадают с PathKind в lib/onboarding.ts.
+      // Дубликаты схлопываем, неизвестные значения отбрасываем.
+      const allowed = new Set(['content', 'vibecode', 'media', 'product', 'sales'])
+      const incoming = Array.isArray(body.path_kinds) ? body.path_kinds : []
+      const cleaned = Array.from(new Set(incoming.filter(k => allowed.has(k))))
+      patch = { ...patch, path_kinds: cleaned }
       break
     }
     default:

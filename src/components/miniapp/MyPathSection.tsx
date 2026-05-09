@@ -87,27 +87,39 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
 
   useEffect(() => { load() /* eslint-disable-next-line */ }, [initData])
 
-  // Лучшие практикумы для секции «С чего начать» в hero после finalize.
+  // Лучшие практикумы для секции «Лучшие практикумы про …» в hero.
   // tg_topics.kind='practice' — отдельная ветка с курируемыми практикумами,
-  // её админ ведёт вручную (см. supabase/backfills/SETUP_ALL.sql).
-  // Подгружаем после первой загрузки данных, не блокируем UI анкеты.
+  // path_kinds — массив-тегов на library_items, заполняет Сергей в админке.
+  //
+  // Стратегия: сначала тащим отфильтровано по top-1 направлению. Если по тегу
+  // ничего не размечено — фолбэк на нефильтрованный kind=practice (так hero
+  // не пустует на ранней фазе, пока админ ещё не успел затегать).
   useEffect(() => {
     if (!data || practiceItems.length) return
+    const top = data.recommendations?.[0]?.kind
     const fetchPractice = async () => {
-      try {
-        const r = await tgFetch('/api/library?kind=practice', initData)
+      const tryFetch = async (path: string): Promise<PracticeItem[]> => {
+        const r = await tgFetch(path, initData)
         const d = await r.json()
         const topic = (d.topics ?? []).find((t: { kind: string }) => t.kind === 'practice')
-        if (topic?.items?.length) {
-          setPracticeItems((topic.items as PracticeItem[]).slice(0, 3))
+        return (topic?.items as PracticeItem[] | undefined)?.slice(0, 3) ?? []
+      }
+      try {
+        let items: PracticeItem[] = []
+        if (top) {
+          items = await tryFetch(`/api/library?kind=practice&path_kind=${encodeURIComponent(top)}`)
         }
+        if (!items.length) {
+          items = await tryFetch('/api/library?kind=practice')
+        }
+        if (items.length) setPracticeItems(items)
       } catch {
-        // Тишина — практикумы это nice-to-have, без них hero всё равно рисуется.
+        // Тишина — практикумы nice-to-have, hero рисуется и без них.
       }
     }
     fetchPractice()
     // eslint-disable-next-line
-  }, [data?.progress.mini_app_done])
+  }, [data?.progress.mini_app_done, data?.recommendations])
 
   const isDone = !!data?.progress.mini_app_done
   const canFinalize = !!level && lookingFor.size > 0 && motivation.trim().length > 0
