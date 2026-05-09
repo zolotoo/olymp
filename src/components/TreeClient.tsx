@@ -712,6 +712,37 @@ export default function TreeClient() {
                     </div>
                   </div>
                 )}
+                {/* Callback-кнопки целей: прикручиваются программно при отправке
+                    (см. dmGoalKeyboard в lib/onboarding.ts). В bot_messages не
+                    хранятся, тут показываем превью чтобы было понятно что
+                    реальный пользователь увидит под текстом. */}
+                {(selected.id === 'l_dm_q1' || selected.id === 'onb_dm1_24h') && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(28,28,30,0.38)', marginBottom: 6 }}>
+                      Callback-кнопки (6) · прикрепляются автоматически
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      {[
+                        '💰 Зарабатывать на AI',
+                        '🛠 Делать продукты с AI',
+                        '🎬 Создавать контент с AI',
+                        '⚡️ Вайбкодить',
+                        '🧭 Просто разобраться',
+                      ].map((label, i) => (
+                        <div key={i}
+                          style={{ padding: '9px 14px', background: 'rgba(28,28,30,0.04)', border: '1px solid rgba(28,28,30,0.08)', borderRadius: 12, fontSize: 12.5, fontWeight: 500, color: 'rgba(28,28,30,0.65)', textAlign: 'center' }}>
+                          {label}
+                        </div>
+                      ))}
+                      <div style={{ gridColumn: '1 / span 2', padding: '9px 14px', background: 'rgba(28,28,30,0.04)', border: '1px solid rgba(28,28,30,0.08)', borderRadius: 12, fontSize: 12.5, fontWeight: 500, color: 'rgba(28,28,30,0.65)', textAlign: 'center' }}>
+                        ✍️ Написать своё
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'rgba(28,28,30,0.45)', marginTop: 6, fontStyle: 'italic' }}>
+                      Эти кнопки нельзя редактировать — список целей зашит в коде. Текст сообщения выше редактируется свободно.
+                    </div>
+                  </div>
+                )}
                 {saveOk && (
                   <div style={{ marginTop: 10, fontSize: 12.5, color: '#1C8A3C', fontWeight: 500 }}>✓ Сохранено</div>
                 )}
