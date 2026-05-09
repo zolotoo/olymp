@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { tgFetch, useTelegram } from './TelegramProvider'
 
 // «Мой путь» — один экран анкеты + рекомендации.
@@ -14,6 +14,14 @@ import { tgFetch, useTelegram } from './TelegramProvider'
 interface OptionLevel { id: string; label: string }
 interface OptionLookingFor { id: string; emoji: string; label: string }
 interface PathMetaItem { emoji: string; label: string; description: string }
+
+interface PracticeItem {
+  message_id: number
+  title: string
+  preview: string
+  link: string
+  has_media: boolean
+}
 
 interface ApiResponse {
   state: {
@@ -53,6 +61,7 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [justFinalized, setJustFinalized] = useState(false)
+  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([])
 
   // Локальные значения формы — синхронизируются с сервером по «Готово».
   const [level, setLevel] = useState<string | null>(null)
@@ -78,6 +87,28 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
 
   useEffect(() => { load() /* eslint-disable-next-line */ }, [initData])
 
+  // Лучшие практикумы для секции «С чего начать» в hero после finalize.
+  // tg_topics.kind='practice' — отдельная ветка с курируемыми практикумами,
+  // её админ ведёт вручную (см. supabase/backfills/SETUP_ALL.sql).
+  // Подгружаем после первой загрузки данных, не блокируем UI анкеты.
+  useEffect(() => {
+    if (!data || practiceItems.length) return
+    const fetchPractice = async () => {
+      try {
+        const r = await tgFetch('/api/library?kind=practice', initData)
+        const d = await r.json()
+        const topic = (d.topics ?? []).find((t: { kind: string }) => t.kind === 'practice')
+        if (topic?.items?.length) {
+          setPracticeItems((topic.items as PracticeItem[]).slice(0, 3))
+        }
+      } catch {
+        // Тишина — практикумы это nice-to-have, без них hero всё равно рисуется.
+      }
+    }
+    fetchPractice()
+    // eslint-disable-next-line
+  }, [data?.progress.mini_app_done])
+
   const isDone = !!data?.progress.mini_app_done
   const canFinalize = !!level && lookingFor.size > 0 && motivation.trim().length > 0
 
@@ -99,13 +130,21 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
       const d = await r.json()
       if (d.ok) {
         await load()
-        if (d.finalized && d.pointsAwarded > 0) {
-          setJustFinalized(true)
-          window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
-          onComplete?.()
+        if (d.finalized) {
+          // Закрываем форму и переходим в hero. Делаем это безусловно при
+          // финализации — даже если pointsAwarded=0 (юзер уже финализировался
+          // раньше), он всё равно должен видеть свой путь, не висящую анкету.
+          setOpen(false)
+          if (d.pointsAwarded > 0) {
+            setJustFinalized(true)
+            window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+            onComplete?.()
+          }
         }
       } else {
-        setError(d.error || 'Не удалось сохранить')
+        // Server-side reasons: level_required / looking_for_required / motivation_required.
+        // Сообщение жёлтое внутри карточки, юзер видит что не так и докрутит.
+        setError(reasonText(d.error))
       }
     } catch {
       setError('Сеть недоступна')
@@ -114,27 +153,15 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
     }
   }
 
-  if (error) return <div className="text-sm" style={{ color: '#FF3B30' }}>{error}</div>
+  if (error && !data) return <div className="text-sm" style={{ color: '#FF3B30' }}>{error}</div>
   if (!data) return <div className="text-sm" style={{ color: 'rgba(28,28,30,0.45)' }}>Загружаем «Мой путь»…</div>
 
   // ─── Финал после finalize ─────────────────────────────────────────────────
+  // Показываем hero и для свежезавершённой анкеты (justFinalized=true), и для
+  // ранее завершённой (isDone && !open). Контент одинаковый — баннер успеха
+  // плюс «куда идти» плюс практикумы.
   if ((justFinalized && isDone) || (isDone && !open)) {
-    return (
-      <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.06)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="text-xs font-semibold uppercase mb-0.5" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.6px' }}>
-              Мой путь
-            </div>
-            <div className="text-base font-semibold" style={{ color: '#1C1C1E', letterSpacing: '-0.3px' }}>
-              {justFinalized ? '+10 фантиков твои' : 'Анкета пройдена'}
-            </div>
-          </div>
-          <span style={{ fontSize: 28 }}>🗺</span>
-        </div>
-        <RecommendationsView data={data} />
-      </div>
-    )
+    return <FinishedHero data={data} practice={practiceItems} justFinalized={justFinalized} />
   }
 
   // ─── Idle: ещё не начинали ─────────────────────────────────────────────────
@@ -281,6 +308,13 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-xl px-3 py-2 mb-3 text-xs"
+             style={{ background: 'rgba(255,59,48,0.08)', color: '#FF3B30', border: '1px solid rgba(255,59,48,0.20)' }}>
+          {error}
+        </div>
+      )}
+
       <button
         onClick={submit}
         disabled={!canFinalize || saving}
@@ -298,38 +332,114 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
   )
 }
 
-function RecommendationsView({ data }: { data: ApiResponse }) {
-  const recs = useMemo(() => data.recommendations ?? [], [data])
-  if (!recs.length) {
-    return <div className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>Рекомендации появятся после анкеты.</div>
-  }
-  const medals = ['🥇', '🥈', '🥉']
+// ─── Hero после finalize ─────────────────────────────────────────────────────
+function FinishedHero({
+  data, practice, justFinalized,
+}: {
+  data: ApiResponse
+  practice: PracticeItem[]
+  justFinalized: boolean
+}) {
+  const recs = data.recommendations ?? []
+  const top = recs[0]
+  const rest = recs.slice(1, 3)
+  const topMeta = top ? data.pathMeta[top.kind] : null
+  const topLabel = topMeta?.label ?? 'твой путь'
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.6px' }}>
-        Куда лучше идти в клубе
+    <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.06)' }}>
+      {/* Hero: 🎉 + +10 фантиков */}
+      <div className="text-center mb-5">
+        <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 8 }}>🎉</div>
+        <div className="text-xl font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-0.5px' }}>
+          {justFinalized ? '+10 фантиков твои!' : 'Анкета пройдена'}
+        </div>
+        <div className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.5 }}>
+          {justFinalized
+            ? 'И бонусную крутку Колеса дали. Удачи!'
+            : 'Колесо удачи открыто, можно крутить.'}
+        </div>
       </div>
-      {recs.map((r, i) => {
-        const meta = data.pathMeta[r.kind]
-        if (!meta) return null
-        return (
-          <div key={r.kind} className="rounded-2xl p-3" style={{ background: '#F2F2F7', border: '1px solid rgba(28,28,30,0.06)' }}>
-            <div className="flex items-center gap-2 mb-1">
-              <span style={{ fontSize: 22 }}>{medals[i]}</span>
-              <span style={{ fontSize: 22 }}>{meta.emoji}</span>
-              <span className="text-sm font-semibold flex-1" style={{ color: '#1C1C1E', letterSpacing: '-0.2px' }}>
-                {meta.label}
-              </span>
-              <span className="text-xs font-semibold" style={{ color: ACCENT }}>
-                {r.score}%
-              </span>
-            </div>
-            <div className="text-xs" style={{ color: 'rgba(28,28,30,0.60)', lineHeight: 1.55 }}>
-              {meta.description}
-            </div>
+
+      {/* Top-1 path как hero-карточка */}
+      {topMeta && top && (
+        <div className="rounded-2xl p-4 mb-3" style={{ background: `${ACCENT}10`, border: `1.5px solid ${ACCENT}40` }}>
+          <div className="text-xs font-semibold uppercase mb-2" style={{ color: ACCENT, letterSpacing: '0.7px' }}>
+            Твой путь в клубе
           </div>
-        )
-      })}
+          <div className="flex items-center gap-2 mb-1.5">
+            <span style={{ fontSize: 28 }}>{topMeta.emoji}</span>
+            <span className="text-lg font-bold flex-1" style={{ color: '#1C1C1E', letterSpacing: '-0.3px' }}>
+              {topMeta.label}
+            </span>
+            <span className="text-xs font-bold" style={{ color: ACCENT }}>{top.score}%</span>
+          </div>
+          <div className="text-sm" style={{ color: 'rgba(28,28,30,0.65)', lineHeight: 1.5 }}>
+            {topMeta.description}
+          </div>
+        </div>
+      )}
+
+      {/* Практикумы по теме */}
+      {practice.length > 0 && (
+        <div className="mb-4">
+          <div className="text-xs font-semibold uppercase mb-2" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.6px' }}>
+            Лучшие практикумы про {topLabel.toLowerCase()}
+          </div>
+          <div className="flex flex-col gap-2">
+            {practice.map(p => (
+              <a
+                key={p.message_id}
+                href={p.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl p-3 text-left active:scale-[0.99] transition-transform"
+                style={{ background: '#F2F2F7', border: '1px solid rgba(28,28,30,0.06)', textDecoration: 'none' }}
+              >
+                <div className="text-sm font-semibold mb-0.5" style={{ color: '#1C1C1E', letterSpacing: '-0.2px' }}>
+                  {p.has_media ? '🎥 ' : ''}{p.title}
+                </div>
+                {p.preview && (
+                  <div className="text-xs" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.45 }}>
+                    {p.preview}
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Прочие подходящие — мелким списком */}
+      {rest.length > 0 && (
+        <div className="mb-1">
+          <div className="text-xs font-semibold uppercase mb-2" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.6px' }}>
+            Ещё подходит
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {rest.map(r => {
+              const meta = data.pathMeta[r.kind]
+              if (!meta) return null
+              return (
+                <div key={r.kind} className="flex items-center gap-2 px-1">
+                  <span style={{ fontSize: 16 }}>{meta.emoji}</span>
+                  <span className="text-sm flex-1" style={{ color: 'rgba(28,28,30,0.75)' }}>{meta.label}</span>
+                  <span className="text-xs" style={{ color: 'rgba(28,28,30,0.45)' }}>{r.score}%</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+// Маппинг server-side ошибок в человеческий текст для показа в форме.
+function reasonText(code: string): string {
+  if (code === 'level_required')        return 'Выбери уровень в AI'
+  if (code === 'looking_for_required')  return 'Отметь хотя бы один пункт «Что хочешь забрать»'
+  if (code === 'motivation_required')   return 'Заполни «Почему вступил»'
+  return code || 'Не удалось сохранить'
+}
+
