@@ -12,7 +12,12 @@ import { getAuthedUser } from '@/lib/telegram-auth'
 //
 // Доступ: только аутентифицированному участнику клуба.
 
-const POSTS_PER_TOPIC = 8
+// 30 — пока эмпирически достаточно для path-фильтра в мини-аппе. Был 8,
+// при сильном засеивании топика «практикумы» помеченные посты не попадали
+// в верхние 8 по дате и фильтр @path_kind недосчитывал items.
+// Если в каком-то топике станет больше 30 постов на одно направление —
+// бампать ещё раз или начать применять path_kind на стороне сервера.
+const POSTS_PER_TOPIC = 30
 const POST_PREVIEW_LEN = 220
 const NEW_WINDOW_DAYS = 7
 
@@ -83,8 +88,8 @@ export async function GET(req: NextRequest) {
   }>
   if (topics.length === 0) return NextResponse.json({ topics: [] })
 
-  // Один запрос за всеми published-карточками. Лимит достаточный: 8 на топик
-  // × ~10 топиков = 80, берём с запасом до 200.
+  // Один запрос за всеми published-карточками. 30 на топик × 10 топиков = 300,
+  // берём с запасом до 500.
   let q = supabaseAdmin
     .from('library_items')
     .select(`
@@ -93,7 +98,7 @@ export async function GET(req: NextRequest) {
     `)
     .eq('status', 'published')
     .order('created_at', { ascending: false })
-    .limit(200)
+    .limit(500)
   if (kind) q = q.eq('kind', kind)
   if (onlyFeatured) q = q.eq('is_featured', true)
   if (onlyNew) {

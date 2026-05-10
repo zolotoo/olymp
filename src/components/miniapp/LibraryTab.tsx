@@ -120,20 +120,21 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
     return all
   }, [topics])
 
-  // Какие path-tag'и реально присутствуют среди отображаемых сейчас items.
-  // Sub-chip'ы по направлениям рисуем только если есть размеченные посты.
-  // ВАЖНО: useMemo обязательно ДО ранних return'ов ниже, иначе при разных
-  // ветках количество вызванных хуков будет различаться (Rules of Hooks).
-  const availablePathKinds = useMemo(() => {
-    const set = new Set<string>()
-    if (!topics) return set
+  // Counts по path-tag'ам в текущем активном топике (или всех, если activeKind=null).
+  // Используем для рендера sub-chip'ов с цифрами вида «⚡ Вайбкодинг 5».
+  // ВАЖНО: useMemo обязательно ДО ранних return'ов, иначе Rules of Hooks.
+  const pathKindCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    if (!topics) return counts
     const subset = activeKind && activeKind !== NEW_KIND
       ? topics.filter(t => t.kind === activeKind)
       : topics
     for (const t of subset) for (const it of t.items) {
-      for (const pk of it.path_kinds ?? []) set.add(pk)
+      for (const pk of it.path_kinds ?? []) {
+        counts[pk] = (counts[pk] ?? 0) + 1
+      }
     }
-    return set
+    return counts
   }, [topics, activeKind])
 
   const openTg = (item: { link: string; message_id: number; kind: string; chat_id: number }) => {
@@ -229,14 +230,15 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
         ))}
       </div>
 
-      {/* Sub-чипы по path_kinds. Появляются если хотя бы один visible item
-          размечен админом. Рендерим только присутствующие направления. */}
-      {!showNew && availablePathKinds.size > 0 && (
+      {/* Sub-чипы по path_kinds с count'ами. Появляются если хотя бы один
+          item в текущем kind-фильтре размечен админом по направлению. */}
+      {!showNew && Object.keys(pathKindCounts).length > 0 && (
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           <FilterChip active={activePathKind === null} onClick={() => setActivePathKind(null)} compact>Все направления</FilterChip>
-          {PATH_KIND_LABELS.filter(pk => availablePathKinds.has(pk.id)).map(pk => (
+          {PATH_KIND_LABELS.filter(pk => (pathKindCounts[pk.id] ?? 0) > 0).map(pk => (
             <FilterChip key={pk.id} active={activePathKind === pk.id} onClick={() => setActivePathKind(pk.id)} compact>
               <span style={{ marginRight: 4 }}>{pk.emoji}</span>{pk.label}
+              <span style={{ marginLeft: 4, opacity: 0.7 }}>{pathKindCounts[pk.id]}</span>
             </FilterChip>
           ))}
         </div>
