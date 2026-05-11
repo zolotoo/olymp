@@ -57,6 +57,17 @@ function snippet(text: string, limit = 280): string {
   return useText.length > limit ? useText.slice(0, limit).trim() + '…' : useText
 }
 
+// Ссылка на сообщение в приватном супергрупповом чате клуба:
+// t.me/c/<chat>/<msg> либо t.me/c/<chat>/<thread>/<msg> для форум-топиков.
+// chat — это abs(chat_id) без префикса -100.
+function chatMessageUrl(chatId: number, messageId: number, threadId: number | null): string {
+  const shortId = String(chatId).replace(/^-100/, '').replace(/^-/, '')
+  if (threadId && threadId !== messageId) {
+    return `https://t.me/c/${shortId}/${threadId}/${messageId}`
+  }
+  return `https://t.me/c/${shortId}/${messageId}`
+}
+
 function deriveTitle(text: string | null, override: string | null): string {
   if (override?.trim()) return override.trim().slice(0, 120)
   const t = (text ?? '').trim()
@@ -101,6 +112,8 @@ export async function POST(req: NextRequest) {
   // конкретного поста. Параметры читаются клиентом миниаппа (см. /app/page.tsx).
   const cta_url = `${miniAppUrl()}&tab=library&kind=${encodeURIComponent(item.kind)}&msg=${item.message_id}`
   const cta_label = 'Открыть в приложении'
+  const cta_url_2 = chatMessageUrl(item.chat_id, item.message_id, item.thread_id ?? null)
+  const cta_label_2 = 'Открыть в чате'
 
   // Имя черновика — для админа, не для участников.
   const draftTitle = `Библиотека: ${title}`.slice(0, 120)
@@ -114,6 +127,8 @@ export async function POST(req: NextRequest) {
       audience_filter: null,
       cta_url,
       cta_label,
+      cta_url_2,
+      cta_label_2,
       status: 'draft',
       created_by_tg: adminTg,
     })

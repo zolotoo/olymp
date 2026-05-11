@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase'
 import { AUDIENCE_LABELS } from '@/lib/audience-resolver'
 import SendDraftButton from './SendDraftButton'
+import DraftEditor from './DraftEditor'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,8 @@ interface BroadcastRow {
   audience: string
   cta_url: string | null
   cta_label: string | null
+  cta_url_2: string | null
+  cta_label_2: string | null
   status: string
   created_at: string
   started_at: string | null
@@ -91,14 +94,35 @@ export default async function BroadcastDetail({ params }: { params: Promise<{ id
       </div>
 
       <div className="rounded-2xl p-6" style={card}>
-        <h2 className="font-semibold mb-3" style={{ color: '#1C1C1E' }}>Текст</h2>
-        <div className="text-sm whitespace-pre-wrap p-4 rounded-xl" style={{ background: 'rgba(28,28,30,0.04)', color: '#1C1C1E' }}>
-          {b.text}
-        </div>
-        {b.cta_url && (
-          <div className="mt-3 text-sm" style={{ color: 'rgba(28,28,30,0.7)' }}>
-            CTA: <span className="font-mono">{b.cta_label || 'кнопка'}</span> → <span className="font-mono">{b.cta_url}</span>
-          </div>
+        <h2 className="font-semibold mb-3" style={{ color: '#1C1C1E' }}>
+          {b.status === 'draft' ? 'Редактирование черновика' : 'Текст'}
+        </h2>
+        {b.status === 'draft' ? (
+          <DraftEditor
+            id={b.id}
+            title={b.title}
+            text={b.text}
+            ctaUrl={b.cta_url}
+            ctaLabel={b.cta_label}
+            ctaUrl2={b.cta_url_2}
+            ctaLabel2={b.cta_label_2}
+          />
+        ) : (
+          <>
+            <div className="text-sm whitespace-pre-wrap p-4 rounded-xl" style={{ background: 'rgba(28,28,30,0.04)', color: '#1C1C1E' }}>
+              {b.text}
+            </div>
+            {(b.cta_url || b.cta_url_2) && (
+              <div className="mt-3 space-y-1 text-sm" style={{ color: 'rgba(28,28,30,0.7)' }}>
+                {b.cta_url && (
+                  <div>Кнопка 1: <span className="font-mono">{b.cta_label || 'кнопка'}</span> → <span className="font-mono">{b.cta_url}</span></div>
+                )}
+                {b.cta_url_2 && (
+                  <div>Кнопка 2: <span className="font-mono">{b.cta_label_2 || 'кнопка'}</span> → <span className="font-mono">{b.cta_url_2}</span></div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 

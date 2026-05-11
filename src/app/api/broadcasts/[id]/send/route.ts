@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendTracked } from '@/lib/send-tracked'
 import { resolveAudience, type AudienceKind, type AudienceFilter } from '@/lib/audience-resolver'
-import { wrapLink } from '@/lib/click-tokens'
 import { getCurrentAdminTgId } from '@/lib/admin-auth'
+import type { InlineUrlButton } from '@/lib/telegram'
 
 interface BroadcastRow {
   id: string
@@ -13,6 +13,8 @@ interface BroadcastRow {
   audience_filter: AudienceFilter | null
   cta_url: string | null
   cta_label: string | null
+  cta_url_2: string | null
+  cta_label_2: string | null
   status: string
 }
 
@@ -21,10 +23,11 @@ function renderText(tpl: string, t: { tg_first_name: string | null; tg_username:
   return tpl.replace(/\{name\}/g, name).replace(/\{username\}/g, t.tg_username || '')
 }
 
-function buildHost(req: NextRequest): string {
-  const h = req.headers.get('host')
-  const proto = (h && !h.includes('localhost')) ? 'https' : 'http'
-  return `${proto}://${h}`
+function buildButtons(b: BroadcastRow): InlineUrlButton[] | null {
+  const out: InlineUrlButton[] = []
+  if (b.cta_url) out.push({ label: b.cta_label || 'Открыть в приложении', url: b.cta_url })
+  if (b.cta_url_2) out.push({ label: b.cta_label_2 || 'Открыть в чате', url: b.cta_url_2 })
+  return out.length ? out : null
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -60,26 +63,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     })
     .eq('id', id)
 
-  const host = buildHost(req)
   let delivered = 0
   let failed = 0
 
+  const buttons = buildButtons(b)
+
   // Telegram bot rate: ~30 messages/sec to different users. Throttle conservatively.
   for (const t of targets) {
-    let body = renderText(b.text, t)
-    if (b.cta_url) {
-      const tracked = await wrapLink({
-        targetUrl: b.cta_url,
-        campaign: `broadcast:${b.id}`,
-        tgId: t.tg_id,
-        host,
-      })
-      const label = b.cta_label || 'Подробнее'
-      body += `\n\n<a href="${tracked}">${label}</a>`
-    }
+    const body = renderText(b.text, t)
     const res = await sendTracked(t.tg_id, body, {
       campaign: `broadcast:${b.id}`,
       broadcastId: b.id,
+      buttons,
     })
     if (res?.ok) delivered++; else failed++
     // ~25 msgs/sec
