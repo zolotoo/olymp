@@ -118,7 +118,7 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
           className="dk-bubble dk-bubble-brand dk-sticker-tilt-r"
           style={{ position: 'absolute', top: 0, right: 4 }}
         >
-          🍃 {points}
+          🍬 {points}
         </span>
         <span
           className="dk-pill mb-2"
@@ -325,7 +325,7 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
 
       <div className="mt-4 dk-card-mini p-4">
         <div className="text-xs font-bold uppercase mb-2" style={{ color: 'var(--dk-brand-ink)', letterSpacing: '0.6px' }}>
-          🍃 Как получить фантики
+          🍬 Как получить фантики
         </div>
         <ul className="text-xs dk-muted" style={{ lineHeight: 1.8 }}>
           <li>+3 за реакцию на твоё сообщение</li>

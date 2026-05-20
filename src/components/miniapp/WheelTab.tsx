@@ -145,7 +145,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
         <p className="text-sm dk-muted">
           {reason === 'awaiting_renewal'
             ? 'Следующая попытка откроется при продлении подписки'
-            : 'Крути и получай фантики 🍃'}
+            : 'Крути и получай фантики 🍬'}
         </p>
         {prevPrize != null && !canSpin && !result && (
           <p className="text-xs mt-2 dk-muted-2">
@@ -392,7 +392,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
 
 function Confetti() {
   const pieces = useMemo(() => {
-    const emojis = ['🎉', '✨', '🍃', '⭐', '💫', '🎊']
+    const emojis = ['🎉', '✨', '🍬', '⭐', '💫', '🎊']
     return Array.from({ length: 28 }).map((_, i) => ({
       key: i,
       emoji: emojis[i % emojis.length],

@@ -307,38 +307,73 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
 }
 
 function FeaturedCard({ item, onOpen }: {
-  item: LibItem & { kind: string; topicTitle: string }
+  item: LibItem & { kind: string; topicTitle: string; topicEmoji?: string | null }
   onOpen: () => void
 }) {
-  const bg = KIND_GRADIENT[item.kind] ?? 'linear-gradient(135deg, #0A84FF 0%, #5AC8FA 100%)'
   return (
     <button
       onClick={onOpen}
-      className="rounded-3xl text-left active:scale-[0.98] transition-transform"
+      className="dk-card-mini text-left active:scale-[0.98] transition-transform"
       style={{
         flexShrink: 0,
         scrollSnapAlign: 'start',
         width: '78%',
         minWidth: 260,
-        height: 132,
-        padding: '16px 18px',
-        background: bg,
-        border: 'none',
+        minHeight: 140,
+        padding: '14px 16px',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        color: '#fff',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        gap: 8,
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.85, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-        🔥 Топ недели
+      {/* Левая brand-полоса как у Drinkit-карточек */}
+      <div style={{
+        position: 'absolute',
+        left: 0, top: 0, bottom: 0,
+        width: 4,
+        background: 'var(--dk-brand)',
+      }} />
+      <div className="flex items-center justify-between" style={{ paddingLeft: 4 }}>
+        <span
+          className="inline-flex items-center rounded-full text-[10px] font-bold uppercase"
+          style={{
+            padding: '4px 9px',
+            background: 'var(--dk-brand-soft)',
+            color: 'var(--dk-brand-ink)',
+            letterSpacing: '0.5px',
+          }}
+        >
+          🔥 Топ недели
+        </span>
+        {item.topicEmoji && (
+          <span style={{ fontSize: 20, lineHeight: 1 }}>{item.topicEmoji}</span>
+        )}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.25, letterSpacing: '-0.4px' }}>
+      <div
+        style={{
+          fontSize: 16,
+          fontWeight: 800,
+          lineHeight: 1.25,
+          letterSpacing: '-0.4px',
+          color: 'var(--dk-text-1)',
+          paddingLeft: 4,
+        }}
+      >
         {item.title.slice(0, 80)}
       </div>
-      <div style={{ fontSize: 11, opacity: 0.85 }}>
+      <div
+        style={{
+          fontSize: 11,
+          color: 'var(--dk-text-3)',
+          fontWeight: 500,
+          letterSpacing: '-0.1px',
+          paddingLeft: 4,
+        }}
+      >
         {item.topicTitle} · {formatDate(item.sent_at)}
       </div>
     </button>

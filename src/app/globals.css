@@ -438,16 +438,12 @@ body {
 /* Bottom tab-bar — responsive sizing.
    Goal: 6 кнопок гарантированно влезают даже на iPhone SE (320px).
    На широких — комфортно, эмодзи активного слева от подписи. */
-.dk-tab-btn { font-size: 13px; gap: 5px; }
+.dk-tab-btn { font-size: 12px; gap: 4px; }
 .dk-tab-label { white-space: nowrap; }
-.dk-tab-emoji { font-size: 14px; flex-shrink: 0; }
-@media (max-width: 400px) {
-  .dk-tab-btn { font-size: 12px; gap: 3px; }
+.dk-tab-emoji { font-size: 13px; flex-shrink: 0; }
+@media (max-width: 360px) {
+  .dk-tab-btn { font-size: 11px; gap: 3px; padding: 9px 2px; }
   .dk-tab-emoji { font-size: 12px; }
-}
-@media (max-width: 340px) {
-  .dk-tab-btn { font-size: 11px; gap: 2px; padding: 9px 2px; }
-  .dk-tab-emoji { display: none; }
 }
 
 /* Confetti at wheel win */

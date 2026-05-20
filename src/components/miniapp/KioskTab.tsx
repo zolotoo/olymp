@@ -102,7 +102,7 @@ export default function KioskTab({ reloadKey = 0, onPurchase }: { reloadKey?: nu
           boxShadow: '0 8px 24px rgba(45,91,255,0.30)',
         }}
       >
-        <div className="text-sm font-bold" style={{ color: '#FFFFFF', letterSpacing: '-0.2px' }}>🍃 {balance}</div>
+        <div className="text-sm font-bold" style={{ color: '#FFFFFF', letterSpacing: '-0.2px' }}>🍬 {balance}</div>
       </div>
 
       {/* 2-column grid */}
@@ -121,7 +121,7 @@ export default function KioskTab({ reloadKey = 0, onPurchase }: { reloadKey?: nu
                   className="dk-leaves-badge dk-sticker-tilt-r"
                   style={{ position: 'absolute', top: -8, right: -6, fontSize: 12, padding: '5px 10px' }}
                 >
-                  +{item.price} 🍃
+                  +{item.price} 🍬
                 </span>
               )}
               <div

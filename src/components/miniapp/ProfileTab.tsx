@@ -87,7 +87,7 @@ export default function ProfileTab({ reloadKey }: { reloadKey?: number }) {
           className="dk-leaves-badge dk-sticker-tilt-r"
           style={{ position: 'absolute', top: 14, right: 14 }}
         >
-          🍃 +{m.points}
+          🍬 +{m.points}
         </span>
         {data.user.photo_url ? (
           <img
@@ -124,7 +124,7 @@ export default function ProfileTab({ reloadKey }: { reloadKey?: number }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="dk-card-mini p-4">
           <div className="text-[11px] font-bold uppercase mb-1 dk-muted-2" style={{ letterSpacing: '0.6px' }}>
-            🍃 Фантики
+            🍬 Фантики
           </div>
           <div className="text-3xl font-extrabold" style={{ color: 'var(--dk-text-1)', letterSpacing: '-0.8px', lineHeight: 1 }}>
             {m.points}
@@ -151,7 +151,7 @@ export default function ProfileTab({ reloadKey }: { reloadKey?: number }) {
             {data.spins.map((s, i) => (
               <div key={i} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: 'var(--dk-brand-soft)' }}>
                 <div className="text-sm font-medium" style={{ color: 'var(--dk-text-1)' }}>{formatMonth(s.month)}</div>
-                <div className="text-sm font-bold" style={{ color: 'var(--dk-brand)' }}>+{s.prize_leaves} 🍃</div>
+                <div className="text-sm font-bold" style={{ color: 'var(--dk-brand)' }}>+{s.prize_leaves} 🍬</div>
               </div>
             ))}
           </div>

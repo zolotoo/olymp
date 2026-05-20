@@ -273,7 +273,7 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
                   {m.name}{isMe && <span style={{ color: cfg.color, fontWeight: 700 }}> · ты</span>}
                 </div>
                 <div className="text-xs truncate dk-muted">
-                  🍃 {m.points.toLocaleString('ru-RU')} фантиков
+                  🍬 {m.points.toLocaleString('ru-RU')} фантиков
                 </div>
               </div>
             </div>
