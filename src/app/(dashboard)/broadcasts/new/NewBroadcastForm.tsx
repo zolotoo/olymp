@@ -2,7 +2,14 @@
 
 import { useActionState, useState } from 'react'
 import { previewAudienceAction, createBroadcastAction, type CreateState } from './actions'
-import { AUDIENCE_LABELS, type AudienceKind } from '@/lib/audience-types'
+import {
+  AUDIENCE_LABELS,
+  FUNNEL_LABELS,
+  INTEREST_OPTIONS,
+  GOAL_OPTIONS,
+  type AudienceKind,
+  type FunnelStage,
+} from '@/lib/audience-types'
 
 const card = {
   background: 'rgba(255,255,255,0.78)',
@@ -26,6 +33,33 @@ export default function NewBroadcastForm() {
   const [audience, setAudience] = useState<AudienceKind>('members_active')
   const [text, setText] = useState('')
   const [tgIds, setTgIds] = useState('')
+  const [segStages, setSegStages] = useState<FunnelStage[]>([])
+  const [segInterest, setSegInterest] = useState('')
+  const [segGoal, setSegGoal] = useState('')
+  const [segSub, setSegSub] = useState('')           // '' | 'yes' | 'no'
+  const [segOnb, setSegOnb] = useState('')
+  const [segMinInactive, setSegMinInactive] = useState('')
+  const [segMaxInactive, setSegMaxInactive] = useState('')
+  const [segMinEng, setSegMinEng] = useState('')
+
+  function fillPreviewFD(fd: FormData) {
+    fd.set('audience', audience)
+    if (audience === 'custom_tg_ids') fd.set('tg_ids', tgIds)
+    if (audience === 'segment_v') {
+      segStages.forEach((s) => fd.append('seg_stage', s))
+      if (segInterest) fd.set('seg_top_interest', segInterest)
+      if (segGoal) fd.set('seg_goal', segGoal)
+      if (segSub) fd.set('seg_subscription', segSub)
+      if (segOnb) fd.set('seg_onboarding', segOnb)
+      if (segMinInactive) fd.set('seg_min_inactive', segMinInactive)
+      if (segMaxInactive) fd.set('seg_max_inactive', segMaxInactive)
+      if (segMinEng) fd.set('seg_min_engagement', segMinEng)
+    }
+  }
+
+  function toggleStage(s: FunnelStage) {
+    setSegStages((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]))
+  }
   const [previewState, previewAction, previewPending] = useActionState<CreateState, FormData>(
     previewAudienceAction,
     {},
@@ -71,14 +105,125 @@ export default function NewBroadcastForm() {
           </div>
         )}
 
+        {audience === 'segment_v' && (
+          <div className="rounded-xl p-4 space-y-4" style={{ background: 'rgba(10,132,255,0.06)', border: '1px solid rgba(10,132,255,0.15)' }}>
+            <div>
+              <Label>Стадия воронки (можно несколько)</Label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(FUNNEL_LABELS) as FunnelStage[]).map((s) => {
+                  const on = segStages.includes(s)
+                  return (
+                    <button
+                      type="button"
+                      key={s}
+                      onClick={() => toggleStage(s)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+                      style={{
+                        background: on ? '#0A84FF' : '#fff',
+                        color: on ? '#fff' : '#0A84FF',
+                        border: '1px solid rgba(10,132,255,0.35)',
+                      }}
+                    >
+                      {FUNNEL_LABELS[s]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Топ-интерес (библиотека)</Label>
+                <select value={segInterest} onChange={(e) => setSegInterest(e.target.value)} style={inputStyle}>
+                  <option value="">— любой —</option>
+                  {INTEREST_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Цель из анкеты</Label>
+                <select value={segGoal} onChange={(e) => setSegGoal(e.target.value)} style={inputStyle}>
+                  <option value="">— любая —</option>
+                  {GOAL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Подписка активна</Label>
+                <select value={segSub} onChange={(e) => setSegSub(e.target.value)} style={inputStyle}>
+                  <option value="">— не важно —</option>
+                  <option value="yes">да</option>
+                  <option value="no">нет</option>
+                </select>
+              </div>
+              <div>
+                <Label>Анкета пройдена</Label>
+                <select value={segOnb} onChange={(e) => setSegOnb(e.target.value)} style={inputStyle}>
+                  <option value="">— не важно —</option>
+                  <option value="yes">да</option>
+                  <option value="no">нет</option>
+                </select>
+              </div>
+              <div>
+                <Label>Неактивен от … дней</Label>
+                <input
+                  type="number"
+                  min={0}
+                  value={segMinInactive}
+                  onChange={(e) => setSegMinInactive(e.target.value)}
+                  placeholder="напр. 7"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <Label>… до … дней</Label>
+                <input
+                  type="number"
+                  min={0}
+                  value={segMaxInactive}
+                  onChange={(e) => setSegMaxInactive(e.target.value)}
+                  placeholder="напр. 30"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <Label>Минимальный engagement (0–100)</Label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={segMinEng}
+                  onChange={(e) => setSegMinEng(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            {/* hidden inputs чтобы значения попали в submit формы создания */}
+            {segStages.map((s) => <input key={s} type="hidden" name="seg_stage" value={s} />)}
+            <input type="hidden" name="seg_top_interest" value={segInterest} />
+            <input type="hidden" name="seg_goal" value={segGoal} />
+            <input type="hidden" name="seg_subscription" value={segSub} />
+            <input type="hidden" name="seg_onboarding" value={segOnb} />
+            <input type="hidden" name="seg_min_inactive" value={segMinInactive} />
+            <input type="hidden" name="seg_max_inactive" value={segMaxInactive} />
+            <input type="hidden" name="seg_min_engagement" value={segMinEng} />
+
+            <div className="text-xs" style={{ color: 'rgba(28,28,30,0.55)' }}>
+              В тексте можно использовать <code>{'{name}'}</code> и <code>{'{top_interest}'}</code> — подставится топ-направление из библиотеки.
+            </div>
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <button
             type="button"
             disabled={previewPending}
             onClick={() => {
               const fd = new FormData()
-              fd.set('audience', audience)
-              fd.set('tg_ids', tgIds)
+              fillPreviewFD(fd)
               previewAction(fd)
             }}
             className="px-4 py-2 rounded-xl text-sm font-semibold"

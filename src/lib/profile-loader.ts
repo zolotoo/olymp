@@ -102,6 +102,52 @@ export type ActivityRow = {
   week_start: string
 }
 
+// Агрегированный профиль из view user_profile_v.
+// Источник правды для блока «Insights» и сегментации рассылок.
+export type UserProfileV = {
+  tg_id: number
+  funnel_stage: 'visitor' | 'onboarded' | 'engaged' | 'member' | 'churn_risk' | 'churned'
+  engagement_score: number
+  is_member: boolean
+  subscription_active: boolean
+  onboarding_done: boolean
+  goal: string | null
+  goal_custom: string | null
+  level: string | null
+  skills: unknown
+  hours_per_week: string | null
+  has_business: string | null
+  recommended_paths: unknown
+  mini_app_opens_30d: number
+  mini_app_opens_total: number
+  link_clicks_30d: number
+  starts_total: number
+  last_mini_app_open: string | null
+  library_clicks_30d: number
+  library_clicks_total: number
+  last_library_click: string | null
+  top_kinds: { kind: string; clicks: number }[] | null
+  broadcasts_received_90d: number
+  broadcasts_engaged_90d: number
+  broadcast_engagement_pct: number | null
+  last_broadcast_engaged_at: string | null
+  reactions_given_30d: number
+  reactions_given_total: number
+  messages_30d: number
+  messages_total: number
+  days_since_active: number | null
+  source: string | null
+}
+
+export type UserInsight = {
+  tg_id: number
+  summary: string | null
+  suggested_action: string | null
+  next_lessons: unknown
+  generated_at: string
+  model: string | null
+}
+
 export type ProfileData = {
   tgId: number
   member: Member | null
@@ -116,6 +162,8 @@ export type ProfileData = {
   pointsLog: PointsLogRow[]
   activity: ActivityRow[]
   totalMessages: number
+  profileV: UserProfileV | null
+  insight: UserInsight | null
 }
 
 // Load every piece of data we have for a tg_id.
@@ -222,6 +270,11 @@ export async function loadProfile(tgIdOrMemberUuid: string | number): Promise<Pr
       : Promise.resolve({ data: [] as { message_count: number }[] }),
   ])
 
+  const [{ data: profileV }, { data: insight }] = await Promise.all([
+    supabaseAdmin.from('user_profile_v').select('*').eq('tg_id', tgId).maybeSingle(),
+    supabaseAdmin.from('user_insights').select('*').eq('tg_id', tgId).maybeSingle(),
+  ])
+
   const memories = await getMemories(String(tgId)).catch(() => ({ results: [] }))
   const totalMessages = ((allActivityRes.data as { message_count: number }[] | null) || [])
     .reduce((s, r) => s + (r.message_count || 0), 0)
@@ -240,5 +293,7 @@ export async function loadProfile(tgIdOrMemberUuid: string | number): Promise<Pr
     pointsLog: (pointsLogRes.data as PointsLogRow[] | null) ?? [],
     activity: (activityRes.data as ActivityRow[] | null) ?? [],
     totalMessages,
+    profileV: (profileV as UserProfileV | null) ?? null,
+    insight: (insight as UserInsight | null) ?? null,
   }
 }

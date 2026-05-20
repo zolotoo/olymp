@@ -18,9 +18,24 @@ interface BroadcastRow {
   status: string
 }
 
-function renderText(tpl: string, t: { tg_first_name: string | null; tg_username: string | null }): string {
+const INTEREST_HUMAN: Record<string, string> = {
+  trends: 'тренды',
+  practice: 'практика',
+  guides: 'гайды',
+  streams: 'эфиры',
+  results: 'результаты',
+  rules: 'правила',
+  free: 'бесплатное',
+}
+
+function renderText(tpl: string, t: { tg_first_name: string | null; tg_username: string | null; top_interest?: string | null }): string {
   const name = t.tg_first_name || t.tg_username || 'друг'
-  return tpl.replace(/\{name\}/g, name).replace(/\{username\}/g, t.tg_username || '')
+  const interestKey = t.top_interest || ''
+  const interestHuman = INTEREST_HUMAN[interestKey] || interestKey || 'твоё направление'
+  return tpl
+    .replace(/\{name\}/g, name)
+    .replace(/\{username\}/g, t.tg_username || '')
+    .replace(/\{top_interest\}/g, interestHuman)
 }
 
 function buildButtons(b: BroadcastRow): InlineUrlButton[] | null {

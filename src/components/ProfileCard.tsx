@@ -4,6 +4,8 @@ import type { MemberRank } from '@/lib/types'
 import ActivityChart from '@/components/ActivityChart'
 import SummaryButton from '@/components/SummaryButton'
 import ExpandableText from '@/components/ExpandableText'
+import InsightsBlock from '@/components/InsightsBlock'
+import LearningPathBlock from '@/components/LearningPathBlock'
 import type { ProfileData, BotEvent, TgMessageRow, DeliveryRow, ReactionRow } from '@/lib/profile-loader'
 
 const card = {
@@ -68,7 +70,7 @@ export default function ProfileCard({ data, backHref, backLabel }: {
   backHref: string
   backLabel: string
 }) {
-  const { member, botUser, botEvents, incomingMessages, outgoingDeliveries, reactionsGiven, reactionsReceived, memories, eventsLog, pointsLog, activity, totalMessages, tgId } = data
+  const { member, botUser, botEvents, incomingMessages, outgoingDeliveries, reactionsGiven, reactionsReceived, memories, eventsLog, pointsLog, activity, totalMessages, tgId, profileV, insight } = data
 
   const name = member?.tg_first_name || member?.tg_username || botUser?.tg_first_name || botUser?.tg_username || `id:${tgId}`
   const last = member?.tg_last_name || botUser?.tg_last_name || ''
@@ -233,6 +235,12 @@ export default function ProfileCard({ data, backHref, backLabel }: {
           </>
         )}
       </div>
+
+      {/* Insights — агрегаты + LLM */}
+      {profileV && <InsightsBlock tgId={tgId} profile={profileV} insight={insight} />}
+
+      {/* Карта уроков под цель/интересы юзера */}
+      <LearningPathBlock tgId={tgId} />
 
       {/* Activity chart */}
       {activity.length > 0 && (
