@@ -14,6 +14,7 @@ const GROUPS: Group[] = [
       { href: '/',           label: 'Участники',  icon: '👥' },
       { href: '/stats',      label: 'Статистика', icon: '📊' },
       { href: '/audience',   label: 'Аудитория',  icon: '🎯' },
+      { href: '/insights',   label: 'AI-инсайты', icon: '🧠' },
       { href: '/broadcasts', label: 'Рассылки',   icon: '📣' },
     ],
   },

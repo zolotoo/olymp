@@ -64,6 +64,8 @@ export default function InsightsBlock({
           tg_id: tgId,
           summary: data.summary,
           suggested_action: data.suggested_action,
+          engagement_hook: data.engagement_hook ?? null,
+          draft_message: data.draft_message ?? null,
           next_lessons: null,
           generated_at: new Date().toISOString(),
           model: data.model,

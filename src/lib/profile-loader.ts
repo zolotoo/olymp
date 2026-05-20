@@ -143,6 +143,8 @@ export type UserInsight = {
   tg_id: number
   summary: string | null
   suggested_action: string | null
+  engagement_hook: string | null
+  draft_message: string | null
   next_lessons: unknown
   generated_at: string
   model: string | null
