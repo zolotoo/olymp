@@ -4,8 +4,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getCurrentAdminTgId } from '@/lib/admin-auth'
 
 export async function GET(req: NextRequest) {
+  const admin = await getCurrentAdminTgId()
+  if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const url = new URL(req.url)
   const idsRaw = url.searchParams.get('ids') ?? ''
   const ids = idsRaw.split(',').map(Number).filter((n) => Number.isFinite(n))

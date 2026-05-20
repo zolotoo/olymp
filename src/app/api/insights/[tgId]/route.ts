@@ -8,6 +8,8 @@ import { getCurrentAdminTgId } from '@/lib/admin-auth'
 import { generateInsight, type ProfileForInsight } from '@/lib/insight-generator'
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ tgId: string }> }) {
+  const admin = await getCurrentAdminTgId()
+  if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const { tgId: tgIdStr } = await ctx.params
   const tgId = Number(tgIdStr)
   if (!Number.isFinite(tgId)) return NextResponse.json({ error: 'bad_tg_id' }, { status: 400 })

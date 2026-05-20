@@ -153,6 +153,14 @@ export default function InsightsTable({ initial }: { initial: RowDTO[] }) {
           model: data.model,
         },
       } : p))
+      // Сброс локального edit, иначе старый отредактированный текст
+      // продолжит маскировать только что сгенерированный draft.
+      setEditedDraft((prev) => {
+        if (!(tgId in prev)) return prev
+        const next = { ...prev }
+        delete next[tgId]
+        return next
+      })
     }
   }
 

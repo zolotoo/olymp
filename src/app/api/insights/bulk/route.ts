@@ -29,17 +29,20 @@ export async function POST(req: NextRequest) {
   const force = body.force === true
   const limit = Math.min(body.limit ?? 200, 500)
 
-  // 1) Выбираем аудиторию
+  // 1) Выбираем аудиторию.
+  // Если админ явно прислал tg_ids — берём именно их, без strict-фильтра по
+  // membership (иначе админ передаёт список, а часть молча выпадает).
+  // Если tg_ids нет — дефолтная аудитория: member + в чате + в канале.
+  const explicitIds = body.tg_ids && body.tg_ids.length > 0 ? body.tg_ids : null
   let q = supabaseAdmin
     .from('user_profile_v')
     .select('*')
-    .eq('is_member', true)
-    .eq('is_channel_member', true)
-    .eq('is_group_member', true)
     .order('engagement_score', { ascending: false })
     .limit(limit)
-  if (body.tg_ids && body.tg_ids.length > 0) {
-    q = q.in('tg_id', body.tg_ids)
+  if (explicitIds) {
+    q = q.in('tg_id', explicitIds)
+  } else {
+    q = q.eq('is_member', true).eq('is_channel_member', true).eq('is_group_member', true)
   }
   const { data: profiles, error } = await q
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 })

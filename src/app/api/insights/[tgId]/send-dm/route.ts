@@ -7,6 +7,13 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { getCurrentAdminTgId } from '@/lib/admin-auth'
 import { sendTracked } from '@/lib/send-tracked'
 
+// telegram.sendMessage форсит parse_mode=HTML — LLM-сгенерированный draft
+// может содержать <, >, & (например «<3» или «Tom & Jerry»), что роняет
+// отправку с «can't parse entities». Эскейпим, но оставляем переводы строк.
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ tgId: string }> }) {
   const admin = await getCurrentAdminTgId()
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
@@ -36,7 +43,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ tgId: stri
     )
   }
 
-  const res = await sendTracked(tgId, text, { campaign: 'insight_personal_dm' })
+  const res = await sendTracked(tgId, escapeHtml(text), { campaign: 'insight_personal_dm' })
   if (!res?.ok) {
     return NextResponse.json({ error: 'tg_send_failed', tg_error: res?.description ?? null }, { status: 502 })
   }
