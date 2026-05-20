@@ -45,16 +45,16 @@ function Shell() {
   }, [ready, isTelegram, initData])
 
   if (!ready || (isTelegram && !gate)) {
-    return <div className="text-center text-sm p-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Загрузка…</div>
+    return <div className="text-center text-sm p-10 dk-muted-2">Загрузка…</div>
   }
 
   if (!isTelegram) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <div className="rounded-3xl p-8" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.08)' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📱</div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: '#1C1C1E' }}>Откройте в Telegram</h2>
-          <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
+        <div className="dk-card-mini p-8">
+          <div style={{ fontSize: 56, marginBottom: 14 }}>📱</div>
+          <h2 className="dk-mini-title mb-2" style={{ fontSize: 26, letterSpacing: '-0.8px' }}>Откройте в Telegram</h2>
+          <p className="text-sm dk-muted" style={{ lineHeight: 1.55 }}>
             Эта страница работает только как мини-приложение внутри Telegram. Запустите её через бота @AI_Olymp_bot.
           </p>
         </div>
@@ -65,18 +65,21 @@ function Shell() {
   if (!gate?.allowed) {
     return (
       <div className="max-w-md mx-auto px-4 py-12 text-center">
-        <div className="rounded-3xl p-8" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.08)' }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>🔒</div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: '#1C1C1E', letterSpacing: '-0.5px' }}>
-            Только для членов клуба
-          </h2>
-          <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
+        <div className="dk-card-mini p-8 relative" style={{ overflow: 'visible' }}>
+          <span className="dk-bubble dk-sticker-tilt-l" style={{ position: 'absolute', top: -14, left: 16 }}>
+            ☁️ Олимп
+          </span>
+          <span className="dk-bubble dk-bubble-brand dk-sticker-tilt-r" style={{ position: 'absolute', top: -14, right: 16 }}>
+            Just do it ✨
+          </span>
+          <div style={{ fontSize: 64, marginBottom: 14 }}>🔒</div>
+          <h2 className="dk-mini-title mb-2">Только для клуба</h2>
+          <p className="text-sm dk-muted mb-6" style={{ lineHeight: 1.55 }}>
             Чтобы крутить Колесо удачи, копить фантики и расти в титулах — вступай в AI Олимп.
           </p>
           <button
             onClick={() => window.Telegram?.WebApp?.close()}
-            className="w-full rounded-full py-3 text-sm font-semibold"
-            style={{ background: '#0A84FF', color: '#fff', border: 'none', cursor: 'pointer' }}
+            className="dk-btn-primary w-full"
           >
             Написать боту
           </button>
@@ -95,12 +98,9 @@ function Shell() {
       {tab === 'profile' && <ProfileTab reloadKey={profileReload} />}
 
       {/*
-        Liquid Glass tab bar в духе iOS 26: плавающая «пилюля», оторванная от
-        нижней грани и зажатая по бокам. Полупрозрачный фон + сильный blur +
-        boost saturation создаёт эффект матового стекла. Активная вкладка
-        выделяется лёгким акцентным фоном, без цветного эмодзи — только текст.
-        Без иконок: 6 коротких подписей помещаются в одну линию, а отсутствие
-        пиктограмм снимает «детский» вид и даёт чище акцент.
+        Drinkit-style tab bar: плавающая белая пилюля с мягкой тенью. Активная
+        вкладка — заливка brand-blue. Эмодзи появляется ТОЛЬКО у активного таба
+        слева от подписи (Drinkit-фишка с цветными стикерами-акцентами).
       */}
       <nav
         style={{
@@ -109,18 +109,13 @@ function Shell() {
           bottom: 'calc(env(safe-area-inset-bottom) + 12px)',
           transform: 'translateX(-50%)',
           width: 'calc(100% - 16px)',
-          maxWidth: 460,
+          maxWidth: 480,
           display: 'flex',
-          padding: 4,
-          background: 'rgba(255,255,255,0.62)',
-          backdropFilter: 'blur(36px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(36px) saturate(180%)',
-          border: '0.5px solid rgba(255,255,255,0.65)',
+          padding: 5,
+          background: '#FFFFFF',
+          border: '1px solid var(--dk-border)',
           borderRadius: 999,
-          boxShadow:
-            '0 14px 40px rgba(0,0,0,0.14), ' +
-            '0 4px 12px rgba(0,0,0,0.08), ' +
-            'inset 0 1px 0 rgba(255,255,255,0.85)',
+          boxShadow: '0 8px 28px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.06)',
           zIndex: 30,
         }}
       >
@@ -132,26 +127,36 @@ function Shell() {
             : t === 'kiosk' ? 'Киоск'
             : t === 'library' ? 'Знания'
             : 'Профиль'
+          const emoji = t === 'wheel' ? '🎡'
+            : t === 'titul' ? '⛰️'
+            : t === 'leaderboard' ? '🏆'
+            : t === 'kiosk' ? '🛍️'
+            : t === 'library' ? '📚'
+            : '👤'
           return (
             <button
               key={t}
-              onClick={() => setTab(t)}
-              className="flex-1 flex items-center justify-center transition-all active:scale-[0.94]"
+              onClick={() => {
+                window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light')
+                setTab(t)
+              }}
+              className="flex-1 flex items-center justify-center gap-1 transition-all active:scale-[0.94]"
               style={{
-                padding: '11px 0',
-                background: active ? '#FFFFFF' : 'transparent',
+                padding: '10px 0',
+                background: active ? 'var(--dk-brand)' : 'transparent',
                 border: 'none',
                 borderRadius: 999,
                 cursor: 'pointer',
-                color: active ? '#0A84FF' : 'rgba(28,28,30,0.62)',
+                color: active ? '#FFFFFF' : 'var(--dk-text-2)',
                 fontSize: 13,
                 fontWeight: active ? 700 : 500,
                 letterSpacing: '-0.2px',
-                boxShadow: active ? '0 2px 8px rgba(10,132,255,0.18), 0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                boxShadow: active ? '0 4px 14px rgba(45,91,255,0.32)' : 'none',
                 transition: 'background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease',
               }}
             >
-              {label}
+              {active && <span style={{ fontSize: 14, lineHeight: 1 }}>{emoji}</span>}
+              <span>{label}</span>
             </button>
           )
         })}

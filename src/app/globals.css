@@ -355,3 +355,92 @@ body {
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 .wheel-pop { animation: wheelPop 0.45s cubic-bezier(0.25, 1.4, 0.5, 1); }
+
+/* ── Drinkit mini-app utilities ─────────────────────────── */
+.dk-mini-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(173,201,255,0.55) 0%, rgba(173,201,255,0) 60%),
+    linear-gradient(180deg, #DCE7FF 0%, #E8EEFA 28%, #EEF1F5 60%, #F2F3F5 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  color: var(--dk-text-1);
+}
+.dk-card-mini {
+  background: var(--dk-surface);
+  border: 1px solid var(--dk-border);
+  border-radius: var(--dk-radius-card);
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 6px 18px rgba(15,23,42,0.05);
+}
+.dk-bubble {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--dk-surface);
+  border: 1px solid var(--dk-border);
+  box-shadow: 0 2px 8px rgba(15,23,42,0.08);
+  font-size: 12px; font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--dk-text-1);
+  white-space: nowrap;
+}
+.dk-bubble-brand {
+  background: var(--dk-brand);
+  color: #FFFFFF;
+  border-color: var(--dk-brand);
+  box-shadow: 0 4px 14px rgba(45,91,255,0.30);
+}
+.dk-bubble-accent {
+  background: linear-gradient(135deg, #FFD66B 0%, #FF9F0A 100%);
+  color: #5C3D00;
+  border-color: rgba(255,159,10,0.4);
+  box-shadow: 0 4px 14px rgba(255,159,10,0.30);
+}
+.dk-leaves-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2D5BFF 0%, #5B7BFF 100%);
+  color: #FFFFFF;
+  font-weight: 700; font-size: 13px; letter-spacing: -0.2px;
+  box-shadow: 0 4px 14px rgba(45,91,255,0.32);
+}
+.dk-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--dk-brand-soft);
+  color: var(--dk-brand-ink);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.dk-mini-title {
+  font-size: 38px; line-height: 1.05; font-weight: 800;
+  letter-spacing: -1.4px; color: var(--dk-text-1);
+}
+@media (max-width: 380px) {
+  .dk-mini-title { font-size: 32px; letter-spacing: -1.1px; }
+}
+
+/* Rotated sticker baubles (decorative) */
+.dk-sticker-tilt-l { transform: rotate(-6deg); }
+.dk-sticker-tilt-r { transform: rotate(6deg); }
+
+/* Confetti at wheel win */
+@keyframes confetti-fall {
+  0%   { transform: translate3d(0, -10vh, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate3d(var(--dx, 0), 110vh, 0) rotate(720deg); opacity: 0; }
+}
+.dk-confetti-root {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+}
+.dk-confetti-piece {
+  position: absolute;
+  top: 0;
+  font-size: 22px;
+  will-change: transform, opacity;
+  animation: confetti-fall var(--dur, 2.4s) cubic-bezier(0.25, 0.55, 0.5, 1) forwards;
+}

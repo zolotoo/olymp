@@ -33,7 +33,7 @@ interface LibTopic {
   items: LibItem[]
 }
 
-const ACCENT = '#0A84FF'
+const ACCENT = '#2D5BFF'
 const NEW_KIND = '__new__'
 
 // Цвета фона для Featured-карточек по kind. Apple-style градиенты.
@@ -151,18 +151,16 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
     }
   }
 
-  if (error) return <div className="text-center text-sm p-8" style={{ color: '#FF3B30' }}>{error}</div>
-  if (!topics) return <div className="text-center text-sm p-8" style={{ color: 'rgba(28,28,30,0.45)' }}>Загружаем библиотеку…</div>
+  if (error) return <div className="text-center text-sm p-8" style={{ color: '#E5484D' }}>{error}</div>
+  if (!topics) return <div className="text-center text-sm p-8 dk-muted-2">Загружаем библиотеку…</div>
 
   if (topics.length === 0 || topics.every(t => t.items.length === 0)) {
     return (
       <div className="max-w-xl mx-auto px-4 py-12 text-center">
-        <div className="rounded-3xl p-8" style={{ background: '#FFFFFF', border: '1px solid rgba(28,28,30,0.08)' }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>📚</div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: '#1C1C1E', letterSpacing: '-0.5px' }}>
-            Библиотека пока пустая
-          </h2>
-          <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.55 }}>
+        <div className="dk-card-mini p-8">
+          <div style={{ fontSize: 64, marginBottom: 14 }}>📚</div>
+          <h2 className="dk-mini-title mb-2">Библиотека пока пустая</h2>
+          <p className="text-sm dk-muted" style={{ lineHeight: 1.55 }}>
             Скоро тут появятся уроки, гайды и кейсы. Загляни через пару дней.
           </p>
         </div>
@@ -190,11 +188,9 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
 
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
-      <div className="text-center mb-4">
-        <h1 className="text-3xl font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-1px' }}>
-          Библиотека
-        </h1>
-        <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
+      <div className="text-center mb-4 relative" style={{ paddingTop: 4 }}>
+        <h1 className="dk-mini-title mb-1">Библиотека</h1>
+        <p className="text-sm dk-muted">
           Уроки, гайды и кейсы из веток клуба
         </p>
       </div>
@@ -254,7 +250,7 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
 
       {showNew ? (
         <section className="mb-6">
-          <h2 className="text-lg font-bold mb-2" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
+          <h2 className="text-xl font-extrabold mb-2" style={{ color: 'var(--dk-text-1)', letterSpacing: '-0.6px' }}>
             🆕 За последние 7 дней
           </h2>
           {newItems.length === 0 ? (
@@ -281,8 +277,8 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
         visibleTopics.map(topic => (
           <section key={`${topic.chat_id}:${topic.thread_id}`} className="mb-6">
             <div className="flex items-center gap-2 mb-2">
-              {topic.emoji && <span style={{ fontSize: 22 }}>{topic.emoji}</span>}
-              <h2 className="text-lg font-bold" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
+              {topic.emoji && <span style={{ fontSize: 24 }}>{topic.emoji}</span>}
+              <h2 className="text-xl font-extrabold" style={{ color: 'var(--dk-text-1)', letterSpacing: '-0.6px' }}>
                 {topic.title}
               </h2>
             </div>
@@ -360,34 +356,34 @@ function ItemCard({ item, topicEmoji, topicTitle, highlight, cardRef, onOpen }: 
   return (
     <div
       ref={cardRef}
-      className="rounded-2xl p-4"
+      className="dk-card-mini p-4"
       style={{
         background: highlight ? '#FFF8E1' : '#FFFFFF',
-        border: highlight ? '1px solid #FFD60A' : '1px solid rgba(28,28,30,0.06)',
+        borderColor: highlight ? '#FFD60A' : undefined,
         transition: 'background 0.4s, border-color 0.4s',
       }}
     >
       {(topicTitle || item.is_featured) && (
-        <div className="flex items-center gap-2 mb-1 text-xs" style={{ color: 'rgba(28,28,30,0.55)' }}>
+        <div className="flex items-center gap-2 mb-1 text-xs dk-muted">
           {topicEmoji && <span>{topicEmoji}</span>}
           {topicTitle && <span style={{ fontWeight: 600 }}>{topicTitle}</span>}
-          {item.is_featured && <span style={{ color: '#FF9500', fontWeight: 600 }}>🔥 Featured</span>}
+          {item.is_featured && <span style={{ color: '#B45309', fontWeight: 700 }}>🔥 Featured</span>}
         </div>
       )}
-      <h3 className="text-sm font-semibold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-0.2px', lineHeight: 1.35 }}>
+      <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--dk-text-1)', letterSpacing: '-0.2px', lineHeight: 1.35 }}>
         {item.title}
       </h3>
       {item.preview && (
-        <p className="text-xs mb-3" style={{ color: 'rgba(28,28,30,0.60)', lineHeight: 1.55 }}>
+        <p className="text-xs mb-3 dk-muted" style={{ lineHeight: 1.55 }}>
           {item.preview}{item.preview.length >= 200 ? '…' : ''}
         </p>
       )}
       <div className="flex items-center justify-between">
-        <span className="text-xs" style={{ color: 'rgba(28,28,30,0.40)' }}>{formatDate(item.sent_at)}</span>
+        <span className="text-xs dk-muted-2">{formatDate(item.sent_at)}</span>
         <button
           onClick={onOpen}
-          className="rounded-full px-3 py-1.5 text-xs font-semibold active:scale-[0.97]"
-          style={{ background: ACCENT, color: '#fff', border: 'none', cursor: 'pointer' }}
+          className="rounded-full px-3 py-1.5 text-xs font-bold active:scale-[0.97]"
+          style={{ background: ACCENT, color: '#fff', border: 'none', cursor: 'pointer', letterSpacing: '-0.2px' }}
         >
           Открыть в Telegram →
         </button>
@@ -400,15 +396,17 @@ function FilterChip({ active, onClick, children, compact }: { active: boolean; o
   return (
     <button
       onClick={onClick}
-      className={`rounded-full ${compact ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'} font-medium whitespace-nowrap`}
+      className={`rounded-full ${compact ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'} font-semibold whitespace-nowrap transition-all`}
       style={{
-        background: active ? ACCENT : (compact ? 'rgba(10,132,255,0.08)' : '#FFFFFF'),
-        color: active ? '#fff' : '#1C1C1E',
+        background: active ? ACCENT : (compact ? 'var(--dk-brand-soft)' : '#FFFFFF'),
+        color: active ? '#fff' : 'var(--dk-text-1)',
         border: active
           ? `1px solid ${ACCENT}`
-          : (compact ? '1px solid rgba(10,132,255,0.18)' : '1px solid rgba(28,28,30,0.10)'),
+          : (compact ? '1px solid rgba(45,91,255,0.18)' : '1px solid var(--dk-border)'),
         cursor: 'pointer',
         flexShrink: 0,
+        boxShadow: active ? '0 4px 12px rgba(45,91,255,0.22)' : 'none',
+        letterSpacing: '-0.2px',
       }}
     >
       {children}

@@ -107,22 +107,32 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
 
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
-      <div className="text-center mb-4">
-        <div
-          className="text-xs font-semibold uppercase mb-2 inline-block rounded-full px-3 py-1"
+      <div className="text-center mb-4 relative" style={{ paddingTop: 8 }}>
+        <span
+          className="dk-bubble dk-sticker-tilt-l"
+          style={{ position: 'absolute', top: 0, left: 4, fontSize: 11 }}
+        >
+          ☁️ Сергей ведёт
+        </span>
+        <span
+          className="dk-bubble dk-bubble-brand dk-sticker-tilt-r"
+          style={{ position: 'absolute', top: 0, right: 4 }}
+        >
+          🍃 {points}
+        </span>
+        <span
+          className="dk-pill mb-2"
           style={{
+            display: 'inline-flex',
+            marginTop: 18,
+            background: `${cur?.color ?? '#8E8E93'}1A`,
             color: cur?.color ?? '#8E8E93',
-            letterSpacing: '0.8px',
-            background: `${cur?.color ?? '#8E8E93'}14`,
-            border: `1px solid ${cur?.color ?? '#8E8E93'}28`,
           }}
         >
           твой титул · {cur?.label ?? 'Адепт'}
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-1 mt-3" style={{ color: '#1C1C1E', letterSpacing: '-1.2px', lineHeight: 1 }}>
-          Путь на Олимп
-        </h1>
-        <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
+        </span>
+        <h1 className="dk-mini-title mb-1 mt-3">Путь на Олимп</h1>
+        <p className="text-sm dk-muted">
           {next
             ? `Следующий титул — ${next.label}, ${timeUntilNext}`
             : 'Ты достиг высшего титула'}
@@ -225,14 +235,8 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
 
       {/* Current title card with perks */}
       <div
-        className="rounded-2xl p-5 mt-4"
-        style={{
-          background: 'rgba(255,255,255,0.80)',
-          backdropFilter: 'blur(24px) saturate(160%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-          border: `1px solid ${activeCfg.color}28`,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
-        }}
+        className="dk-card-mini p-5 mt-4"
+        style={{ borderColor: `${activeCfg.color}33` }}
       >
         <div className="flex items-baseline justify-between mb-2">
           <div className="text-lg font-bold" style={{ color: '#1C1C1E', letterSpacing: '-0.4px' }}>
@@ -260,7 +264,7 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
 
       {/* Next title preview */}
       {next && (
-        <div className="rounded-2xl p-5 mt-3" style={{ background: `linear-gradient(135deg, ${next.color}10 0%, ${next.color}04 100%)`, border: `1px solid ${next.color}28` }}>
+        <div className="rounded-2xl p-5 mt-3" style={{ background: `linear-gradient(135deg, ${next.color}14 0%, ${next.color}06 100%)`, border: `1px solid ${next.color}33`, boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 6px 18px rgba(15,23,42,0.05)' }}>
           <div className="text-xs font-semibold uppercase mb-2" style={{ color: next.color, letterSpacing: '0.6px' }}>
             Следующий титул · {timeUntilNext}
           </div>
@@ -287,7 +291,7 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
           <div
             key={t.rank}
             className="rounded-2xl mt-2 overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.66)', border: `1px solid ${t.color}20` }}
+            style={{ background: '#FFFFFF', border: `1px solid ${t.color}26` }}
           >
             <button
               onClick={() => setSelected(isOpen ? null : t.rank)}
@@ -319,26 +323,26 @@ export default function TitulTab({ reloadKey = 0 }: { reloadKey?: number }) {
         )
       })}
 
-      <div className="mt-4 rounded-2xl p-4" style={{ background: 'rgba(10,132,255,0.06)', border: '1px solid rgba(10,132,255,0.14)' }}>
-        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#0A84FF', letterSpacing: '0.6px' }}>
-          Как получить фантики
+      <div className="mt-4 dk-card-mini p-4">
+        <div className="text-xs font-bold uppercase mb-2" style={{ color: 'var(--dk-brand-ink)', letterSpacing: '0.6px' }}>
+          🍃 Как получить фантики
         </div>
-        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
+        <ul className="text-xs dk-muted" style={{ lineHeight: 1.8 }}>
           <li>+3 за реакцию на твоё сообщение</li>
           <li>+5 за участие в опросе</li>
           <li>+10 за каждое продление подписки</li>
           <li>Также фантики могут выпасть в Колесе удачи</li>
         </ul>
-        <div className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.55)' }}>
-          У тебя сейчас <b style={{ color: '#1C1C1E' }}>{points}</b> фантиков.
+        <div className="text-xs mt-2 dk-muted">
+          У тебя сейчас <b style={{ color: 'var(--dk-text-1)' }}>{points}</b> фантиков.
         </div>
       </div>
 
-      <div className="mt-3 rounded-2xl p-4" style={{ background: 'rgba(255,149,0,0.06)', border: '1px solid rgba(255,149,0,0.16)' }}>
-        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#FF9500', letterSpacing: '0.6px' }}>
-          Что купить в Киоске
+      <div className="mt-3 dk-card-mini p-4">
+        <div className="text-xs font-bold uppercase mb-2" style={{ color: '#B45309', letterSpacing: '0.6px' }}>
+          🛍️ Что купить в Киоске
         </div>
-        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
+        <ul className="text-xs dk-muted" style={{ lineHeight: 1.8 }}>
           <li>Доп. попытку в Колесе</li>
           <li>Промокоды от партнёров</li>
           <li>Личный разбор и консультацию с Сергеем</li>

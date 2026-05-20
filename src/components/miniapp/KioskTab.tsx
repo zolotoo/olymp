@@ -43,7 +43,7 @@ export default function KioskTab({ reloadKey = 0, onPurchase }: { reloadKey?: nu
   }, [ready, isTelegram, load, reloadKey])
 
   if (!data) {
-    return <div className="text-center text-sm p-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Загрузка…</div>
+    return <div className="text-center text-sm p-10 dk-muted-2">Загрузка…</div>
   }
 
   const { texts } = data
@@ -91,20 +91,18 @@ export default function KioskTab({ reloadKey = 0, onPurchase }: { reloadKey?: nu
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
       <div className="text-center mb-4">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-1 mt-3" style={{ color: '#1C1C1E', letterSpacing: '-1.2px', lineHeight: 1 }}>
-          {headline}
-        </h1>
-        <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>{subtitle}</p>
+        <h1 className="dk-mini-title mb-1 mt-3">{headline}</h1>
+        <p className="text-sm dk-muted">{subtitle}</p>
       </div>
 
       <div
-        className="rounded-2xl px-4 py-3 mb-4 flex items-center justify-between"
+        className="rounded-2xl px-4 py-3 mb-4 flex items-center justify-center"
         style={{
-          background: 'linear-gradient(135deg, #FFE88C 0%, #FFB84C 100%)',
-          boxShadow: '0 6px 20px rgba(255,149,0,0.2)',
+          background: 'linear-gradient(135deg, #2D5BFF 0%, #5B7BFF 100%)',
+          boxShadow: '0 8px 24px rgba(45,91,255,0.30)',
         }}
       >
-        <div className="text-sm font-semibold" style={{ color: '#1C1C1E' }}>🍬 {balance}</div>
+        <div className="text-sm font-bold" style={{ color: '#FFFFFF', letterSpacing: '-0.2px' }}>🍃 {balance}</div>
       </div>
 
       {/* 2-column grid */}
@@ -115,19 +113,23 @@ export default function KioskTab({ reloadKey = 0, onPurchase }: { reloadKey?: nu
           return (
             <div
               key={item.key}
-              className="rounded-2xl p-3 flex flex-col"
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid rgba(28,28,30,0.08)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-              }}
+              className="dk-card-mini p-3 flex flex-col relative"
+              style={{ overflow: 'visible' }}
             >
+              {item.in_stock && (
+                <span
+                  className="dk-leaves-badge dk-sticker-tilt-r"
+                  style={{ position: 'absolute', top: -8, right: -6, fontSize: 12, padding: '5px 10px' }}
+                >
+                  +{item.price} 🍃
+                </span>
+              )}
               <div
                 className="rounded-xl mb-3 flex items-center justify-center overflow-hidden"
                 style={{
                   aspectRatio: '1 / 1',
-                  background: item.image_url ? '#F5F5F7' : 'linear-gradient(135deg, #F0F6FF 0%, #E8F0FF 100%)',
-                  fontSize: 48,
+                  background: item.image_url ? '#F5F5F7' : 'linear-gradient(135deg, #E8EEFF 0%, #DCE7FF 100%)',
+                  fontSize: 56,
                 }}
               >
                 {item.image_url
@@ -135,19 +137,20 @@ export default function KioskTab({ reloadKey = 0, onPurchase }: { reloadKey?: nu
                   : <span>{item.emoji || '🎁'}</span>}
               </div>
               <div className="flex-1 min-h-0">
-                <div className="text-sm font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-0.2px', lineHeight: 1.25 }}>
+                <div className="text-sm font-extrabold mb-1" style={{ color: 'var(--dk-text-1)', letterSpacing: '-0.3px', lineHeight: 1.25 }}>
                   {item.title}
                 </div>
-                <div className="text-xs mb-3" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.4 }}>
+                <div className="text-xs mb-3 dk-muted" style={{ lineHeight: 1.4 }}>
                   {item.description}
                 </div>
               </div>
               <button
                 onClick={() => buy(item)}
                 disabled={disabled}
+                className="active:scale-[0.97] transition-all"
                 style={{
                   width: '100%',
-                  padding: '10px 8px',
+                  padding: '11px 8px',
                   borderRadius: 999,
                   border: 'none',
                   fontSize: 13,
@@ -155,15 +158,16 @@ export default function KioskTab({ reloadKey = 0, onPurchase }: { reloadKey?: nu
                   letterSpacing: '-0.2px',
                   cursor: disabled ? 'default' : 'pointer',
                   background: !item.in_stock
-                    ? 'rgba(28,28,30,0.08)'
+                    ? 'rgba(15,23,42,0.06)'
                     : canAfford
-                      ? '#0A84FF'
-                      : 'rgba(10,132,255,0.12)',
+                      ? 'var(--dk-brand)'
+                      : 'var(--dk-brand-soft)',
                   color: !item.in_stock
-                    ? 'rgba(28,28,30,0.45)'
+                    ? 'var(--dk-text-3)'
                     : canAfford
                       ? '#FFFFFF'
-                      : '#0A84FF',
+                      : 'var(--dk-brand-ink)',
+                  boxShadow: !item.in_stock || !canAfford ? 'none' : '0 6px 16px rgba(45,91,255,0.30)',
                   opacity: busyKey === item.key ? 0.6 : 1,
                 }}
               >
@@ -185,12 +189,13 @@ export default function KioskTab({ reloadKey = 0, onPurchase }: { reloadKey?: nu
             left: 16, right: 16, bottom: 96,
             padding: '12px 16px',
             borderRadius: 14,
-            background: toast.kind === 'ok' ? 'rgba(52,199,89,0.96)' : 'rgba(255,59,48,0.96)',
+            background: toast.kind === 'ok' ? '#047857' : '#E5484D',
             color: '#fff',
             fontSize: 14,
-            fontWeight: 600,
+            fontWeight: 700,
+            letterSpacing: '-0.2px',
             textAlign: 'center',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            boxShadow: '0 10px 30px rgba(15,23,42,0.20)',
             zIndex: 40,
           }}
         >

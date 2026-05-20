@@ -19,7 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
-      <div style={{ minHeight: '100vh', background: '#F2F2F7' }}>
+      <div className="dk-mini-bg">
         {children}
       </div>
     </>

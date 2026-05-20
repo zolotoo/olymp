@@ -121,36 +121,26 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
   }, [canSpin, spinsAvailable, reason])
 
   if (!segments) {
-    return <div className="text-center text-sm p-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Загрузка…</div>
+    return <div className="text-center text-sm p-10 dk-muted-2">Загрузка…</div>
   }
   if (segments.length === 0) {
-    return <div className="text-center text-sm p-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Колесо ещё не настроено.</div>
+    return <div className="text-center text-sm p-10 dk-muted-2">Колесо ещё не настроено.</div>
   }
 
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
-      <div className="text-center mb-6">
-        <div
-          className="text-xs font-semibold uppercase mb-2 inline-block rounded-full px-3 py-1"
-          style={{
-            color: '#0A84FF',
-            letterSpacing: '0.8px',
-            background: 'rgba(10,132,255,0.10)',
-            border: '1px solid rgba(10,132,255,0.18)',
-          }}
-        >
+      <div className="text-center mb-6 relative">
+        <span className="dk-pill mb-3" style={{ display: 'inline-flex' }}>
           {statusLabel}
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-2 mt-3" style={{ color: '#1C1C1E', letterSpacing: '-1.2px', lineHeight: 1 }}>
-          Крути колесо!
-        </h1>
-        <p className="text-sm" style={{ color: 'rgba(28,28,30,0.55)' }}>
+        </span>
+        <h1 className="dk-mini-title mt-3 mb-2">Крути колесо!</h1>
+        <p className="text-sm dk-muted">
           {reason === 'awaiting_renewal'
             ? 'Следующая попытка откроется при продлении подписки'
-            : 'Крути и получай фантики'}
+            : 'Крути и получай фантики 🍃'}
         </p>
         {prevPrize != null && !canSpin && !result && (
-          <p className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.45)' }}>
+          <p className="text-xs mt-2 dk-muted-2">
             В прошлый раз ты выиграл {prevPrize}
           </p>
         )}
@@ -246,15 +236,16 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
         <button
           onClick={spin}
           disabled={spinning || !canSpin}
-          className="rounded-full px-10 py-4 text-base font-semibold transition-all active:scale-[0.97]"
+          className="rounded-full text-base font-bold transition-all active:scale-[0.97]"
           style={{
-            background: !canSpin || spinning ? 'rgba(28,28,30,0.06)' : '#1C1C1E',
-            color: !canSpin || spinning ? 'rgba(28,28,30,0.35)' : '#FFFFFF',
+            background: !canSpin || spinning ? 'rgba(15,23,42,0.06)' : 'var(--dk-brand)',
+            color: !canSpin || spinning ? 'var(--dk-text-3)' : '#FFFFFF',
             minWidth: 240,
-            boxShadow: !canSpin || spinning ? 'none' : '0 10px 30px rgba(28,28,30,0.22), 0 2px 6px rgba(28,28,30,0.10)',
+            padding: '14px 30px',
+            boxShadow: !canSpin || spinning ? 'none' : '0 10px 30px rgba(45,91,255,0.32), 0 2px 6px rgba(45,91,255,0.18)',
             cursor: !canSpin || spinning ? 'not-allowed' : 'pointer',
             letterSpacing: '-0.3px',
-            border: '1px solid rgba(28,28,30,0.08)',
+            border: 'none',
           }}
         >
           {spinning
@@ -273,11 +264,11 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
         <div className="text-center text-sm mb-4" style={{ color: '#FF3B30' }}>{error}</div>
       )}
 
-      <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(191,90,242,0.06)', border: '1px solid rgba(191,90,242,0.16)' }}>
-        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#BF5AF2', letterSpacing: '0.6px' }}>
-          Как работает Колесо удачи
+      <div className="dk-card-mini p-4 mb-3">
+        <div className="text-xs font-bold uppercase mb-2" style={{ color: 'var(--dk-brand-ink)', letterSpacing: '0.6px' }}>
+          ✨ Как работает Колесо удачи
         </div>
-        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.8 }}>
+        <ul className="text-xs dk-muted" style={{ lineHeight: 1.8 }}>
           <li>Первая попытка — сразу при вступлении в клуб</li>
           <li>Бонус-попытка — за заполнение профиля</li>
           <li>Новая попытка — каждое продление подписки (вместе с новым титулом)</li>
@@ -286,8 +277,8 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
         </ul>
       </div>
 
-      <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.66)', backdropFilter: 'blur(28px) saturate(160%)', WebkitBackdropFilter: 'blur(28px) saturate(160%)', border: '1px solid rgba(255,255,255,0.52)', boxShadow: '0 8px 32px rgba(0,0,0,0.10)' }}>
-        <div className="text-xs font-semibold uppercase mb-3" style={{ color: 'rgba(28,28,30,0.45)', letterSpacing: '0.7px' }}>
+      <div className="dk-card-mini p-5">
+        <div className="text-xs font-bold uppercase mb-3 dk-muted-2" style={{ letterSpacing: '0.7px' }}>
           Возможные призы
         </div>
         <div className="flex flex-col gap-2">
@@ -325,47 +316,102 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
       </div>
 
       {result && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(10px)' }} onClick={() => setResult(null)}>
-          <div
-            className="rounded-3xl p-8 text-center"
-            style={{ background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(40px) saturate(180%)', border: '1px solid rgba(255,255,255,0.80)', boxShadow: `0 28px 80px rgba(0,0,0,0.28), 0 8px 32px ${result.color}33`, maxWidth: 420, width: '100%' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 12 }}>🎉</div>
-            <h2 className="text-2xl font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-0.8px' }}>Поздравляем!</h2>
-            <p className="text-sm mb-5" style={{ color: 'rgba(28,28,30,0.55)' }}>Ты выиграл приз</p>
+        <>
+          <Confetti />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(10px)' }} onClick={() => setResult(null)}>
+            <div
+              className="dk-card-mini p-8 text-center wheel-pop relative"
+              style={{
+                boxShadow: `0 28px 80px rgba(15,23,42,0.30), 0 8px 32px ${result.color}33`,
+                maxWidth: 420,
+                width: '100%',
+                overflow: 'visible',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <span
+                className="dk-bubble dk-bubble-brand dk-sticker-tilt-l"
+                style={{ position: 'absolute', top: -16, left: 20 }}
+              >
+                🎉 Победа
+              </span>
+              {result.leaves > 0 && (
+                <span
+                  className="dk-bubble dk-bubble-accent dk-sticker-tilt-r"
+                  style={{ position: 'absolute', top: -16, right: 20 }}
+                >
+                  +{result.leaves} фантиков
+                </span>
+              )}
+              <div style={{ fontSize: 72, lineHeight: 1, marginBottom: 14, marginTop: 8 }}>{result.emoji || '🎁'}</div>
+              <h2 className="dk-mini-title mb-1">Поздравляем!</h2>
+              <p className="text-sm dk-muted mb-5">Ты выиграл приз</p>
 
-            <div className="rounded-2xl px-5 py-5 mb-4" style={{ background: `linear-gradient(135deg, ${result.color}1A 0%, ${result.color}0A 100%)`, border: `1px solid ${result.color}33` }}>
-              <div style={{ fontSize: 36, marginBottom: 4 }}>{result.emoji || '🎁'}</div>
-              <div className="text-2xl font-bold" style={{ color: result.color, letterSpacing: '-0.5px' }}>
-                {result.leaves > 0 ? `${result.leaves} фантиков` : result.prize}
+              <div className="rounded-2xl px-5 py-5 mb-4" style={{ background: `linear-gradient(135deg, ${result.color}1F 0%, ${result.color}08 100%)`, border: `1px solid ${result.color}33` }}>
+                <div className="text-2xl font-extrabold" style={{ color: result.color, letterSpacing: '-0.5px' }}>
+                  {result.leaves > 0 ? `${result.leaves} фантиков` : result.prize}
+                </div>
+                {result.leaves === 0 && (
+                  <div className="text-xs mt-2 dk-muted">
+                    Сергей свяжется с тобой по этому призу.
+                  </div>
+                )}
               </div>
-              {result.leaves === 0 && (
-                <div className="text-xs mt-2" style={{ color: 'rgba(28,28,30,0.55)' }}>
-                  Сергей свяжется с тобой по этому призу.
+
+              <button
+                onClick={() => setShowExp(v => !v)}
+                className="w-full rounded-xl py-2.5 text-sm font-medium mb-4 transition-all"
+                style={{ background: showExplanation ? 'var(--dk-brand-soft)' : 'transparent', border: '1px solid var(--dk-brand-soft)', color: 'var(--dk-brand)', cursor: 'pointer' }}
+              >
+                {showExplanation ? '▲ Скрыть' : '▼ Что такое фантики?'}
+              </button>
+              {showExplanation && (
+                <div className="rounded-xl px-4 py-3 mb-4 text-left text-xs" style={{ background: 'var(--dk-brand-soft)', border: '1px solid rgba(45,91,255,0.18)', color: 'var(--dk-text-2)', lineHeight: 1.65 }}>
+                  {LEAVES_EXPLANATION_FALLBACK}
                 </div>
               )}
+
+              <button onClick={() => setResult(null)} className="dk-btn-ghost w-full">
+                Закрыть
+              </button>
             </div>
-
-            <button
-              onClick={() => setShowExp(v => !v)}
-              className="w-full rounded-xl py-2.5 text-sm font-medium mb-4 transition-all"
-              style={{ background: showExplanation ? 'rgba(10,132,255,0.08)' : 'transparent', border: '1px solid rgba(10,132,255,0.20)', color: '#0A84FF', cursor: 'pointer' }}
-            >
-              {showExplanation ? '▲ Скрыть' : '▼ Что такое фантики?'}
-            </button>
-            {showExplanation && (
-              <div className="rounded-xl px-4 py-3 mb-4 text-left text-xs" style={{ background: 'rgba(10,132,255,0.05)', border: '1px solid rgba(10,132,255,0.12)', color: 'rgba(28,28,30,0.70)', lineHeight: 1.65 }}>
-                {LEAVES_EXPLANATION_FALLBACK}
-              </div>
-            )}
-
-            <button onClick={() => setResult(null)} className="w-full rounded-full py-3 text-sm font-semibold" style={{ background: 'rgba(28,28,30,0.08)', color: '#1C1C1E' }}>
-              Закрыть
-            </button>
           </div>
-        </div>
+        </>
       )}
+    </div>
+  )
+}
+
+function Confetti() {
+  const pieces = useMemo(() => {
+    const emojis = ['🎉', '✨', '🍃', '⭐', '💫', '🎊']
+    return Array.from({ length: 28 }).map((_, i) => ({
+      key: i,
+      emoji: emojis[i % emojis.length],
+      left: Math.random() * 100,
+      dx: (Math.random() - 0.5) * 200,
+      dur: 1.8 + Math.random() * 1.6,
+      delay: Math.random() * 0.4,
+      size: 18 + Math.random() * 14,
+    }))
+  }, [])
+  return (
+    <div className="dk-confetti-root" aria-hidden>
+      {pieces.map(p => (
+        <span
+          key={p.key}
+          className="dk-confetti-piece"
+          style={{
+            left: `${p.left}%`,
+            fontSize: p.size,
+            animationDelay: `${p.delay}s`,
+            ['--dx' as string]: `${p.dx}px`,
+            ['--dur' as string]: `${p.dur}s`,
+          } as React.CSSProperties}
+        >
+          {p.emoji}
+        </span>
+      ))}
     </div>
   )
 }

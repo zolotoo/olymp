@@ -153,12 +153,18 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
       <div
         className="mx-4 rounded-3xl overflow-hidden relative"
         style={{
-          background: `linear-gradient(180deg, ${cfg.color} 0%, ${cfg.color}D0 50%, ${cfg.color}80 100%)`,
-          boxShadow: `0 12px 40px ${cfg.color}40`,
+          background: `linear-gradient(180deg, ${cfg.color} 0%, ${cfg.color}C8 60%, ${cfg.color}90 100%)`,
+          boxShadow: `0 14px 40px ${cfg.color}44`,
           paddingTop: 24,
           paddingBottom: 28,
         }}
       >
+        <span
+          className="dk-bubble dk-sticker-tilt-l"
+          style={{ position: 'absolute', top: 14, left: 14, fontSize: 11, padding: '5px 10px' }}
+        >
+          🏆 топ титула
+        </span>
         <button
           onClick={prev}
           disabled={idx === 0}
@@ -190,8 +196,8 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
           <Trophy color={cfg.color} />
         </div>
         <h1
-          className="text-center font-bold mt-3"
-          style={{ color: '#fff', fontSize: 34, letterSpacing: '-1px', lineHeight: 1.05 }}
+          className="text-center font-extrabold mt-3"
+          style={{ color: '#fff', fontSize: 38, letterSpacing: '-1.4px', lineHeight: 1.05 }}
         >
           {cfg.label}
         </h1>
@@ -216,29 +222,26 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
       </div>
 
       {/* List */}
-      <div className="mx-4 mt-4 rounded-3xl overflow-hidden" style={{
-        background: '#FFFFFF',
-        border: '1px solid rgba(28,28,30,0.08)',
-      }}>
+      <div className="mx-4 mt-4 dk-card-mini overflow-hidden">
         <div style={{
           padding: '14px 18px',
-          borderBottom: '1px solid rgba(28,28,30,0.06)',
+          borderBottom: '1px solid var(--dk-border)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
         }}>
-          <div className="text-xs font-semibold uppercase" style={{ color: cfg.color, letterSpacing: '0.6px' }}>
+          <div className="text-xs font-bold uppercase" style={{ color: cfg.color, letterSpacing: '0.6px' }}>
             Лидеры титула
           </div>
-          <div className="text-xs" style={{ color: 'rgba(28,28,30,0.45)' }}>
+          <div className="text-xs dk-muted-2">
             {inRank.length} {inRank.length === 1 ? 'участник' : 'участников'}
           </div>
         </div>
 
         {!data && (
-          <div className="text-center text-sm py-10" style={{ color: 'rgba(28,28,30,0.45)' }}>Загрузка…</div>
+          <div className="text-center text-sm py-10 dk-muted-2">Загрузка…</div>
         )}
 
         {data && inRank.length === 0 && (
-          <div className="text-center text-sm py-10 px-6" style={{ color: 'rgba(28,28,30,0.55)', lineHeight: 1.5 }}>
+          <div className="text-center text-sm py-10 px-6 dk-muted" style={{ lineHeight: 1.5 }}>
             Пока никто не достиг титула «{cfg.label}». Будь первым.
           </div>
         )}
@@ -252,25 +255,25 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 18px',
-                borderBottom: i === inRank.length - 1 ? 'none' : '1px solid rgba(28,28,30,0.05)',
-                background: isMe ? `${cfg.color}10` : 'transparent',
+                borderBottom: i === inRank.length - 1 ? 'none' : '1px solid var(--dk-border)',
+                background: isMe ? `${cfg.color}14` : 'transparent',
               }}
             >
               <div style={{
-                width: 28, textAlign: 'center',
-                fontSize: medal ? 20 : 13,
-                fontWeight: 700,
-                color: 'rgba(28,28,30,0.45)',
+                width: 30, textAlign: 'center',
+                fontSize: medal ? 22 : 14,
+                fontWeight: 800,
+                color: 'var(--dk-text-3)',
               }}>
                 {medal ?? i + 1}
               </div>
               <Avatar member={m} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="font-semibold truncate" style={{ color: '#1C1C1E', fontSize: 15, letterSpacing: '-0.2px' }}>
-                  {m.name}{isMe && <span style={{ color: cfg.color, fontWeight: 600 }}> · ты</span>}
+                <div className="font-bold truncate" style={{ color: 'var(--dk-text-1)', fontSize: 15, letterSpacing: '-0.2px' }}>
+                  {m.name}{isMe && <span style={{ color: cfg.color, fontWeight: 700 }}> · ты</span>}
                 </div>
-                <div className="text-xs truncate" style={{ color: 'rgba(28,28,30,0.5)' }}>
-                  🍬 {m.points.toLocaleString('ru-RU')} фантиков
+                <div className="text-xs truncate dk-muted">
+                  🍃 {m.points.toLocaleString('ru-RU')} фантиков
                 </div>
               </div>
             </div>
@@ -278,14 +281,11 @@ export default function LeaderboardTab({ reloadKey = 0 }: { reloadKey?: number }
         })}
       </div>
 
-      <div className="mx-4 mt-4 rounded-2xl p-4" style={{
-        background: 'rgba(10,132,255,0.06)',
-        border: '1px solid rgba(10,132,255,0.14)',
-      }}>
-        <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#0A84FF', letterSpacing: '0.6px' }}>
-          Как устроен топ
+      <div className="mx-4 mt-4 dk-card-mini p-4">
+        <div className="text-xs font-bold uppercase mb-2" style={{ color: 'var(--dk-brand-ink)', letterSpacing: '0.6px' }}>
+          🎯 Как устроен топ
         </div>
-        <ul className="text-xs" style={{ color: 'rgba(28,28,30,0.70)', lineHeight: 1.75 }}>
+        <ul className="text-xs dk-muted" style={{ lineHeight: 1.75 }}>
           <li>Каждому титулу — свой кубок и своя таблица.</li>
           <li>Титул повышается каждый месяц подписки: 1-й месяц — Адепт, 2-й — Герой и т.д.</li>
           <li>Внутри титула места распределяются по фантикам: больше — выше.</li>
