@@ -116,7 +116,8 @@ export async function generateInsight(p: ProfileForInsight): Promise<GeneratedIn
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
         'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://ai-olymp.vercel.app',
-        'X-Title': 'AI Олимп Insights',
+        // X-Title должен быть ASCII (fetch падает на кириллице — header = ByteString)
+        'X-Title': 'AI Olymp Insights',
       },
       body: JSON.stringify({
         model,
