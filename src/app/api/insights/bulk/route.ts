@@ -9,7 +9,7 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getCurrentAdminTgId } from '@/lib/admin-auth'
-import { generateInsight, type ProfileForInsight } from '@/lib/insight-generator'
+import { generateInsight, isInsightError, type ProfileForInsight } from '@/lib/insight-generator'
 
 interface BulkBody {
   // если передать tg_ids — обработаем только их (для «перегенерить выбранных»)
@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
           const p = targets[i]
           try {
             const gen = await generateInsight(p)
-            if (!gen) {
-              write({ type: 'row', tg_id: p.tg_id, ok: false, error: 'llm_unavailable' })
+            if (isInsightError(gen)) {
+              write({ type: 'row', tg_id: p.tg_id, ok: false, error: gen.error, detail: gen.detail })
               errCount++
               continue
             }

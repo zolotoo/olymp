@@ -52,6 +52,7 @@ export default function InsightsTable({ initial }: { initial: RowDTO[] }) {
   const [search, setSearch] = useState('')
   const [bulkProgress, setBulkProgress] = useState<{ total: number; done: number; ok: number; err: number } | null>(null)
   const [bulkRunning, setBulkRunning] = useState(false)
+  const [lastError, setLastError] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [editedDraft, setEditedDraft] = useState<Record<number, string>>({})
 
@@ -109,12 +110,16 @@ export default function InsightsTable({ initial }: { initial: RowDTO[] }) {
           try {
             const evt = JSON.parse(line) as
               | { type: 'start'; total: number }
-              | { type: 'row'; tg_id: number; ok: boolean }
+              | { type: 'row'; tg_id: number; ok: boolean; error?: string; detail?: string }
               | { type: 'done'; ok: number; errors: number; total: number }
             if (evt.type === 'start') total = evt.total
             else if (evt.type === 'row') {
               done++
-              if (evt.ok) { ok++; updatedIds.push(evt.tg_id) } else { err++ }
+              if (evt.ok) { ok++; updatedIds.push(evt.tg_id) }
+              else {
+                err++
+                setLastError(`${evt.error ?? 'error'}${evt.detail ? ': ' + evt.detail.slice(0, 200) : ''}`)
+              }
               setBulkProgress({ total, done, ok, err })
             } else if (evt.type === 'done') {
               setBulkProgress({ total: evt.total, done: evt.total, ok: evt.ok, err: evt.errors })
@@ -139,6 +144,13 @@ export default function InsightsTable({ initial }: { initial: RowDTO[] }) {
 
   async function regenerateOne(tgId: number) {
     const res = await fetch(`/api/insights/${tgId}`, { method: 'POST' })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const msg = `${data.error ?? res.statusText}${data.detail ? ': ' + String(data.detail).slice(0, 200) : ''}`
+      setLastError(msg)
+      alert('Ошибка генерации: ' + msg)
+      return
+    }
     if (res.ok) {
       const data = await res.json() as { summary: string; suggested_action: string; engagement_hook: string; draft_message: string; model: string }
       setRows((prev) => prev.map((p) => p.tg_id === tgId ? {
@@ -221,6 +233,9 @@ export default function InsightsTable({ initial }: { initial: RowDTO[] }) {
             {bulkProgress.done}/{bulkProgress.total} · <b style={{ color: '#30D158' }}>{bulkProgress.ok} ok</b>
             {bulkProgress.err > 0 && <> · <b style={{ color: '#FF3B30' }}>{bulkProgress.err} err</b></>}
           </div>
+        )}
+        {lastError && (
+          <div className="text-xs" style={{ color: '#FF3B30', maxWidth: 600 }}>⚠ {lastError}</div>
         )}
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">

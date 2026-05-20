@@ -88,34 +88,62 @@ Engagement-скор: ${p.engagement_score}/100
 }`
 }
 
-export async function generateInsight(p: ProfileForInsight): Promise<GeneratedInsight | null> {
+export type InsightError = { error: string; detail?: string }
+
+// Достаём JSON-объект из ответа LLM: иногда модель оборачивает его в ```json … ```,
+// иногда добавляет вступительный текст. Берём первый сбалансированный {...}.
+function extractJson(raw: string): string | null {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = (fenced ? fenced[1] : raw).trim()
+  // Найти первый '{' и последний '}'
+  const first = candidate.indexOf('{')
+  const last = candidate.lastIndexOf('}')
+  if (first === -1 || last === -1 || last <= first) return null
+  return candidate.slice(first, last + 1)
+}
+
+export async function generateInsight(p: ProfileForInsight): Promise<GeneratedInsight | InsightError> {
   const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) return null
-  const model = 'anthropic/claude-haiku-4-5'
+  if (!apiKey) return { error: 'no_api_key' }
+  // OpenRouter slug Claude Haiku 4.5 — через точку, не дефис.
+  const model = 'anthropic/claude-haiku-4.5'
 
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://ai-olymp.vercel.app',
-      'X-Title': 'AI Олимп Insights',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: buildPrompt(p) }],
-      max_tokens: 700,
-      response_format: { type: 'json_object' },
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://ai-olymp.vercel.app',
+        'X-Title': 'AI Олимп Insights',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: buildPrompt(p) }],
+        max_tokens: 700,
+        // response_format не передаём: Anthropic через OpenRouter его не
+        // принимает (400). Полагаемся на промпт + extractJson.
+      }),
+    })
+  } catch (e) {
+    return { error: 'fetch_failed', detail: e instanceof Error ? e.message : String(e) }
+  }
 
-  if (!res.ok) return null
-  const data = await res.json()
-  const raw: string | undefined = data?.choices?.[0]?.message?.content
-  if (!raw) return null
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    return { error: `openrouter_${res.status}`, detail: body.slice(0, 500) }
+  }
+
+  const data = await res.json().catch(() => null) as { choices?: { message?: { content?: string } }[] } | null
+  const raw = data?.choices?.[0]?.message?.content
+  if (!raw) return { error: 'empty_response' }
+
+  const jsonText = extractJson(raw)
+  if (!jsonText) return { error: 'no_json_in_response', detail: raw.slice(0, 300) }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<GeneratedInsight>
+    const parsed = JSON.parse(jsonText) as Partial<GeneratedInsight>
     return {
       summary: String(parsed.summary || '').trim(),
       suggested_action: String(parsed.suggested_action || '').trim(),
@@ -123,13 +151,11 @@ export async function generateInsight(p: ProfileForInsight): Promise<GeneratedIn
       draft_message: String(parsed.draft_message || '').trim(),
       model,
     }
-  } catch {
-    return {
-      summary: String(raw),
-      suggested_action: '',
-      engagement_hook: '',
-      draft_message: '',
-      model,
-    }
+  } catch (e) {
+    return { error: 'json_parse_failed', detail: e instanceof Error ? e.message : String(e) }
   }
+}
+
+export function isInsightError(x: GeneratedInsight | InsightError): x is InsightError {
+  return typeof (x as InsightError).error === 'string'
 }

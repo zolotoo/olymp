@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getCurrentAdminTgId } from '@/lib/admin-auth'
-import { generateInsight, type ProfileForInsight } from '@/lib/insight-generator'
+import { generateInsight, isInsightError, type ProfileForInsight } from '@/lib/insight-generator'
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ tgId: string }> }) {
   const admin = await getCurrentAdminTgId()
@@ -38,7 +38,9 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ tgId: str
   if (!profile) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const gen = await generateInsight(profile as ProfileForInsight)
-  if (!gen) return NextResponse.json({ error: 'llm_unavailable' }, { status: 500 })
+  if (isInsightError(gen)) {
+    return NextResponse.json({ error: gen.error, detail: gen.detail ?? null }, { status: 500 })
+  }
 
   const { error } = await supabaseAdmin
     .from('user_insights')
