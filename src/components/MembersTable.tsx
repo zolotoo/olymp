@@ -13,29 +13,29 @@ function daysSince(date: string | null): string {
 export default function MembersTable({ members }: { members: MemberWithActivity[] }) {
   if (members.length === 0) {
     return (
-      <div className="text-center py-16" style={{ color: 'rgba(28,28,30,0.38)' }}>
+      <div className="text-center py-16 dk-muted-2">
         Участники появятся здесь после вступления в канал
       </div>
     )
   }
 
   const tierFor = (n: number) => {
-    if (n === 0) return { label: 'мертвяк', bg: 'rgba(255,59,48,0.10)',  color: '#FF3B30' }
-    if (n < 3)   return { label: 'тихий',   bg: 'rgba(255,149,0,0.10)',  color: '#FF9500' }
-    if (n < 10)  return { label: 'живой',   bg: 'rgba(10,132,255,0.10)', color: '#0A84FF' }
-    return          { label: 'активный',    bg: 'rgba(48,209,88,0.10)',  color: '#30D158' }
+    if (n === 0) return { label: 'мертвяк', bg: 'rgba(229,72,77,0.10)',  color: '#E5484D' }
+    if (n < 3)   return { label: 'тихий',   bg: 'rgba(245,158,11,0.12)', color: '#B45309' }
+    if (n < 10)  return { label: 'живой',   bg: 'var(--dk-brand-soft)',  color: 'var(--dk-brand-ink)' }
+    return          { label: 'активный',    bg: 'rgba(16,185,129,0.12)', color: '#047857' }
   }
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr style={{ borderBottom: '1px solid rgba(28,28,30,0.08)' }}>
+          <tr style={{ borderBottom: '1px solid var(--dk-border-strong)' }}>
             {['Участник', 'Титул', 'Фантики', 'За неделю', 'Всего', 'Активность', 'Статус'].map((h, i) => (
               <th
                 key={h}
-                className={`pb-3 font-semibold text-xs${i >= 2 ? ' text-right' : ''}`}
-                style={{ color: 'rgba(28,28,30,0.40)', letterSpacing: '0.3px', textTransform: 'uppercase' }}
+                className={`pb-3 font-bold text-xs${i >= 2 ? ' text-right' : ''}`}
+                style={{ color: 'var(--dk-text-3)', letterSpacing: '0.5px', textTransform: 'uppercase' }}
               >
                 {h}
               </th>
@@ -51,15 +51,15 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
               <tr
                 key={m.id}
                 className="member-row"
-                style={{ borderBottom: '1px solid rgba(28,28,30,0.05)' }}
+                style={{ borderBottom: '1px solid var(--dk-border)' }}
               >
                 <td className="py-3">
                   <Link href={`/members/${m.id}`} className="hover:opacity-70 transition-opacity">
-                    <div className="font-semibold" style={{ color: '#1C1C1E', letterSpacing: '-0.3px' }}>
+                    <div className="font-semibold" style={{ color: 'var(--dk-text-1)', letterSpacing: '-0.3px' }}>
                       {m.tg_first_name || m.tg_username || String(m.tg_id)}
                     </div>
                     {m.tg_username && (
-                      <div className="text-xs mt-0.5" style={{ color: '#0A84FF', letterSpacing: '-0.1px' }}>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--dk-brand)', letterSpacing: '-0.1px', fontWeight: 500 }}>
                         @{m.tg_username}
                       </div>
                     )}
@@ -70,19 +70,19 @@ export default function MembersTable({ members }: { members: MemberWithActivity[
                     {rank.emoji} {rank.label}
                   </span>
                 </td>
-                <td className="py-3 text-right font-mono font-bold" style={{ color: '#1C1C1E', letterSpacing: '-0.5px' }}>
+                <td className="py-3 text-right font-mono font-bold" style={{ color: 'var(--dk-text-1)', letterSpacing: '-0.5px' }}>
                   {m.points.toLocaleString()}
                 </td>
                 <td className="py-3 text-right">
-                  <span style={{ color: m.messages_this_week > 0 ? '#30D158' : 'rgba(28,28,30,0.28)' }}>
+                  <span style={{ color: m.messages_this_week > 0 ? '#047857' : 'var(--dk-text-3)', fontWeight: m.messages_this_week > 0 ? 600 : 400 }}>
                     {m.messages_this_week}
                   </span>
                 </td>
-                <td className="py-3 text-right" style={{ color: 'rgba(28,28,30,0.50)' }}>{m.total_messages}</td>
-                <td className="py-3 text-right text-xs" style={{ color: 'rgba(28,28,30,0.40)' }}>{daysSince(m.last_active)}</td>
+                <td className="py-3 text-right dk-muted">{m.total_messages}</td>
+                <td className="py-3 text-right text-xs dk-muted-2">{daysSince(m.last_active)}</td>
                 <td className="py-3 text-right">
                   {m.status === 'churned' ? (
-                    <StatusChip label="вышел" bg="rgba(99,99,102,0.10)" color="#636366" />
+                    <StatusChip label="вышел" bg="rgba(15,23,42,0.06)" color="#64748B" />
                   ) : (
                     <StatusChip label={tier.label} bg={tier.bg} color={tier.color} />
                   )}

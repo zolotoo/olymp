@@ -14,14 +14,6 @@ function getWeekStart(): string {
 
 export const revalidate = 60
 
-const glass = {
-  background: 'rgba(255,255,255,0.66)',
-  backdropFilter: 'blur(28px) saturate(160%)',
-  WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-  border: '1px solid rgba(255,255,255,0.52)',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07)',
-} as const
-
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -103,11 +95,9 @@ export default async function DashboardPage({
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-1" style={{ color: '#1C1C1E', letterSpacing: '-1px', lineHeight: 1.1 }}>
-          Участники клуба
-        </h1>
-        <p className="text-sm" style={{ color: 'rgba(28,28,30,0.50)', letterSpacing: '-0.2px' }}>
+      <div className="mb-8">
+        <h1 className="dk-h1 mb-2">Участники клуба</h1>
+        <p className="text-sm dk-muted-2" style={{ letterSpacing: '-0.2px' }}>
           Обновляется каждую минуту
         </p>
       </div>
@@ -116,7 +106,7 @@ export default async function DashboardPage({
 
       {/* Filters + Search */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
           {[
             { key: undefined, label: 'Все' },
             { key: 'active',  label: `Активные (${activeThisWeek})` },
@@ -128,18 +118,7 @@ export default async function DashboardPage({
               <a
                 key={label}
                 href={key ? `/?filter=${key}` : '/'}
-                className="px-3.5 py-1.5 rounded-full text-sm font-medium transition-all"
-                style={{
-                  background: isActive
-                    ? 'rgba(255,255,255,0.85)'
-                    : 'rgba(255,255,255,0.50)',
-                  color: isActive ? '#1C1C1E' : 'rgba(28,28,30,0.60)',
-                  border: '1px solid rgba(255,255,255,0.55)',
-                  boxShadow: isActive ? '0 2px 10px rgba(0,0,0,0.10)' : 'none',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  letterSpacing: '-0.2px',
-                }}
+                className={`dk-chip${isActive ? ' is-active' : ''}`}
               >
                 {label}
               </a>
@@ -153,21 +132,13 @@ export default async function DashboardPage({
             name="q"
             defaultValue={q}
             placeholder="Поиск по имени или @username..."
-            className="rounded-full px-4 py-1.5 text-sm focus:outline-none w-64"
-            style={{
-              background: 'rgba(255,255,255,0.66)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.52)',
-              color: '#1C1C1E',
-              letterSpacing: '-0.2px',
-            }}
+            className="dk-input w-64"
           />
         </form>
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl p-6" style={glass}>
+      <div className="dk-card p-6">
         <MembersTable members={enriched} />
       </div>
     </div>
