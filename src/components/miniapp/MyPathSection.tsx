@@ -52,7 +52,7 @@ interface ApiResponse {
   pathMeta: Record<string, PathMetaItem>
 }
 
-const ACCENT = '#0A84FF'
+const ACCENT = '#2D5BFF'
 
 export default function MyPathSection({ onComplete }: { onComplete?: () => void }) {
   const { initData } = useTelegram()
@@ -165,7 +165,7 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
     }
   }
 
-  if (error && !data) return <div className="text-sm" style={{ color: '#FF3B30' }}>{error}</div>
+  if (error && !data) return <div className="text-sm" style={{ color: '#E5484D' }}>{error}</div>
   if (!data) return <div className="text-sm" style={{ color: 'rgba(28,28,30,0.45)' }}>Загружаем «Мой путь»…</div>
 
   // ─── Финал после finalize ─────────────────────────────────────────────────
@@ -322,7 +322,7 @@ export default function MyPathSection({ onComplete }: { onComplete?: () => void 
 
       {error && (
         <div className="rounded-xl px-3 py-2 mb-3 text-xs"
-             style={{ background: 'rgba(255,59,48,0.08)', color: '#FF3B30', border: '1px solid rgba(255,59,48,0.20)' }}>
+             style={{ background: 'rgba(229,72,77,0.08)', color: '#E5484D', border: '1px solid rgba(229,72,77,0.20)' }}>
           {error}
         </div>
       )}

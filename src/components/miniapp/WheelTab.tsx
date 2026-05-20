@@ -130,7 +130,15 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
   return (
     <div className="max-w-xl mx-auto px-4 pb-8">
       <div className="text-center mb-6 relative">
-        <span className="dk-pill mb-3" style={{ display: 'inline-flex' }}>
+        <span
+          className="inline-flex items-center rounded-full text-xs font-semibold mb-3"
+          style={{
+            padding: '5px 12px',
+            background: 'var(--dk-brand-soft)',
+            color: 'var(--dk-brand-ink)',
+            letterSpacing: '-0.1px',
+          }}
+        >
           {statusLabel}
         </span>
         <h1 className="dk-mini-title mt-3 mb-2">Крути колесо!</h1>
@@ -261,7 +269,7 @@ export default function WheelTab({ onSpinComplete }: { onSpinComplete?: () => vo
       </div>
 
       {error && (
-        <div className="text-center text-sm mb-4" style={{ color: '#FF3B30' }}>{error}</div>
+        <div className="text-center text-sm mb-4" style={{ color: '#E5484D' }}>{error}</div>
       )}
 
       <div className="dk-card-mini p-4 mb-3">

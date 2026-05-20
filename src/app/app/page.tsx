@@ -140,23 +140,23 @@ function Shell() {
                 window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light')
                 setTab(t)
               }}
-              className="flex-1 flex items-center justify-center gap-1 transition-all active:scale-[0.94]"
+              className="dk-tab-btn flex-1 flex items-center justify-center transition-all active:scale-[0.94]"
               style={{
-                padding: '10px 0',
+                minWidth: 0,
+                padding: '10px 4px',
                 background: active ? 'var(--dk-brand)' : 'transparent',
                 border: 'none',
                 borderRadius: 999,
                 cursor: 'pointer',
                 color: active ? '#FFFFFF' : 'var(--dk-text-2)',
-                fontSize: 13,
                 fontWeight: active ? 700 : 500,
                 letterSpacing: '-0.2px',
                 boxShadow: active ? '0 4px 14px rgba(45,91,255,0.32)' : 'none',
                 transition: 'background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease',
               }}
             >
-              {active && <span style={{ fontSize: 14, lineHeight: 1 }}>{emoji}</span>}
-              <span>{label}</span>
+              {active && <span className="dk-tab-emoji" style={{ lineHeight: 1 }}>{emoji}</span>}
+              <span className="dk-tab-label" style={{ minWidth: 0 }}>{label}</span>
             </button>
           )
         })}

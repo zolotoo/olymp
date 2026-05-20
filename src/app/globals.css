@@ -358,12 +358,21 @@ body {
 
 /* ── Drinkit mini-app utilities ─────────────────────────── */
 .dk-mini-bg {
+  /* iOS Safari WebView (Telegram mini-app) глючит с background-attachment: fixed,
+     поэтому используем фиксированный псевдоэлемент-фон позади контента. */
+  position: relative;
+  min-height: 100vh;
+  color: var(--dk-text-1);
+}
+.dk-mini-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
   background:
     radial-gradient(ellipse 80% 50% at 50% 0%, rgba(173,201,255,0.55) 0%, rgba(173,201,255,0) 60%),
     linear-gradient(180deg, #DCE7FF 0%, #E8EEFA 28%, #EEF1F5 60%, #F2F3F5 100%);
-  background-attachment: fixed;
-  min-height: 100vh;
-  color: var(--dk-text-1);
+  pointer-events: none;
 }
 .dk-card-mini {
   background: var(--dk-surface);
@@ -425,6 +434,21 @@ body {
 /* Rotated sticker baubles (decorative) */
 .dk-sticker-tilt-l { transform: rotate(-6deg); }
 .dk-sticker-tilt-r { transform: rotate(6deg); }
+
+/* Bottom tab-bar — responsive sizing.
+   Goal: 6 кнопок гарантированно влезают даже на iPhone SE (320px).
+   На широких — комфортно, эмодзи активного слева от подписи. */
+.dk-tab-btn { font-size: 13px; gap: 5px; }
+.dk-tab-label { white-space: nowrap; }
+.dk-tab-emoji { font-size: 14px; flex-shrink: 0; }
+@media (max-width: 400px) {
+  .dk-tab-btn { font-size: 12px; gap: 3px; }
+  .dk-tab-emoji { font-size: 12px; }
+}
+@media (max-width: 340px) {
+  .dk-tab-btn { font-size: 11px; gap: 2px; padding: 9px 2px; }
+  .dk-tab-emoji { display: none; }
+}
 
 /* Confetti at wheel win */
 @keyframes confetti-fall {
