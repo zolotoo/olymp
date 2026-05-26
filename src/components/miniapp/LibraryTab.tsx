@@ -144,8 +144,11 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
       headers: { 'content-type': 'application/json', 'x-telegram-init-data': initData || '' },
       body: JSON.stringify({ chat_id: item.chat_id, message_id: item.message_id, kind: item.kind }),
     }).catch(() => {})
-    if (window.Telegram?.WebApp?.openTelegramLink) {
-      window.Telegram.WebApp.openTelegramLink(item.link)
+    const tgApp = window.Telegram?.WebApp
+    if (tgApp?.openTelegramLink) {
+      tgApp.openTelegramLink(item.link)
+    } else if (tgApp?.openLink) {
+      tgApp.openLink(item.link)
     } else {
       window.open(item.link, '_blank')
     }
