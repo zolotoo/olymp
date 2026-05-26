@@ -993,8 +993,8 @@ function classifyMedia(m: TgMessage): { has: boolean; kind: string | null } {
 // Called for message / edited_message / channel_post / edited_channel_post.
 async function storeIncomingMessage(msg: TgMessage, isEdit: boolean): Promise<void> {
   if (!msg.message_id || !msg.chat?.id) return
-  // Author: prefer from.id; for channel posts Telegram provides sender_chat instead.
-  const authorId = msg.from?.id ?? msg.sender_chat?.id
+  // Author: prefer from.id; for channel posts use sender_chat or chat.id as fallback.
+  const authorId = msg.from?.id ?? msg.sender_chat?.id ?? msg.chat?.id
   if (!authorId) return
   if (msg.from?.is_bot) return
 
