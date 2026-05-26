@@ -146,7 +146,10 @@ export default function LibraryTab({ initialKind, initialMsgId }: Props = {}) {
     }).catch(() => {})
     const tgApp = window.Telegram?.WebApp
     if (tgApp?.openTelegramLink) {
+      // openTelegramLink не закрывает мини-апп — пользователь видит тот же экран
+      // и думает, что ничего не произошло. Закрываем явно, чтобы показать пост.
       tgApp.openTelegramLink(item.link)
+      tgApp.close()
     } else if (tgApp?.openLink) {
       tgApp.openLink(item.link)
     } else {
